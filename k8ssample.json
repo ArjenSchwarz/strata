@@ -1,0 +1,473 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.7.1",
+    "variables": {
+        "cluster_name": {
+            "value": "production-eks"
+        },
+        "node_group_size": {
+            "value": 3
+        }
+    },
+    "planned_values": {
+        "root_module": {
+            "child_modules": [
+                {
+                    "address": "module.vpc",
+                    "resources": [
+                        {
+                            "address": "module.vpc.aws_vpc.main",
+                            "mode": "managed",
+                            "type": "aws_vpc",
+                            "name": "main",
+                            "provider_name": "registry.terraform.io/hashicorp/aws",
+                            "schema_version": 1,
+                            "values": {
+                                "cidr_block": "10.0.0.0/16",
+                                "enable_dns_hostnames": true,
+                                "enable_dns_support": true
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "resource_changes": [
+        {
+            "address": "aws_eks_cluster.main",
+            "mode": "managed",
+            "type": "aws_eks_cluster",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "name": "production-eks",
+                    "version": "1.27",
+                    "vpc_config": [
+                        {
+                            "subnet_ids": [
+                                "subnet-12345",
+                                "subnet-67890"
+                            ],
+                            "endpoint_private_access": false,
+                            "endpoint_public_access": true,
+                            "public_access_cidrs": [
+                                "0.0.0.0/0"
+                            ]
+                        }
+                    ],
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform"
+                    }
+                },
+                "after": {
+                    "name": "production-eks",
+                    "version": "1.28",
+                    "vpc_config": [
+                        {
+                            "subnet_ids": [
+                                "subnet-12345",
+                                "subnet-67890"
+                            ],
+                            "endpoint_private_access": true,
+                            "endpoint_public_access": true,
+                            "public_access_cidrs": [
+                                "203.0.113.0/24",
+                                "198.51.100.0/24"
+                            ]
+                        }
+                    ],
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Version": "1.28"
+                    }
+                },
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "aws_eks_node_group.workers",
+            "mode": "managed",
+            "type": "aws_eks_node_group",
+            "name": "workers",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "replace"
+                ],
+                "before": {
+                    "cluster_name": "production-eks",
+                    "node_group_name": "production-workers",
+                    "instance_types": [
+                        "t3.medium"
+                    ],
+                    "ami_type": "AL2_x86_64",
+                    "capacity_type": "ON_DEMAND",
+                    "scaling_config": [
+                        {
+                            "desired_size": 2,
+                            "max_size": 4,
+                            "min_size": 1
+                        }
+                    ],
+                    "update_config": [
+                        {
+                            "max_unavailable_percentage": 25
+                        }
+                    ]
+                },
+                "after": {
+                    "cluster_name": "production-eks",
+                    "node_group_name": "production-workers",
+                    "instance_types": [
+                        "t3.large"
+                    ],
+                    "ami_type": "AL2_x86_64",
+                    "capacity_type": "SPOT",
+                    "scaling_config": [
+                        {
+                            "desired_size": 3,
+                            "max_size": 6,
+                            "min_size": 2
+                        }
+                    ],
+                    "update_config": [
+                        {
+                            "max_unavailable_percentage": 33
+                        }
+                    ]
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "status": true,
+                    "resources": true
+                }
+            }
+        },
+        {
+            "address": "aws_eks_addon.vpc_cni",
+            "mode": "managed",
+            "type": "aws_eks_addon",
+            "name": "vpc_cni",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "cluster_name": "production-eks",
+                    "addon_name": "vpc-cni",
+                    "addon_version": "v1.14.1-eksbuild.1",
+                    "resolve_conflicts": "OVERWRITE",
+                    "tags": {
+                        "Environment": "production"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "created_at": true,
+                    "modified_at": true
+                }
+            }
+        },
+        {
+            "address": "kubernetes_deployment.nginx",
+            "mode": "managed",
+            "type": "kubernetes_deployment",
+            "name": "nginx",
+            "provider_name": "registry.terraform.io/hashicorp/kubernetes",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "metadata": [
+                        {
+                            "name": "nginx-deployment",
+                            "namespace": "default",
+                            "labels": {
+                                "app": "nginx"
+                            }
+                        }
+                    ],
+                    "spec": [
+                        {
+                            "replicas": 2,
+                            "selector": [
+                                {
+                                    "match_labels": {
+                                        "app": "nginx"
+                                    }
+                                }
+                            ],
+                            "template": [
+                                {
+                                    "metadata": [
+                                        {
+                                            "labels": {
+                                                "app": "nginx"
+                                            }
+                                        }
+                                    ],
+                                    "spec": [
+                                        {
+                                            "container": [
+                                                {
+                                                    "name": "nginx",
+                                                    "image": "nginx:1.24",
+                                                    "port": [
+                                                        {
+                                                            "container_port": 80
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "after": {
+                    "metadata": [
+                        {
+                            "name": "nginx-deployment",
+                            "namespace": "default",
+                            "labels": {
+                                "app": "nginx",
+                                "version": "v2"
+                            }
+                        }
+                    ],
+                    "spec": [
+                        {
+                            "replicas": 3,
+                            "selector": [
+                                {
+                                    "match_labels": {
+                                        "app": "nginx"
+                                    }
+                                }
+                            ],
+                            "template": [
+                                {
+                                    "metadata": [
+                                        {
+                                            "labels": {
+                                                "app": "nginx",
+                                                "version": "v2"
+                                            }
+                                        }
+                                    ],
+                                    "spec": [
+                                        {
+                                            "container": [
+                                                {
+                                                    "name": "nginx",
+                                                    "image": "nginx:1.25",
+                                                    "port": [
+                                                        {
+                                                            "container_port": 80
+                                                        }
+                                                    ],
+                                                    "resources": [
+                                                        {
+                                                            "requests": {
+                                                                "cpu": "100m",
+                                                                "memory": "128Mi"
+                                                            },
+                                                            "limits": {
+                                                                "cpu": "200m",
+                                                                "memory": "256Mi"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "kubernetes_service.nginx_lb",
+            "mode": "managed",
+            "type": "kubernetes_service",
+            "name": "nginx_lb",
+            "provider_name": "registry.terraform.io/hashicorp/kubernetes",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "metadata": [
+                        {
+                            "name": "nginx-loadbalancer",
+                            "namespace": "default"
+                        }
+                    ],
+                    "spec": [
+                        {
+                            "type": "LoadBalancer",
+                            "selector": {
+                                "app": "nginx"
+                            },
+                            "port": [
+                                {
+                                    "port": 80,
+                                    "target_port": 80,
+                                    "protocol": "TCP"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "after": null,
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "kubernetes_ingress_v1.nginx_ingress",
+            "mode": "managed",
+            "type": "kubernetes_ingress_v1",
+            "name": "nginx_ingress",
+            "provider_name": "registry.terraform.io/hashicorp/kubernetes",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "metadata": [
+                        {
+                            "name": "nginx-ingress",
+                            "namespace": "default",
+                            "annotations": {
+                                "kubernetes.io/ingress.class": "nginx",
+                                "cert-manager.io/cluster-issuer": "letsencrypt-prod"
+                            }
+                        }
+                    ],
+                    "spec": [
+                        {
+                            "tls": [
+                                {
+                                    "hosts": [
+                                        "app.example.com"
+                                    ],
+                                    "secret_name": "nginx-tls"
+                                }
+                            ],
+                            "rule": [
+                                {
+                                    "host": "app.example.com",
+                                    "http": [
+                                        {
+                                            "path": [
+                                                {
+                                                    "path": "/",
+                                                    "path_type": "Prefix",
+                                                    "backend": [
+                                                        {
+                                                            "service": [
+                                                                {
+                                                                    "name": "nginx-service",
+                                                                    "port": [
+                                                                        {
+                                                                            "number": 80
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "after_unknown": {
+                    "id": true,
+                    "status": true
+                }
+            }
+        },
+        {
+            "address": "helm_release.monitoring",
+            "mode": "managed",
+            "type": "helm_release",
+            "name": "monitoring",
+            "provider_name": "registry.terraform.io/hashicorp/helm",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "name": "prometheus",
+                    "repository": "https://prometheus-community.github.io/helm-charts",
+                    "chart": "kube-prometheus-stack",
+                    "version": "51.2.0",
+                    "namespace": "monitoring",
+                    "create_namespace": true,
+                    "values": [
+                        "grafana:\n  enabled: true\n  adminPassword: \"admin123\"\nprometheus:\n  prometheusSpec:\n    retention: \"15d\""
+                    ]
+                },
+                "after": {
+                    "name": "prometheus",
+                    "repository": "https://prometheus-community.github.io/helm-charts",
+                    "chart": "kube-prometheus-stack",
+                    "version": "55.5.0",
+                    "namespace": "monitoring",
+                    "create_namespace": true,
+                    "values": [
+                        "grafana:\n  enabled: true\n  adminPassword: \"secure_password_123\"\n  persistence:\n    enabled: true\n    size: 10Gi\nprometheus:\n  prometheusSpec:\n    retention: \"30d\"\n    storageSpec:\n      volumeClaimTemplate:\n        spec:\n          accessModes: [\"ReadWriteOnce\"]\n          resources:\n            requests:\n              storage: 50Gi"
+                    ]
+                },
+                "after_unknown": {
+                    "status": true,
+                    "version": true
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "provider_config": {
+            "aws": {
+                "name": "aws",
+                "full_name": "registry.terraform.io/hashicorp/aws",
+                "version_constraint": "~> 5.0"
+            },
+            "kubernetes": {
+                "name": "kubernetes",
+                "full_name": "registry.terraform.io/hashicorp/kubernetes",
+                "version_constraint": "~> 2.20"
+            },
+            "helm": {
+                "name": "helm",
+                "full_name": "registry.terraform.io/hashicorp/helm",
+                "version_constraint": "~> 2.10"
+            }
+        }
+    },
+    "timestamp": "2024-03-15T16:45:12Z",
+    "errored": false
+}

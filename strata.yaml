@@ -1,0 +1,3 @@
+output: table
+table:
+  style: ColoredBlackOnMagentaWhite
