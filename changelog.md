@@ -8,12 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added Makefile with standard development targets
+  - Added build target for compiling the application
+  - Added test target for running all tests
+  - Added run-sample target for executing sample files with plan summary command
+  - Added run-sample-details target for executing sample files with detailed output
+- Added test_makefile.sh script for validating Makefile targets
+- Reorganized sample files into dedicated samples directory
+  - Moved danger-sample.json, k8ssample.json, and websample.json to samples directory
+- Added sample Terraform plan JSON file (danger-sample.json) demonstrating sensitive resource replacements and property changes
 - Danger Highlights feature for identifying sensitive resource replacements and property changes
+  - Enhanced equals function in analyzer to properly handle slice comparisons
+  - Implementation of sensitive resource detection to flag replacements of critical infrastructure
+  - Implementation of sensitive property detection to identify risky property changes
+  - Added IsSensitiveResource and IsSensitiveProperty methods to the analyzer
+  - Added checkSensitiveProperties method to detect property changes
+  - Extended ResourceChange model with danger-related fields
 - Configuration options for defining sensitive resources and properties
 - Detection of sensitive resource replacements with warning indicators
 - Detection of sensitive property changes with detailed property listings
 - Enhanced output formatting with danger information in resource changes table
 - Documentation for the Danger Highlights feature
+- Unit tests for sensitive resource and property detection
 - Initial CLI foundation with Cobra framework
 - `plan summary` command for Terraform plan analysis
 - Configuration management for output formats and danger thresholds

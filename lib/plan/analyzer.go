@@ -387,7 +387,7 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 	return sensitiveProps
 }
 
-// equals is a helper to compare two values, handling maps specially
+// equals is a helper to compare two values, handling maps and slices specially
 func equals(a, b interface{}) bool {
 	// Handle nil cases
 	if a == nil && b == nil {
@@ -423,6 +423,27 @@ func equals(a, b interface{}) bool {
 		return true
 	}
 
-	// For non-map types, use direct comparison
+	// Handle slices specially since they're not directly comparable
+	aSlice, aIsSlice := a.([]interface{})
+	bSlice, bIsSlice := b.([]interface{})
+
+	if aIsSlice && bIsSlice {
+		// If slices have different lengths, they're not equal
+		if len(aSlice) != len(bSlice) {
+			return false
+		}
+
+		// Check each element
+		for i, aVal := range aSlice {
+			bVal := bSlice[i]
+			// Recursively compare values
+			if !equals(aVal, bVal) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// For non-map and non-slice types, use direct comparison
 	return a == b
 }
