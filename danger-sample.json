@@ -1,0 +1,486 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.8.5",
+    "variables": {},
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_db_instance.main",
+                    "mode": "managed",
+                    "type": "aws_db_instance",
+                    "name": "main",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 2,
+                    "values": {
+                        "allocated_storage": 100,
+                        "apply_immediately": true,
+                        "backup_retention_period": 14,
+                        "backup_window": "02:00-03:00",
+                        "db_name": "myapp_prod",
+                        "db_subnet_group_name": "myapp-prod-subnet-group",
+                        "engine": "postgres",
+                        "engine_version": "15.4",
+                        "instance_class": "db.t3.small",
+                        "maintenance_window": "sat:04:00-sat:05:00",
+                        "multi_az": true,
+                        "parameter_group_name": "default.postgres15",
+                        "password": "sensitive-value",
+                        "port": 5432,
+                        "publicly_accessible": false,
+                        "storage_encrypted": true,
+                        "storage_type": "gp3",
+                        "tags": {
+                            "Environment": "production",
+                            "Name": "MyApp Database",
+                            "Project": "MyApp"
+                        },
+                        "username": "myapp_admin"
+                    },
+                    "sensitive_values": {
+                        "password": true,
+                        "tags": {},
+                        "tags_all": {}
+                    }
+                },
+                {
+                    "address": "aws_iam_instance_profile.app_profile",
+                    "mode": "managed",
+                    "type": "aws_iam_instance_profile",
+                    "name": "app_profile",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "name": "myapp-ec2-profile",
+                        "path": "/",
+                        "role": "myapp-ec2-role",
+                        "tags": {
+                            "Environment": "production",
+                            "Name": "MyApp EC2 Instance Profile",
+                            "Project": "MyApp"
+                        }
+                    },
+                    "sensitive_values": {
+                        "tags": {},
+                        "tags_all": {}
+                    }
+                },
+                {
+                    "address": "aws_instance.web_server",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web_server",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "ami": "ami-0c02fb55956c7d316",
+                        "instance_type": "t3.micro",
+                        "tags": {
+                            "Environment": "production",
+                            "Name": "MyApp Web Server",
+                            "Project": "MyApp"
+                        },
+                        "user_data": "f4a3c0d8b47c9e1f5a2b8d6e9c3f1a5e7b9d2c4f",
+                        "user_data_replace_on_change": true
+                    },
+                    "sensitive_values": {
+                        "tags": {},
+                        "tags_all": {},
+                        "user_data_base64": true
+                    }
+                },
+                {
+                    "address": "aws_security_group.web_sg",
+                    "mode": "managed",
+                    "type": "aws_security_group",
+                    "name": "web_sg",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "name": "myapp-web-sg",
+                        "tags": {
+                            "Environment": "production",
+                            "Name": "MyApp Web Security Group",
+                            "Project": "MyApp"
+                        }
+                    },
+                    "sensitive_values": {
+                        "egress": [],
+                        "ingress": [],
+                        "tags": {},
+                        "tags_all": {}
+                    }
+                }
+            ],
+            "outputs": {
+                "database_endpoint": {
+                    "sensitive": false
+                },
+                "iam_profile_arn": {
+                    "sensitive": false
+                },
+                "iam_profile_name": {
+                    "sensitive": false,
+                    "value": "myapp-ec2-profile"
+                }
+            }
+        }
+    },
+    "resource_changes": [
+        {
+            "address": "aws_db_instance.main",
+            "mode": "managed",
+            "type": "aws_db_instance",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "before": {
+                    "allocated_storage": 20,
+                    "apply_immediately": false,
+                    "arn": "arn:aws:rds:us-west-2:123456789012:db:myapp-db-20240315",
+                    "availability_zone": "us-west-2a",
+                    "backup_retention_period": 7,
+                    "backup_window": "03:00-04:00",
+                    "ca_cert_identifier": "rds-ca-2019",
+                    "db_name": "myapp",
+                    "db_subnet_group_name": "myapp-subnet-group",
+                    "endpoint": "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com",
+                    "engine": "postgres",
+                    "engine_version": "14.9",
+                    "hosted_zone_id": "Z1PVIF0B656C1W",
+                    "id": "myapp-db-20240315",
+                    "identifier": "myapp-db-20240315",
+                    "instance_class": "db.t3.micro",
+                    "kms_key_id": "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+                    "latest_restorable_time": "2024-06-13T10:30:00Z",
+                    "license_model": "postgresql-license",
+                    "maintenance_window": "sun:05:00-sun:06:00",
+                    "monitoring_role_arn": "arn:aws:iam::123456789012:role/rds-monitoring-role",
+                    "multi_az": false,
+                    "option_group_name": "default:postgres-14",
+                    "parameter_group_name": "default.postgres14",
+                    "password": "sensitive-value",
+                    "port": 5432,
+                    "publicly_accessible": false,
+                    "resource_id": "db-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                    "status": "available",
+                    "storage_encrypted": true,
+                    "storage_type": "gp2",
+                    "tags": {
+                        "Environment": "staging",
+                        "Name": "MyApp Database",
+                        "Project": "MyApp"
+                    },
+                    "username": "myapp_user",
+                    "vpc_security_group_ids": [
+                        "sg-0123456789abcdef0"
+                    ]
+                },
+                "after": {
+                    "allocated_storage": 100,
+                    "apply_immediately": true,
+                    "backup_retention_period": 14,
+                    "backup_window": "02:00-03:00",
+                    "db_name": "myapp_prod",
+                    "db_subnet_group_name": "myapp-prod-subnet-group",
+                    "engine": "postgres",
+                    "engine_version": "15.4",
+                    "instance_class": "db.t3.small",
+                    "maintenance_window": "sat:04:00-sat:05:00",
+                    "multi_az": true,
+                    "parameter_group_name": "default.postgres15",
+                    "password": "sensitive-value",
+                    "port": 5432,
+                    "publicly_accessible": false,
+                    "storage_encrypted": true,
+                    "storage_type": "gp3",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "MyApp Database",
+                        "Project": "MyApp"
+                    },
+                    "username": "myapp_admin"
+                },
+                "after_sensitive": {
+                    "password": true,
+                    "tags": {},
+                    "tags_all": {}
+                },
+                "before_sensitive": {
+                    "password": true,
+                    "tags": {},
+                    "tags_all": {},
+                    "vpc_security_group_ids": []
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "availability_zone": true,
+                    "ca_cert_identifier": true,
+                    "endpoint": true,
+                    "hosted_zone_id": true,
+                    "id": true,
+                    "identifier": true,
+                    "identifier_prefix": true,
+                    "kms_key_id": true,
+                    "latest_restorable_time": true,
+                    "license_model": true,
+                    "monitoring_role_arn": true,
+                    "option_group_name": true,
+                    "replica_mode": true,
+                    "replicas": true,
+                    "resource_id": true,
+                    "status": true,
+                    "tags_all": true,
+                    "timezone": true,
+                    "vpc_security_group_ids": true
+                }
+            },
+            "action_reason": "replace_because_cannot_update"
+        },
+        {
+            "address": "aws_iam_instance_profile.app_profile",
+            "mode": "managed",
+            "type": "aws_iam_instance_profile",
+            "name": "app_profile",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "name": "myapp-ec2-profile",
+                    "path": "/",
+                    "role": "myapp-ec2-role",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "MyApp EC2 Instance Profile",
+                        "Project": "MyApp"
+                    }
+                },
+                "after_sensitive": {
+                    "tags": {},
+                    "tags_all": {}
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "create_date": true,
+                    "id": true,
+                    "name_prefix": true,
+                    "tags_all": true,
+                    "unique_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_instance.web_server",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web_server",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "id": "i-0123456789abcdef0",
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.micro",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "MyApp Web Server",
+                        "Project": "MyApp"
+                    },
+                    "user_data": "c765373c203b8c0853e42c00b04e3532ee6854c6",
+                    "user_data_replace_on_change": false
+                },
+                "after": {
+                    "id": "i-0123456789abcdef0",
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.micro",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "MyApp Web Server",
+                        "Project": "MyApp"
+                    },
+                    "user_data": "f4a3c0d8b47c9e1f5a2b8d6e9c3f1a5e7b9d2c4f",
+                    "user_data_replace_on_change": true
+                },
+                "after_sensitive": {
+                    "tags": {},
+                    "tags_all": {},
+                    "user_data_base64": true
+                },
+                "before_sensitive": {
+                    "tags": {},
+                    "tags_all": {},
+                    "user_data_base64": true
+                },
+                "after_unknown": {
+                    "user_data_base64": true
+                }
+            }
+        },
+        {
+            "address": "aws_security_group.web_sg",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "web_sg",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "id": "sg-0123456789abcdef0",
+                    "name": "myapp-web-sg",
+                    "tags": {
+                        "Environment": "staging",
+                        "Name": "MyApp Web Security Group",
+                        "Project": "MyApp"
+                    }
+                },
+                "after": {
+                    "id": "sg-0123456789abcdef0",
+                    "name": "myapp-web-sg",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "MyApp Web Security Group",
+                        "Project": "MyApp"
+                    }
+                },
+                "after_sensitive": {
+                    "egress": [],
+                    "ingress": [],
+                    "tags": {},
+                    "tags_all": {}
+                },
+                "before_sensitive": {
+                    "egress": [],
+                    "ingress": [],
+                    "tags": {},
+                    "tags_all": {}
+                },
+                "after_unknown": {
+                    "tags_all": true
+                }
+            }
+        }
+    ],
+    "output_changes": {
+        "database_endpoint": {
+            "actions": [
+                "update"
+            ],
+            "before": "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com:5432",
+            "after_unknown": true,
+            "before_sensitive": false,
+            "after_sensitive": false
+        },
+        "iam_profile_arn": {
+            "actions": [
+                "create"
+            ],
+            "before": null,
+            "after_unknown": true,
+            "before_sensitive": false,
+            "after_sensitive": false
+        },
+        "iam_profile_name": {
+            "actions": [
+                "create"
+            ],
+            "before": null,
+            "after": "myapp-ec2-profile",
+            "before_sensitive": false,
+            "after_sensitive": false
+        }
+    },
+    "prior_state": {
+        "format_version": "1.0",
+        "terraform_version": "1.8.5",
+        "values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "address": "aws_db_instance.main",
+                        "mode": "managed",
+                        "type": "aws_db_instance",
+                        "name": "main",
+                        "provider_name": "registry.terraform.io/hashicorp/aws",
+                        "schema_version": 2,
+                        "values": {
+                            "allocated_storage": 20,
+                            "arn": "arn:aws:rds:us-west-2:123456789012:db:myapp-db-20240315",
+                            "engine": "postgres",
+                            "engine_version": "14.9",
+                            "id": "myapp-db-20240315",
+                            "tags": {
+                                "Environment": "staging",
+                                "Name": "MyApp Database",
+                                "Project": "MyApp"
+                            }
+                        }
+                    },
+                    {
+                        "address": "aws_instance.web_server",
+                        "mode": "managed",
+                        "type": "aws_instance",
+                        "name": "web_server",
+                        "provider_name": "registry.terraform.io/hashicorp/aws",
+                        "schema_version": 1,
+                        "values": {
+                            "id": "i-0123456789abcdef0",
+                            "user_data": "c765373c203b8c0853e42c00b04e3532ee6854c6"
+                        }
+                    },
+                    {
+                        "address": "aws_security_group.web_sg",
+                        "mode": "managed",
+                        "type": "aws_security_group",
+                        "name": "web_sg",
+                        "provider_name": "registry.terraform.io/hashicorp/aws",
+                        "schema_version": 1,
+                        "values": {
+                            "id": "sg-0123456789abcdef0",
+                            "tags": {
+                                "Environment": "staging"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "configuration": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_db_instance.main",
+                    "mode": "managed",
+                    "type": "aws_db_instance",
+                    "name": "main",
+                    "provider_config_key": "aws",
+                    "expressions": {
+                        "allocated_storage": {
+                            "constant_value": 100
+                        },
+                        "engine": {
+                            "constant_value": "postgres"
+                        },
+                        "engine_version": {
+                            "constant_value": "15.4"
+                        },
+                        "instance_class": {
+                            "constant_value": "db.t3.small"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	format "github.com/ArjenSchwarz/go-output"
 	"github.com/ArjenSchwarz/strata/config"
@@ -211,6 +212,15 @@ func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputForma
 			replacementDisplay = "N/A"
 		}
 
+		// Format danger information
+		dangerInfo := ""
+		if change.IsDangerous {
+			dangerInfo = "⚠️ " + change.DangerReason
+			if len(change.DangerProperties) > 0 {
+				dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
+			}
+		}
+
 		resourceData = append(resourceData, format.OutputHolder{
 			Contents: map[string]interface{}{
 				"ACTION":      getActionDisplay(change.ChangeType),
@@ -219,6 +229,7 @@ func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputForma
 				"ID":          displayID,
 				"REPLACEMENT": replacementDisplay,
 				"MODULE":      change.ModulePath,
+				"DANGER":      dangerInfo,
 			},
 		})
 	}
@@ -227,7 +238,7 @@ func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputForma
 	output := format.OutputArray{
 		Settings: settings,
 		Contents: resourceData,
-		Keys:     []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE"},
+		Keys:     []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"},
 	}
 
 	output.Write()

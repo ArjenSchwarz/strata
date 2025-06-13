@@ -3,18 +3,21 @@ package plan
 import (
 	"strings"
 
+	"github.com/ArjenSchwarz/strata/config"
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
 // Analyzer processes Terraform plan data and generates summaries
 type Analyzer struct {
-	plan *tfjson.Plan
+	plan   *tfjson.Plan
+	config *config.Config
 }
 
 // NewAnalyzer creates a new plan analyzer
-func NewAnalyzer(plan *tfjson.Plan) *Analyzer {
+func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 	return &Analyzer{
-		plan: plan,
+		plan:   plan,
+		config: cfg,
 	}
 }
 
@@ -67,6 +70,28 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			ChangeAttributes: a.getChangingAttributes(rc),
 			Before:           rc.Change.Before,
 			After:            rc.Change.After,
+			// Check for sensitive resources and properties
+			IsDangerous:      false, // Will be updated below
+			DangerReason:     "",
+			DangerProperties: []string{},
+		}
+
+		// Check if this is a sensitive resource
+		if a.IsSensitiveResource(rc.Type) && changeType == ChangeTypeReplace {
+			change.IsDangerous = true
+			change.DangerReason = "Sensitive resource replacement"
+		}
+
+		// Check for sensitive properties
+		dangerProps := a.checkSensitiveProperties(rc)
+		if len(dangerProps) > 0 {
+			change.IsDangerous = true
+			change.DangerProperties = dangerProps
+			if change.DangerReason == "" {
+				change.DangerReason = "Sensitive property change"
+			} else {
+				change.DangerReason += " and sensitive property change"
+			}
 		}
 
 		changes = append(changes, change)
@@ -294,4 +319,110 @@ func (a *Analyzer) getChangingAttributes(change *tfjson.ResourceChange) []string
 	}
 
 	return attributes
+}
+
+// IsSensitiveResource checks if a resource type is in the sensitive resources list
+func (a *Analyzer) IsSensitiveResource(resourceType string) bool {
+	if a.config == nil || len(a.config.SensitiveResources) == 0 {
+		return false
+	}
+
+	for _, sr := range a.config.SensitiveResources {
+		if sr.ResourceType == resourceType {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsSensitiveProperty checks if a property is sensitive for a given resource type
+func (a *Analyzer) IsSensitiveProperty(resourceType string, propertyName string) bool {
+	if a.config == nil || len(a.config.SensitiveProperties) == 0 {
+		return false
+	}
+
+	for _, sp := range a.config.SensitiveProperties {
+		if sp.ResourceType == resourceType && sp.Property == propertyName {
+			return true
+		}
+	}
+
+	return false
+}
+
+// checkSensitiveProperties checks if any properties in the change match sensitive properties
+func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []string {
+	var sensitiveProps []string
+
+	// If there's no change or no config, return empty
+	if change.Change.Before == nil || change.Change.After == nil || a.config == nil {
+		return sensitiveProps
+	}
+
+	// Extract before and after as maps
+	beforeMap, beforeOk := change.Change.Before.(map[string]interface{})
+	afterMap, afterOk := change.Change.After.(map[string]interface{})
+
+	if !beforeOk || !afterOk {
+		return sensitiveProps
+	}
+
+	// Check each property to see if it's changed and if it's sensitive
+	for propName := range afterMap {
+		// Skip if property doesn't exist in before (new property)
+		beforeVal, exists := beforeMap[propName]
+		if !exists {
+			continue
+		}
+
+		afterVal := afterMap[propName]
+
+		// If property has changed and is sensitive, add to list
+		if !equals(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
+			sensitiveProps = append(sensitiveProps, propName)
+		}
+	}
+
+	return sensitiveProps
+}
+
+// equals is a helper to compare two values, handling maps specially
+func equals(a, b interface{}) bool {
+	// Handle nil cases
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Handle maps specially since they're not directly comparable
+	// Check if both are maps
+	aMap, aIsMap := a.(map[string]interface{})
+	bMap, bIsMap := b.(map[string]interface{})
+
+	if aIsMap && bIsMap {
+		// If maps have different lengths, they're not equal
+		if len(aMap) != len(bMap) {
+			return false
+		}
+
+		// Check each key-value pair
+		for k, aVal := range aMap {
+			bVal, exists := bMap[k]
+			if !exists {
+				return false
+			}
+
+			// Recursively compare values
+			if !equals(aVal, bVal) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// For non-map types, use direct comparison
+	return a == b
 }

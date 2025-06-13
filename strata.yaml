@@ -1,3 +1,15 @@
 output: table
 table:
   style: ColoredBlackOnMagentaWhite
+plan:
+  danger-threshold: 3
+  show-details: true
+  highlight-dangers: true
+
+# Sensitive resources and properties configuration
+sensitive_resources:
+  - resource_type: aws_db_instance
+  - resource_type: aws_ec2_instance
+sensitive_properties:
+  - resource_type: aws_instance
+    property: user_data

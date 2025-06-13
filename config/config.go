@@ -8,10 +8,25 @@ import (
 	"github.com/spf13/viper"
 )
 
+// SensitiveResource defines a resource type that should be flagged as sensitive
+type SensitiveResource struct {
+	ResourceType string `mapstructure:"resource_type"`
+}
+
+// SensitiveProperty defines a resource type and property combination that should be flagged as sensitive
+type SensitiveProperty struct {
+	ResourceType string `mapstructure:"resource_type"`
+	Property     string `mapstructure:"property"`
+}
+
 // Config holds the global configuration settings
 type Config struct {
 	// Plan-specific configuration
 	Plan PlanConfig `mapstructure:"plan"`
+
+	// Sensitive resources and properties configuration
+	SensitiveResources  []SensitiveResource `mapstructure:"sensitive_resources"`
+	SensitiveProperties []SensitiveProperty `mapstructure:"sensitive_properties"`
 }
 
 // PlanConfig holds configuration specific to plan operations

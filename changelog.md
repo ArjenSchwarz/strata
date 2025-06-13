@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Danger Highlights feature for identifying sensitive resource replacements and property changes
+- Configuration options for defining sensitive resources and properties
+- Detection of sensitive resource replacements with warning indicators
+- Detection of sensitive property changes with detailed property listings
+- Enhanced output formatting with danger information in resource changes table
+- Documentation for the Danger Highlights feature
 - Initial CLI foundation with Cobra framework
 - `plan summary` command for Terraform plan analysis
 - Configuration management for output formats and danger thresholds

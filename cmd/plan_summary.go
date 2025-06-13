@@ -75,8 +75,30 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid plan structure: %w", err)
 	}
 
+	// Create config for analyzer
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			DangerThreshold:  dangerThreshold,
+			ShowDetails:      showDetails,
+			HighlightDangers: highlightDangers,
+		},
+	}
+
+	// Load sensitive resources and properties from config file if they exist
+	if viper.IsSet("sensitive_resources") {
+		if err := viper.UnmarshalKey("sensitive_resources", &cfg.SensitiveResources); err != nil {
+			return fmt.Errorf("failed to parse sensitive_resources config: %w", err)
+		}
+	}
+
+	if viper.IsSet("sensitive_properties") {
+		if err := viper.UnmarshalKey("sensitive_properties", &cfg.SensitiveProperties); err != nil {
+			return fmt.Errorf("failed to parse sensitive_properties config: %w", err)
+		}
+	}
+
 	// Create analyzer and generate summary
-	analyzer := plan.NewAnalyzer(tfPlan)
+	analyzer := plan.NewAnalyzer(tfPlan, cfg)
 	summary := analyzer.GenerateSummary(planFile)
 
 	// Check for dangerous changes if threshold is set
@@ -86,7 +108,6 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create formatter and output summary
-	cfg := &config.Config{}
 	formatter := plan.NewFormatter(cfg)
 
 	return formatter.OutputSummary(summary, outputFormat, showDetails)

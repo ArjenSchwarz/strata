@@ -40,6 +40,10 @@ type ResourceChange struct {
 	ChangeAttributes []string        `json:"change_attributes"` // specific attributes changing
 	Before           interface{}     `json:"before,omitempty"`
 	After            interface{}     `json:"after,omitempty"`
+	// New fields for danger highlights
+	IsDangerous      bool     `json:"is_dangerous"`      // Whether this change is flagged as dangerous
+	DangerReason     string   `json:"danger_reason"`     // Reason why this change is dangerous
+	DangerProperties []string `json:"danger_properties"` // List of dangerous property changes
 }
 
 // PlanSummary contains the summarised information from a Terraform plan

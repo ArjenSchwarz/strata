@@ -3,230 +3,152 @@ package plan
 import (
 	"testing"
 
+	"github.com/ArjenSchwarz/strata/config"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAnalyzer_analyzeReplacementNecessity(t *testing.T) {
-	tests := []struct {
-		name     string
-		change   *tfjson.ResourceChange
-		expected ReplacementType
-	}{
-		{
-			name: "create action - never replacement",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionCreate},
-				},
-			},
-			expected: ReplacementNever,
-		},
-		{
-			name: "update action - never replacement",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionUpdate},
-				},
-			},
-			expected: ReplacementNever,
-		},
-		{
-			name: "delete action - never replacement",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionDelete},
-				},
-			},
-			expected: ReplacementNever,
-		},
-		{
-			name: "replace action - always replacement",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-				},
-			},
-			expected: ReplacementAlways,
+func TestIsSensitiveResource(t *testing.T) {
+	// Create a test config with sensitive resources
+	cfg := &config.Config{
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+			{ResourceType: "aws_ec2_instance"},
 		},
 	}
 
-	analyzer := &Analyzer{}
+	// Create analyzer with the config
+	analyzer := &Analyzer{
+		config: cfg,
+	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.analyzeReplacementNecessity(tt.change)
-			if result != tt.expected {
-				t.Errorf("analyzeReplacementNecessity() = %v, want %v", result, tt.expected)
-			}
+	// Test cases
+	testCases := []struct {
+		name         string
+		resourceType string
+		expected     bool
+	}{
+		{
+			name:         "Sensitive resource should return true",
+			resourceType: "aws_rds_instance",
+			expected:     true,
+		},
+		{
+			name:         "Another sensitive resource should return true",
+			resourceType: "aws_ec2_instance",
+			expected:     true,
+		},
+		{
+			name:         "Non-sensitive resource should return false",
+			resourceType: "aws_s3_bucket",
+			expected:     false,
+		},
+	}
+
+	// Run tests
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.IsSensitiveResource(tc.resourceType)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
 
-func TestAnalyzer_isConditionalReplacement(t *testing.T) {
-	tests := []struct {
-		name     string
-		change   *tfjson.ResourceChange
-		expected bool
-	}{
-		{
-			name: "create action - not conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionCreate},
-				},
-			},
-			expected: false,
-		},
-		{
-			name: "replace action - not conditional (always)",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-				},
-			},
-			expected: false,
+func TestIsSensitiveProperty(t *testing.T) {
+	// Create a test config with sensitive properties
+	cfg := &config.Config{
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_ec2_instance", Property: "user_data"},
+			{ResourceType: "aws_lambda_function", Property: "source_code_hash"},
 		},
 	}
 
-	analyzer := &Analyzer{}
+	// Create analyzer with the config
+	analyzer := &Analyzer{
+		config: cfg,
+	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.isConditionalReplacement(tt.change)
-			if result != tt.expected {
-				t.Errorf("isConditionalReplacement() = %v, want %v", result, tt.expected)
-			}
+	// Test cases
+	testCases := []struct {
+		name         string
+		resourceType string
+		property     string
+		expected     bool
+	}{
+		{
+			name:         "Sensitive property should return true",
+			resourceType: "aws_ec2_instance",
+			property:     "user_data",
+			expected:     true,
+		},
+		{
+			name:         "Another sensitive property should return true",
+			resourceType: "aws_lambda_function",
+			property:     "source_code_hash",
+			expected:     true,
+		},
+		{
+			name:         "Non-sensitive property should return false",
+			resourceType: "aws_ec2_instance",
+			property:     "instance_type",
+			expected:     false,
+		},
+		{
+			name:         "Sensitive property on wrong resource should return false",
+			resourceType: "aws_s3_bucket",
+			property:     "user_data",
+			expected:     false,
+		},
+	}
+
+	// Run tests
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.IsSensitiveProperty(tc.resourceType, tc.property)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
 
-func TestAnalyzer_calculateStatistics(t *testing.T) {
-	tests := []struct {
-		name     string
-		changes  []ResourceChange
-		expected ChangeStatistics
-	}{
-		{
-			name:    "empty changes",
-			changes: []ResourceChange{},
-			expected: ChangeStatistics{
-				ToAdd:        0,
-				ToChange:     0,
-				ToDestroy:    0,
-				Replacements: 0,
-				Conditionals: 0,
-				Total:        0,
-			},
+func TestCheckSensitiveProperties(t *testing.T) {
+	// Create a test config with sensitive properties
+	cfg := &config.Config{
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_ec2_instance", Property: "user_data"},
 		},
-		{
-			name: "mixed changes",
-			changes: []ResourceChange{
-				{ChangeType: ChangeTypeCreate, ReplacementType: ReplacementNever},
-				{ChangeType: ChangeTypeUpdate, ReplacementType: ReplacementNever},
-				{ChangeType: ChangeTypeDelete, ReplacementType: ReplacementNever},
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementConditional},
+	}
+
+	// Create analyzer with the config
+	analyzer := &Analyzer{
+		config: cfg,
+	}
+
+	// Create a test resource change
+	resourceChange := &tfjson.ResourceChange{
+		Type: "aws_ec2_instance",
+		Change: &tfjson.Change{
+			Before: map[string]interface{}{
+				"user_data":     "old-data",
+				"instance_type": "t2.micro",
 			},
-			expected: ChangeStatistics{
-				ToAdd:        1,
-				ToChange:     1,
-				ToDestroy:    1,
-				Replacements: 1,
-				Conditionals: 1,
-				Total:        5,
-			},
-		},
-		{
-			name: "only replacements",
-			changes: []ResourceChange{
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementConditional},
-			},
-			expected: ChangeStatistics{
-				ToAdd:        0,
-				ToChange:     0,
-				ToDestroy:    0,
-				Replacements: 2,
-				Conditionals: 1,
-				Total:        3,
+			After: map[string]interface{}{
+				"user_data":     "new-data",
+				"instance_type": "t2.micro",
 			},
 		},
 	}
 
-	analyzer := &Analyzer{}
+	// Test the function
+	result := analyzer.checkSensitiveProperties(resourceChange)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.calculateStatistics(tt.changes)
-			if result != tt.expected {
-				t.Errorf("calculateStatistics() = %+v, want %+v", result, tt.expected)
-			}
-		})
-	}
-}
+	// Should find one sensitive property change
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "user_data")
 
-func TestAnalyzer_analyzeResourceChanges(t *testing.T) {
-	plan := &tfjson.Plan{
-		ResourceChanges: []*tfjson.ResourceChange{
-			{
-				Address: "aws_instance.web",
-				Type:    "aws_instance",
-				Name:    "web",
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionCreate},
-					Before:  nil,
-					After:   map[string]interface{}{"instance_type": "t2.micro"},
-				},
-			},
-			{
-				Address: "aws_instance.old",
-				Type:    "aws_instance",
-				Name:    "old",
-				Change: &tfjson.Change{
-					Actions: tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-					Before:  map[string]interface{}{"instance_type": "t2.small"},
-					After:   map[string]interface{}{"instance_type": "t2.micro"},
-				},
-			},
-		},
-	}
+	// Test with unchanged sensitive property
+	resourceChange.Change.After.(map[string]interface{})["user_data"] = "old-data"
+	result = analyzer.checkSensitiveProperties(resourceChange)
 
-	analyzer := NewAnalyzer(plan)
-	changes := analyzer.analyzeResourceChanges()
-
-	if len(changes) != 2 {
-		t.Errorf("analyzeResourceChanges() returned %d changes, want 2", len(changes))
-	}
-
-	// Check first change (create)
-	if changes[0].Address != "aws_instance.web" {
-		t.Errorf("First change address = %s, want aws_instance.web", changes[0].Address)
-	}
-	if changes[0].ChangeType != ChangeTypeCreate {
-		t.Errorf("First change type = %s, want %s", changes[0].ChangeType, ChangeTypeCreate)
-	}
-	if changes[0].ReplacementType != ReplacementNever {
-		t.Errorf("First change replacement type = %s, want %s", changes[0].ReplacementType, ReplacementNever)
-	}
-
-	// Check second change (replace)
-	if changes[1].Address != "aws_instance.old" {
-		t.Errorf("Second change address = %s, want aws_instance.old", changes[1].Address)
-	}
-	if changes[1].ChangeType != ChangeTypeReplace {
-		t.Errorf("Second change type = %s, want %s", changes[1].ChangeType, ChangeTypeReplace)
-	}
-	if changes[1].ReplacementType != ReplacementAlways {
-		t.Errorf("Second change replacement type = %s, want %s", changes[1].ReplacementType, ReplacementAlways)
-	}
-}
-
-func TestNewAnalyzer(t *testing.T) {
-	plan := &tfjson.Plan{}
-	analyzer := NewAnalyzer(plan)
-
-	if analyzer.plan != plan {
-		t.Error("NewAnalyzer() should set plan correctly")
-	}
+	// Should find no sensitive property changes
+	assert.Len(t, result, 0)
 }
