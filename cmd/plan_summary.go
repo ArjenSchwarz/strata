@@ -48,16 +48,24 @@ Examples:
   strata plan summary --output json terraform.tfplan
 
   # Generate summary with custom danger threshold
-  strata plan summary --danger-threshold 5 terraform.tfplan`,
+  strata plan summary --danger-threshold 5 terraform.tfplan
+
+  # Generate summary with vertical statistics format
+  strata plan summary --stats-format vertical terraform.tfplan
+
+  # Generate summary without statistics table
+  strata plan summary --show-statistics=false terraform.tfplan`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlanSummary,
 }
 
 var (
-	outputFormat     string
-	dangerThreshold  int
-	showDetails      bool
-	highlightDangers bool
+	outputFormat            string
+	dangerThreshold         int
+	showDetails             bool
+	highlightDangers        bool
+	showStatisticsSummary   bool
+	statisticsSummaryFormat string
 )
 
 func runPlanSummary(cmd *cobra.Command, args []string) error {
@@ -78,9 +86,11 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	// Create config for analyzer
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
-			DangerThreshold:  dangerThreshold,
-			ShowDetails:      showDetails,
-			HighlightDangers: highlightDangers,
+			DangerThreshold:         dangerThreshold,
+			ShowDetails:             showDetails,
+			HighlightDangers:        highlightDangers,
+			ShowStatisticsSummary:   showStatisticsSummary,
+			StatisticsSummaryFormat: statisticsSummaryFormat,
 		},
 	}
 
@@ -135,4 +145,14 @@ func init() {
 	planSummaryCmd.Flags().BoolVar(&highlightDangers, "highlight-dangers", true,
 		"Highlight potentially destructive changes")
 	viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers"))
+
+	// Show statistics summary flag
+	planSummaryCmd.Flags().BoolVar(&showStatisticsSummary, "show-statistics", true,
+		"Show statistics summary table")
+	viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics"))
+
+	// Statistics summary format flag
+	planSummaryCmd.Flags().StringVar(&statisticsSummaryFormat, "stats-format", "horizontal",
+		"Statistics summary format (horizontal, vertical)")
+	viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format"))
 }

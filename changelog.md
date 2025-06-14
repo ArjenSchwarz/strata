@@ -60,12 +60,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plan information section displays before statistics with proper spacing
 - **Phase 2: Enhanced Statistics Summary Table** - Added horizontal statistics table matching fog's format
 - ReplacementType enum with Never, Conditional, and Always values for replacement analysis
-- Enhanced ChangeStatistics struct with Replacements and Conditionals fields
+- Enhanced ChangeStatistics struct with Replacements and Conditionals fields with comprehensive field documentation
 - Updated ResourceChange struct to include ReplacementType field
-- Replacement necessity analysis in analyzer with proper categorisation
+- Replacement necessity analysis with ReplacePaths parsing from Terraform plans
+- Advanced replacement type determination distinguishing between definite and conditional replacements
+- Helper methods for analyzing conditional replacement paths and computed values
 - Horizontal statistics summary table with TOTAL, ADDED, REMOVED, MODIFIED, REPLACEMENTS, CONDITIONALS columns
-- Enhanced statistics calculation separating definite and conditional replacements
-- Comprehensive test coverage for replacement analysis and statistics formatting
+- Enhanced statistics calculation properly separating definite and conditional replacements
+- New configuration options for statistics display control (ShowStatisticsSummary, StatisticsSummaryFormat)
+- Added --stats-format command flag for controlling summary format (horizontal/vertical)
+- Added --show-statistics command flag for toggling statistics display
+- Updated command help text with examples for new flags
+- Comprehensive unit tests for replacement analysis covering ReplacePaths parsing and type determination
+- Integration tests for statistics display with various change combinations and output format compatibility
+- Full backward compatibility maintained with existing functionality
+- All output formats (table, json, html) support the new enhanced statistics
 - **Phase 3: Enhanced Resource Changes Table** - Added detailed resource changes table with physical IDs, replacement indicators, and module information
 - Enhanced ResourceChange struct with PhysicalID, PlannedID, ModulePath, and ChangeAttributes fields
 - Physical ID extraction from Terraform plan before/after states with proper handling for new/deleted resources

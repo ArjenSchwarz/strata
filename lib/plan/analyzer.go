@@ -110,9 +110,22 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 
 	// Check if this is a replacement (delete + create)
 	if changeType == ChangeTypeReplace {
-		// For now, treat all replacements as definite (Always)
-		// In the future, we could analyze the change details to determine
-		// if it's conditional based on computed values or unknown attributes
+		// Parse ReplacePaths field from Terraform plan
+		if change.Change.ReplacePaths != nil && len(change.Change.ReplacePaths) > 0 {
+			// Analyze the ReplacePaths to determine if replacement is conditional
+			// If any path indicates a computed/unknown value, it's conditional
+			for _, path := range change.Change.ReplacePaths {
+				// Check if the replacement is due to computed values or unknown attributes
+				if a.isConditionalReplacementPath(change, path) {
+					return ReplacementConditional
+				}
+			}
+			// If all replacement reasons are definite, it's always required
+			return ReplacementAlways
+		}
+
+		// If there's no RequiresReplace information but it's a replace action,
+		// treat it as always required (definite replacement)
 		return ReplacementAlways
 	}
 
@@ -123,6 +136,70 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 // isConditionalReplacement checks if a resource change is a conditional replacement
 func (a *Analyzer) isConditionalReplacement(change *tfjson.ResourceChange) bool {
 	return a.analyzeReplacementNecessity(change) == ReplacementConditional
+}
+
+// isConditionalReplacementPath analyzes a ReplacePaths element to determine if it's conditional
+func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, path interface{}) bool {
+	// If there's no after state, assume it's definite
+	if change.Change.After == nil {
+		return false
+	}
+
+	// Convert path to slice if it's a single path element
+	var pathSlice []interface{}
+	if pathArray, ok := path.([]interface{}); ok {
+		pathSlice = pathArray
+	} else {
+		pathSlice = []interface{}{path}
+	}
+
+	// Navigate through the path in the after state to check for computed/unknown values
+	current := change.Change.After
+	for _, segment := range pathSlice {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			key, ok := segment.(string)
+			if !ok {
+				return false
+			}
+			if val, exists := v[key]; exists {
+				current = val
+			} else {
+				return false
+			}
+		case []interface{}:
+			index, ok := segment.(float64)
+			if !ok {
+				return false
+			}
+			idx := int(index)
+			if idx >= 0 && idx < len(v) {
+				current = v[idx]
+			} else {
+				return false
+			}
+		default:
+			// If we reach a non-traversable value, check if it's computed/unknown
+			return a.isComputedOrUnknown(current)
+		}
+	}
+
+	// Check the final value to see if it's computed or unknown
+	return a.isComputedOrUnknown(current)
+}
+
+// isComputedOrUnknown checks if a value represents a computed or unknown attribute
+func (a *Analyzer) isComputedOrUnknown(value interface{}) bool {
+	// In Terraform JSON plans, computed values are often represented as:
+	// - null values where we expect a value
+	// - special markers (though these vary by version)
+	// - In some cases, the entire attribute might be missing from the after state
+
+	// For now, we'll use a conservative approach and assume most replacements are definite
+	// unless we have specific indicators of conditional behavior
+
+	// Check for null values which might indicate computed attributes
+	return value == nil
 }
 
 // analyzeOutputChanges processes all output changes in the plan

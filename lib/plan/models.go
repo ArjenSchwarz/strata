@@ -76,14 +76,14 @@ type BackendInfo struct {
 	Config   map[string]interface{} `json:"config"`   // additional backend config
 }
 
-// ChangeStatistics provides counts of different types of changes
+// ChangeStatistics provides counts of different types of changes for the enhanced statistics summary table
 type ChangeStatistics struct {
-	ToAdd        int `json:"to_add"`       // Resources to be added
-	ToChange     int `json:"to_change"`    // Resources to be modified
-	ToDestroy    int `json:"to_destroy"`   // Resources to be removed
-	Replacements int `json:"replacements"` // Resources to be replaced (definite)
-	Conditionals int `json:"conditionals"` // Resources with conditional replacements
-	Total        int `json:"total"`        // Total number of changes
+	ToAdd        int `json:"to_add"`       // ADDED: Resources to be created (new resources)
+	ToChange     int `json:"to_change"`    // MODIFIED: Resources to be updated (existing resources with changes)
+	ToDestroy    int `json:"to_destroy"`   // REMOVED: Resources to be destroyed (deleted resources)
+	Replacements int `json:"replacements"` // REPLACEMENTS: Resources to be replaced (definite replacements)
+	Conditionals int `json:"conditionals"` // CONDITIONALS: Resources with conditional replacements (may be replaced)
+	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories
 }
 
 // IsDestructive returns true if the change type is considered destructive
