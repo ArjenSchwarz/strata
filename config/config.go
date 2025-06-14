@@ -36,6 +36,7 @@ type PlanConfig struct {
 	HighlightDangers        bool   `mapstructure:"highlight-dangers"`
 	ShowStatisticsSummary   bool   `mapstructure:"show-statistics-summary"`
 	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
+	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
 }
 
 func (config *Config) GetLCString(setting string) string {
@@ -74,6 +75,8 @@ func (config *Config) GetSeparator() string {
 	switch config.GetLCString("output") {
 	case "table":
 		return "\r\n"
+	case "markdown":
+		return "\n"
 	case "dot":
 		return ","
 	default:
@@ -88,6 +91,8 @@ func (config *Config) GetFieldOrEmptyValue(value string) string {
 	switch config.GetLCString("output") {
 	case "json":
 		return ""
+	case "markdown":
+		return "-"
 	default:
 		return "-"
 	}
@@ -113,5 +118,13 @@ func (config *Config) NewOutputSettings() *format.OutputSettings {
 	// settings.ShouldAppend = config.GetBool("output.append")
 	settings.TableStyle = format.TableStyles[config.GetString("table.style")]
 	settings.TableMaxColumnWidth = config.GetInt("table.max-column-width")
+
+	// Configure markdown settings if needed
+	if config.GetLCString("output") == "markdown" {
+		// Ensure markdown tables are properly formatted
+		settings.UseColors = false
+		settings.UseEmoji = true
+	}
+
 	return settings
 }

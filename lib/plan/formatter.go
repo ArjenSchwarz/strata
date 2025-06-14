@@ -37,6 +37,12 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputFormat string, sho
 		if err := f.formatResourceChangesTable(summary, outputFormat); err != nil {
 			return fmt.Errorf("failed to format resource changes table: %w", err)
 		}
+	} else if f.config.Plan.AlwaysShowSensitive {
+		// When details are disabled but AlwaysShowSensitive is enabled,
+		// show only the sensitive resource changes
+		if err := f.formatSensitiveResourceChanges(summary, outputFormat); err != nil {
+			return fmt.Errorf("failed to format sensitive resource changes: %w", err)
+		}
 	}
 
 	return nil
@@ -60,6 +66,7 @@ func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat s
 				"MODIFIED":     summary.Statistics.ToChange,
 				"REPLACEMENTS": summary.Statistics.Replacements,
 				"CONDITIONALS": summary.Statistics.Conditionals,
+				"HIGH RISK":    summary.Statistics.HighRisk,
 			},
 		},
 	}
@@ -68,7 +75,7 @@ func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat s
 	output := format.OutputArray{
 		Settings: settings,
 		Contents: statsData,
-		Keys:     []string{"TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS"},
+		Keys:     []string{"TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK"},
 	}
 
 	output.Write()
@@ -121,7 +128,7 @@ func (f *Formatter) createResourceChangesData(summary *PlanSummary) []format.Out
 	return data
 }
 
-// formatPlanInfo formats and outputs the plan information section
+// formatPlanInfo formats and outputs the plan information section using a horizontal layout
 func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) error {
 	settings := f.config.NewOutputSettings()
 	settings.SetOutputFormat(outputFormat)
@@ -129,47 +136,16 @@ func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) er
 	settings.UseEmoji = true
 	settings.Title = "Plan Information"
 
-	// Create plan info data
+	// Create horizontal plan info data with a single row for values
 	planInfoData := []format.OutputHolder{
 		{
+			// Values row
 			Contents: map[string]interface{}{
-				"Key":   "Plan File",
-				"Value": summary.PlanFile,
-			},
-		},
-		{
-			Contents: map[string]interface{}{
-				"Key":   "Terraform Version",
-				"Value": summary.TerraformVersion,
-			},
-		},
-		{
-			Contents: map[string]interface{}{
-				"Key":   "Workspace",
-				"Value": summary.Workspace,
-			},
-		},
-		{
-			Contents: map[string]interface{}{
-				"Key":   "Backend",
-				"Value": fmt.Sprintf("%s (%s)", summary.Backend.Type, summary.Backend.Location),
-			},
-		},
-		{
-			Contents: map[string]interface{}{
-				"Key":   "Created",
-				"Value": summary.CreatedAt.Format("2006-01-02 15:04:05"),
-			},
-		},
-		{
-			Contents: map[string]interface{}{
-				"Key": "Dry Run",
-				"Value": func() string {
-					if summary.IsDryRun {
-						return "Yes"
-					}
-					return "No"
-				}(),
+				"Plan File": summary.PlanFile,
+				"Version":   summary.TerraformVersion,
+				"Workspace": summary.Workspace,
+				"Backend":   fmt.Sprintf("%s (%s)", summary.Backend.Type, summary.Backend.Location),
+				"Created":   summary.CreatedAt.Format("2006-01-02 15:04:05"),
 			},
 		},
 	}
@@ -178,7 +154,82 @@ func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) er
 	output := format.OutputArray{
 		Settings: settings,
 		Contents: planInfoData,
-		Keys:     []string{"Key", "Value"},
+		Keys:     []string{"Plan File", "Version", "Workspace", "Backend", "Created"},
+	}
+
+	output.Write()
+	fmt.Println() // Add spacing between sections
+	return nil
+}
+
+// formatSensitiveResourceChanges formats and outputs only sensitive resource changes
+func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputFormat string) error {
+	settings := f.config.NewOutputSettings()
+	settings.SetOutputFormat(outputFormat)
+	settings.UseColors = true
+	settings.UseEmoji = true
+	settings.Title = "Sensitive Resource Changes"
+
+	// Filter for sensitive resources
+	sensitiveChanges := []ResourceChange{}
+	for _, change := range summary.ResourceChanges {
+		if change.IsDangerous {
+			sensitiveChanges = append(sensitiveChanges, change)
+		}
+	}
+
+	// If no sensitive changes, return early
+	if len(sensitiveChanges) == 0 {
+		fmt.Println("No sensitive resource changes detected.")
+		fmt.Println() // Add spacing
+		return nil
+	}
+
+	// Create resource data for sensitive changes
+	resourceData := []format.OutputHolder{}
+
+	for _, change := range sensitiveChanges {
+		// Determine the display ID based on change type
+		displayID := change.PhysicalID
+		if change.ChangeType == ChangeTypeCreate {
+			displayID = "-"
+		} else if change.ChangeType == ChangeTypeDelete {
+			displayID = change.PhysicalID
+		}
+
+		// Format replacement type for display
+		replacementDisplay := string(change.ReplacementType)
+		if change.ChangeType == ChangeTypeDelete {
+			replacementDisplay = "N/A"
+		}
+
+		// Format danger information
+		dangerInfo := ""
+		if change.IsDangerous {
+			dangerInfo = "⚠️ " + change.DangerReason
+			if len(change.DangerProperties) > 0 {
+				dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
+			}
+		}
+
+		resourceData = append(resourceData, format.OutputHolder{
+			Contents: map[string]interface{}{
+				"ACTION":      getActionDisplay(change.ChangeType),
+				"RESOURCE":    change.Address,
+				"TYPE":        change.Type,
+				"ID":          displayID,
+				"REPLACEMENT": replacementDisplay,
+				"MODULE":      change.ModulePath,
+				"DANGER":      dangerInfo,
+			},
+		})
+	}
+
+	// Use go-output to handle all formatting
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: resourceData,
+		Keys:     []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"},
 	}
 
 	output.Write()

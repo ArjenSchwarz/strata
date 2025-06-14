@@ -34,7 +34,7 @@ Usage:
 Flags:
       --danger-threshold int   Threshold for highlighting dangerous changes (default 3)
   -h, --help                   help for summary
-      --output string          Output format: table, json, html (default "table")
+      --output string          Output format: table, json, html, markdown (default "table")
       --file string            File to write output to (in addition to stdout)
       --show-details           Show detailed resource changes (default true)
       --highlight-dangers      Highlight potentially dangerous changes (default true)
@@ -75,6 +75,9 @@ $ strata plan summary --output json terraform.tfplan
 # Generate HTML report and save to file
 $ strata plan summary --output html --file report.html terraform.tfplan
 
+# Generate markdown output for documentation
+$ strata plan summary --output markdown terraform.tfplan
+
 # Generate table output with custom danger threshold
 $ strata plan summary --danger-threshold 5 terraform.tfplan
 ```
@@ -86,6 +89,7 @@ Strata can identify and highlight potentially dangerous changes in your Terrafor
 1. **Destructive Changes** - Resources being deleted or replaced
 2. **Sensitive Resource Replacements** - Replacement of critical infrastructure components
 3. **Sensitive Property Changes** - Modifications to properties that might cause service disruptions
+4. **High-Risk Changes** - Sensitive resources with danger flags are counted separately in the statistics summary
 
 You can configure which resources and properties are considered sensitive in your `strata.yaml` configuration file:
 
@@ -114,6 +118,7 @@ plan:
   danger-threshold: 3
   show-details: true
   highlight-dangers: true
+  always-show-sensitive: true  # Always show sensitive resources even when details are disabled
 
 # Sensitive resources and properties configuration
 sensitive_resources:
@@ -185,6 +190,11 @@ make run-sample-details
 
 Recent additions to Strata include:
 
+- UI Improvements:
+  - Horizontal plan information layout for better readability
+  - High-risk column in statistics summary to highlight sensitive dangerous changes
+  - Always show sensitive resource changes option even when details are disabled
+  - Markdown output format support for documentation and pull requests
 - Danger Highlights feature for identifying sensitive resource replacements and property changes
 - Enhanced plan information display with Terraform version, workspace, and backend details
 - Improved resource changes table with physical IDs, replacement indicators, and module information
