@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added comprehensive project documentation
+  - Added CLAUDE.md with detailed development guide
+  - Expanded README.md with usage instructions and feature documentation
+  - Added sample documentation from fog project for reference
+- Added project logo in docs/images directory
 - Added Makefile with standard development targets
   - Added build target for compiling the application
   - Added test target for running all tests
