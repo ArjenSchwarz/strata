@@ -129,67 +129,67 @@ TOTAL | ADDED | REMOVED | MODIFIED | REPLACEMENTS | CONDITIONALS
 ### Implementation Tasks
 
 #### 2.1 Enhance Data Models
-- [ ] **Update `ChangeStatistics` struct** in `lib/plan/models.go`:
-  - [ ] Add `Conditionals` field (int) - for conditional replacements
-  - [ ] Rename `ToReplace` to `Replacements` for clarity
-  - [ ] Add documentation for each field
+- [x] **Update `ChangeStatistics` struct** in `lib/plan/models.go`:
+  - [x] Add `Conditionals` field (int) - for conditional replacements
+  - [x] Rename `ToReplace` to `Replacements` for clarity
+  - [x] Add documentation for each field
 
-- [ ] **Add replacement analysis types** in `lib/plan/models.go`:
-  - [ ] Create `ReplacementType` enum (Never, Conditional, Always)
-  - [ ] Update `ResourceChange` struct to include `ReplacementType` field
+- [x] **Add replacement analysis types** in `lib/plan/models.go`:
+  - [x] Create `ReplacementType` enum (Never, Conditional, Always)
+  - [x] Update `ResourceChange` struct to include `ReplacementType` field
 
 #### 2.2 Enhance Change Analysis
-- [ ] **Update `analyzeResourceChanges()` method** in `lib/plan/analyzer.go`:
-  - [ ] Parse `RequiresRecreation` field from Terraform plan
-  - [ ] Determine replacement necessity (Never/Conditional/Always)
-  - [ ] Set `ReplacementType` for each resource change
+- [x] **Update `analyzeResourceChanges()` method** in `lib/plan/analyzer.go`:
+  - [x] Parse `ReplacePaths` field from Terraform plan
+  - [x] Determine replacement necessity (Never/Conditional/Always)
+  - [x] Set `ReplacementType` for each resource change
 
-- [ ] **Update `calculateStatistics()` method** in `lib/plan/analyzer.go`:
-  - [ ] Count definite replacements (RequiresRecreation: Always)
-  - [ ] Count conditional replacements (RequiresRecreation: Conditional)
-  - [ ] Separate replacement counts from regular changes
+- [x] **Update `calculateStatistics()` method** in `lib/plan/analyzer.go`:
+  - [x] Count definite replacements (ReplacementType: Always)
+  - [x] Count conditional replacements (ReplacementType: Conditional)
+  - [x] Separate replacement counts from regular changes
 
-- [ ] **Add helper methods** in `lib/plan/analyzer.go`:
-  - [ ] `analyzeReplacementNecessity(change *tfjson.ResourceChange) ReplacementType`
-  - [ ] `isConditionalReplacement(change *tfjson.ResourceChange) bool`
+- [x] **Add helper methods** in `lib/plan/analyzer.go`:
+  - [x] `analyzeReplacementNecessity(change *tfjson.ResourceChange) ReplacementType`
+  - [x] `isConditionalReplacement(change *tfjson.ResourceChange) bool`
 
 #### 2.3 Update Formatter
-- [ ] **Create `formatStatisticsSummary()` method** in `lib/plan/formatter.go`:
-  - [ ] Generate horizontal statistics table using go-output
-  - [ ] Include plan name in summary title
-  - [ ] Format numbers with proper alignment
+- [x] **Create `formatStatisticsSummary()` method** in `lib/plan/formatter.go`:
+  - [x] Generate horizontal statistics table using go-output
+  - [x] Include plan name in summary title
+  - [x] Format numbers with proper alignment
 
-- [ ] **Update `OutputSummary()` method** in `lib/plan/formatter.go`:
-  - [ ] Replace current statistics display with new horizontal format
-  - [ ] Ensure proper section separation
-  - [ ] Maintain compatibility with all output formats (table, json, html)
+- [x] **Update `OutputSummary()` method** in `lib/plan/formatter.go`:
+  - [x] Replace current statistics display with new horizontal format
+  - [x] Ensure proper section separation
+  - [x] Maintain compatibility with all output formats (table, json, html)
 
 #### 2.4 Configuration Updates
-- [ ] **Add statistics display options** in `config/config.go`:
-  - [ ] Add `ShowStatisticsSummary` bool field
-  - [ ] Add `StatisticsSummaryFormat` string field (horizontal/vertical)
+- [x] **Add statistics display options** in `config/config.go`:
+  - [x] Add `ShowStatisticsSummary` bool field
+  - [x] Add `StatisticsSummaryFormat` string field (horizontal/vertical)
 
-- [ ] **Update command flags** in `cmd/plan_summary.go`:
-  - [ ] Add `--stats-format` flag for summary format control
-  - [ ] Update help text and examples
+- [x] **Update command flags** in `cmd/plan_summary.go`:
+  - [x] Add `--stats-format` flag for summary format control
+  - [x] Update help text and examples
 
 #### 2.5 Testing
-- [ ] **Unit tests** for replacement analysis:
-  - [ ] Test RequiresRecreation parsing
-  - [ ] Test replacement type determination
-  - [ ] Test statistics calculation with replacements
+- [x] **Unit tests** for replacement analysis:
+  - [x] Test ReplacePaths parsing
+  - [x] Test replacement type determination
+  - [x] Test statistics calculation with replacements
 
-- [ ] **Integration tests** for statistics display:
-  - [ ] Test horizontal table format
-  - [ ] Test with various change combinations
-  - [ ] Test output format compatibility
+- [x] **Integration tests** for statistics display:
+  - [x] Test horizontal table format
+  - [x] Test with various change combinations
+  - [x] Test output format compatibility
 
 ### Success Criteria
-- [ ] Statistics table displays in horizontal format matching fog's design
-- [ ] REPLACEMENTS and CONDITIONALS columns show accurate counts
-- [ ] Table formatting is consistent with go-output styling
-- [ ] All output formats (table, json, html) support new statistics
-- [ ] Backward compatibility maintained for existing functionality
+- [x] Statistics table displays in horizontal format matching fog's design
+- [x] REPLACEMENTS and CONDITIONALS columns show accurate counts
+- [x] Table formatting is consistent with go-output styling
+- [x] All output formats (table, json, html) support new statistics
+- [x] Backward compatibility maintained for existing functionality
 
 ---
 

@@ -31,9 +31,11 @@ type Config struct {
 
 // PlanConfig holds configuration specific to plan operations
 type PlanConfig struct {
-	DangerThreshold  int  `mapstructure:"danger-threshold"`
-	ShowDetails      bool `mapstructure:"show-details"`
-	HighlightDangers bool `mapstructure:"highlight-dangers"`
+	DangerThreshold         int    `mapstructure:"danger-threshold"`
+	ShowDetails             bool   `mapstructure:"show-details"`
+	HighlightDangers        bool   `mapstructure:"highlight-dangers"`
+	ShowStatisticsSummary   bool   `mapstructure:"show-statistics-summary"`
+	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
 }
 
 func (config *Config) GetLCString(setting string) string {
