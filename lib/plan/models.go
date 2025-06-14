@@ -83,6 +83,7 @@ type ChangeStatistics struct {
 	ToDestroy    int `json:"to_destroy"`   // REMOVED: Resources to be destroyed (deleted resources)
 	Replacements int `json:"replacements"` // REPLACEMENTS: Resources to be replaced (definite replacements)
 	Conditionals int `json:"conditionals"` // CONDITIONALS: Resources with conditional replacements (may be replaced)
+	HighRisk     int `json:"high_risk"`    // HIGH RISK: Sensitive resources with danger flag
 	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories
 }
 

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- UI Improvements
+  - Added horizontal plan information layout for better readability
+  - Added high-risk column in statistics summary to highlight sensitive dangerous changes
+  - Added always-show-sensitive feature to display critical changes even when details are disabled
+  - Added markdown output format support for documentation and pull requests
+  - Added comprehensive documentation for all new UI features
+- Added Claude settings file with appropriate permissions for development tasks
+
+### Added
 - Added comprehensive project documentation
   - Added CLAUDE.md with detailed development guide
   - Expanded README.md with usage instructions and feature documentation

@@ -232,6 +232,7 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange) ChangeStatistic
 	stats := ChangeStatistics{}
 
 	for _, change := range changes {
+		// Count by change type
 		switch change.ChangeType {
 		case ChangeTypeCreate:
 			stats.ToAdd++
@@ -246,6 +247,11 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange) ChangeStatistic
 			} else {
 				stats.Replacements++
 			}
+		}
+
+		// Count high-risk changes (any resource with the dangerous flag set)
+		if change.IsDangerous {
+			stats.HighRisk++
 		}
 	}
 

@@ -91,6 +91,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 			HighlightDangers:        highlightDangers,
 			ShowStatisticsSummary:   showStatisticsSummary,
 			StatisticsSummaryFormat: statisticsSummaryFormat,
+			AlwaysShowSensitive:     true, // Always show sensitive resources by default
 		},
 	}
 
@@ -128,7 +129,7 @@ func init() {
 
 	// Output format flag
 	planSummaryCmd.Flags().StringVarP(&outputFormat, "output", "o", "table",
-		"Output format (table, json, html)")
+		"Output format (table, json, html, markdown)")
 	viper.BindPFlag("output", planSummaryCmd.Flags().Lookup("output"))
 
 	// Danger threshold flag

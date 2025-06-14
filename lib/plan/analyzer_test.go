@@ -302,7 +302,18 @@ func TestIsConditionalReplacementPath(t *testing.T) {
 }
 
 func TestCalculateStatistics(t *testing.T) {
-	analyzer := &Analyzer{}
+	// Create a test config with sensitive resources
+	cfg := &config.Config{
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+			{ResourceType: "aws_dynamodb_table"},
+		},
+	}
+
+	// Create analyzer with the config
+	analyzer := &Analyzer{
+		config: cfg,
+	}
 
 	testCases := []struct {
 		name     string
@@ -318,6 +329,7 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    0,
 				Replacements: 0,
 				Conditionals: 0,
+				HighRisk:     0,
 				Total:        0,
 			},
 		},
@@ -332,6 +344,7 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    0,
 				Replacements: 0,
 				Conditionals: 0,
+				HighRisk:     0,
 				Total:        1,
 			},
 		},
@@ -346,6 +359,7 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    0,
 				Replacements: 0,
 				Conditionals: 0,
+				HighRisk:     0,
 				Total:        1,
 			},
 		},
@@ -360,6 +374,7 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    1,
 				Replacements: 0,
 				Conditionals: 0,
+				HighRisk:     0,
 				Total:        1,
 			},
 		},
@@ -374,6 +389,7 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    0,
 				Replacements: 1,
 				Conditionals: 0,
+				HighRisk:     0,
 				Total:        1,
 			},
 		},
@@ -388,6 +404,64 @@ func TestCalculateStatistics(t *testing.T) {
 				ToDestroy:    0,
 				Replacements: 0,
 				Conditionals: 1,
+				HighRisk:     0,
+				Total:        1,
+			},
+		},
+		{
+			name: "Dangerous sensitive resource should increment HighRisk",
+			changes: []ResourceChange{
+				{
+					Type:        "aws_rds_instance",
+					ChangeType:  ChangeTypeReplace,
+					IsDangerous: true,
+				},
+			},
+			expected: ChangeStatistics{
+				ToAdd:        0,
+				ToChange:     0,
+				ToDestroy:    0,
+				Replacements: 1,
+				Conditionals: 0,
+				HighRisk:     1,
+				Total:        1,
+			},
+		},
+		{
+			name: "Non-dangerous sensitive resource should not increment HighRisk",
+			changes: []ResourceChange{
+				{
+					Type:        "aws_rds_instance",
+					ChangeType:  ChangeTypeUpdate,
+					IsDangerous: false,
+				},
+			},
+			expected: ChangeStatistics{
+				ToAdd:        0,
+				ToChange:     1,
+				ToDestroy:    0,
+				Replacements: 0,
+				Conditionals: 0,
+				HighRisk:     0,
+				Total:        1,
+			},
+		},
+		{
+			name: "Dangerous non-sensitive resource should increment HighRisk",
+			changes: []ResourceChange{
+				{
+					Type:        "aws_s3_bucket",
+					ChangeType:  ChangeTypeReplace,
+					IsDangerous: true,
+				},
+			},
+			expected: ChangeStatistics{
+				ToAdd:        0,
+				ToChange:     0,
+				ToDestroy:    0,
+				Replacements: 1,
+				Conditionals: 0,
+				HighRisk:     1,
 				Total:        1,
 			},
 		},
@@ -399,14 +473,25 @@ func TestCalculateStatistics(t *testing.T) {
 				{ChangeType: ChangeTypeDelete, ReplacementType: ReplacementNever},
 				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
 				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementConditional},
+				{
+					Type:        "aws_rds_instance",
+					ChangeType:  ChangeTypeReplace,
+					IsDangerous: true,
+				},
+				{
+					Type:        "aws_dynamodb_table",
+					ChangeType:  ChangeTypeReplace,
+					IsDangerous: true,
+				},
 			},
 			expected: ChangeStatistics{
 				ToAdd:        1,
 				ToChange:     1,
 				ToDestroy:    1,
-				Replacements: 1,
+				Replacements: 3,
 				Conditionals: 1,
-				Total:        5,
+				HighRisk:     2,
+				Total:        7,
 			},
 		},
 	}
@@ -414,7 +499,13 @@ func TestCalculateStatistics(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := analyzer.calculateStatistics(tc.changes)
-			assert.Equal(t, tc.expected, result)
+			assert.Equal(t, tc.expected.ToAdd, result.ToAdd, "ToAdd mismatch")
+			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
+			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
+			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
+			assert.Equal(t, tc.expected.Conditionals, result.Conditionals, "Conditionals mismatch")
+			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
+			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
 		})
 	}
 }
