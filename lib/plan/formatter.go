@@ -20,8 +20,24 @@ func NewFormatter(cfg *config.Config) *Formatter {
 	}
 }
 
+// ValidateOutputFormat validates that the output format is supported
+func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
+	supportedFormats := []string{"table", "json", "html", "markdown"}
+	for _, format := range supportedFormats {
+		if strings.ToLower(outputFormat) == format {
+			return nil
+		}
+	}
+	return fmt.Errorf("unsupported output format '%s'. Supported formats: %s", outputFormat, strings.Join(supportedFormats, ", "))
+}
+
 // OutputSummary outputs the plan summary using go-output library
 func (f *Formatter) OutputSummary(summary *PlanSummary, outputFormat string, showDetails bool) error {
+	// Validate output format first
+	if err := f.ValidateOutputFormat(outputFormat); err != nil {
+		return err
+	}
+
 	// Output plan information section
 	if err := f.formatPlanInfo(summary, outputFormat); err != nil {
 		return fmt.Errorf("failed to format plan info: %w", err)
@@ -50,7 +66,19 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputFormat string, sho
 
 // formatStatisticsSummary formats and outputs the horizontal statistics summary table
 func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat string) error {
+	// Validate inputs
+	if summary == nil {
+		return fmt.Errorf("summary cannot be nil")
+	}
+	if summary.PlanFile == "" {
+		return fmt.Errorf("plan file name is required")
+	}
+
 	settings := f.config.NewOutputSettings()
+	if settings == nil {
+		return fmt.Errorf("failed to create output settings")
+	}
+
 	settings.SetOutputFormat(outputFormat)
 	settings.UseColors = true
 	settings.UseEmoji = true
@@ -130,7 +158,16 @@ func (f *Formatter) createResourceChangesData(summary *PlanSummary) []format.Out
 
 // formatPlanInfo formats and outputs the plan information section using a horizontal layout
 func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) error {
+	// Validate inputs
+	if summary == nil {
+		return fmt.Errorf("summary cannot be nil")
+	}
+
 	settings := f.config.NewOutputSettings()
+	if settings == nil {
+		return fmt.Errorf("failed to create output settings")
+	}
+
 	settings.SetOutputFormat(outputFormat)
 	settings.UseColors = true
 	settings.UseEmoji = true
@@ -164,7 +201,16 @@ func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) er
 
 // formatSensitiveResourceChanges formats and outputs only sensitive resource changes
 func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputFormat string) error {
+	// Validate inputs
+	if summary == nil {
+		return fmt.Errorf("summary cannot be nil")
+	}
+
 	settings := f.config.NewOutputSettings()
+	if settings == nil {
+		return fmt.Errorf("failed to create output settings")
+	}
+
 	settings.SetOutputFormat(outputFormat)
 	settings.UseColors = true
 	settings.UseEmoji = true
@@ -239,7 +285,16 @@ func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputF
 
 // formatResourceChangesTable formats and outputs the enhanced resource changes table
 func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputFormat string) error {
+	// Validate inputs
+	if summary == nil {
+		return fmt.Errorf("summary cannot be nil")
+	}
+
 	settings := f.config.NewOutputSettings()
+	if settings == nil {
+		return fmt.Errorf("failed to create output settings")
+	}
+
 	settings.SetOutputFormat(outputFormat)
 	settings.UseColors = true
 	settings.UseEmoji = true

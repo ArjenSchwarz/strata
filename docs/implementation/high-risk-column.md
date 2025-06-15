@@ -4,11 +4,12 @@ The high-risk column is a new addition to the statistics summary table that prov
 
 ## Overview
 
-The high-risk column counts the number of resources that are marked as dangerous. This includes:
+The high-risk column counts the number of resources that are marked as dangerous. This includes ANY resource with the `IsDangerous` flag set, which covers:
 1. Sensitive resources that are being replaced
 2. Resources with sensitive property changes
+3. Any other resource flagged as dangerous by the analysis engine
 
-Any resource with the `IsDangerous` flag set will be counted in the high-risk column, regardless of whether it's in the sensitive resources list or not.
+The count includes ALL dangerous resources, regardless of whether they are in the sensitive resources configuration or not.
 
 This provides a quick way to identify the most critical changes in your plan that require careful review.
 
@@ -17,8 +18,8 @@ This provides a quick way to identify the most critical changes in your plan tha
 The high-risk count is calculated in the `calculateStatistics` method in `analyzer.go`:
 
 ```go
-// Count high-risk changes (sensitive resources with danger flag)
-if change.IsDangerous && a.IsSensitiveResource(change.Type) {
+// Count high-risk changes (any resource with the dangerous flag set)
+if change.IsDangerous {
     stats.HighRisk++
 }
 ```
@@ -27,7 +28,7 @@ The count is then displayed in the statistics summary table as the "HIGH RISK" c
 
 ## Configuration
 
-To make the most of this feature, you should configure which resources are considered sensitive in your `strata.yaml` configuration file:
+While the high-risk column counts ALL dangerous resources, you can configure which resources trigger the danger flag by setting up sensitive resources in your `strata.yaml` configuration file:
 
 ```yaml
 sensitive_resources:

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Enhanced error handling in formatter
+  - Added ValidateOutputFormat method to validate output format before processing
+  - Added input validation for all formatter methods
+  - Added comprehensive error messages with proper context
+  - Added unit tests for error handling scenarios
+- Updated high-risk column documentation to clarify that ALL dangerous resources are counted
+
+### Added
 - UI Improvements
   - Added horizontal plan information layout for better readability
   - Added high-risk column in statistics summary to highlight sensitive dangerous changes
