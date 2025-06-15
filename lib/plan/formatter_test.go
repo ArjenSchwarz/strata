@@ -857,3 +857,184 @@ func TestFormatter_ResourceChangesTable_WithDifferentResourceTypes(t *testing.T)
 		}
 	}
 }
+
+func TestFormatter_ValidateOutputFormat(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	testCases := []struct {
+		name        string
+		format      string
+		shouldError bool
+	}{
+		{
+			name:        "valid table format",
+			format:      "table",
+			shouldError: false,
+		},
+		{
+			name:        "valid json format",
+			format:      "json",
+			shouldError: false,
+		},
+		{
+			name:        "valid html format",
+			format:      "html",
+			shouldError: false,
+		},
+		{
+			name:        "valid markdown format",
+			format:      "markdown",
+			shouldError: false,
+		},
+		{
+			name:        "valid format with uppercase",
+			format:      "TABLE",
+			shouldError: false,
+		},
+		{
+			name:        "valid format with mixed case",
+			format:      "Json",
+			shouldError: false,
+		},
+		{
+			name:        "invalid format",
+			format:      "xml",
+			shouldError: true,
+		},
+		{
+			name:        "empty format",
+			format:      "",
+			shouldError: true,
+		},
+		{
+			name:        "invalid format with special chars",
+			format:      "table@#$",
+			shouldError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := formatter.ValidateOutputFormat(tc.format)
+
+			if tc.shouldError && err == nil {
+				t.Errorf("Expected error for format '%s' but got none", tc.format)
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("Unexpected error for format '%s': %v", tc.format, err)
+			}
+
+			// Check error message format for invalid formats
+			if tc.shouldError && err != nil {
+				expectedSubstring := "unsupported output format"
+				if !strings.Contains(err.Error(), expectedSubstring) {
+					t.Errorf("Error message should contain '%s', got: %s", expectedSubstring, err.Error())
+				}
+			}
+		})
+	}
+}
+
+func TestFormatter_ErrorHandling(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	testCases := []struct {
+		name         string
+		methodName   string
+		summary      *PlanSummary
+		outputFormat string
+		shouldError  bool
+		errorMessage string
+	}{
+		{
+			name:         "formatStatisticsSummary with nil summary",
+			methodName:   "formatStatisticsSummary",
+			summary:      nil,
+			outputFormat: "table",
+			shouldError:  true,
+			errorMessage: "summary cannot be nil",
+		},
+		{
+			name:         "formatStatisticsSummary with empty plan file",
+			methodName:   "formatStatisticsSummary",
+			summary:      &PlanSummary{PlanFile: ""},
+			outputFormat: "table",
+			shouldError:  true,
+			errorMessage: "plan file name is required",
+		},
+		{
+			name:         "formatPlanInfo with nil summary",
+			methodName:   "formatPlanInfo",
+			summary:      nil,
+			outputFormat: "table",
+			shouldError:  true,
+			errorMessage: "summary cannot be nil",
+		},
+		{
+			name:         "formatSensitiveResourceChanges with nil summary",
+			methodName:   "formatSensitiveResourceChanges",
+			summary:      nil,
+			outputFormat: "table",
+			shouldError:  true,
+			errorMessage: "summary cannot be nil",
+		},
+		{
+			name:         "formatResourceChangesTable with nil summary",
+			methodName:   "formatResourceChangesTable",
+			summary:      nil,
+			outputFormat: "table",
+			shouldError:  true,
+			errorMessage: "summary cannot be nil",
+		},
+		{
+			name:         "valid summary should not error",
+			methodName:   "formatStatisticsSummary",
+			summary:      &PlanSummary{PlanFile: "test.tfplan", Statistics: ChangeStatistics{}},
+			outputFormat: "table",
+			shouldError:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Capture stdout to prevent test output pollution
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			var err error
+			switch tc.methodName {
+			case "formatStatisticsSummary":
+				err = formatter.formatStatisticsSummary(tc.summary, tc.outputFormat)
+			case "formatPlanInfo":
+				err = formatter.formatPlanInfo(tc.summary, tc.outputFormat)
+			case "formatSensitiveResourceChanges":
+				err = formatter.formatSensitiveResourceChanges(tc.summary, tc.outputFormat)
+			case "formatResourceChangesTable":
+				err = formatter.formatResourceChangesTable(tc.summary, tc.outputFormat)
+			}
+
+			// Restore stdout
+			w.Close()
+			os.Stdout = oldStdout
+
+			// Consume the output to prevent pipe blocking
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+
+			if tc.shouldError && err == nil {
+				t.Errorf("Expected error but got none")
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			if tc.shouldError && err != nil && tc.errorMessage != "" {
+				if !strings.Contains(err.Error(), tc.errorMessage) {
+					t.Errorf("Error message should contain '%s', got: %s", tc.errorMessage, err.Error())
+				}
+			}
+		})
+	}
+}
