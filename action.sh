@@ -139,6 +139,16 @@ verify_checksum() {
   
   local actual_checksum
   case $algorithm in
+    md5)
+      if command -v md5sum >/dev/null 2>&1; then
+        actual_checksum=$(md5sum "$file" | cut -d' ' -f1)
+      elif command -v md5 >/dev/null 2>&1; then
+        actual_checksum=$(md5 -q "$file")
+      else
+        warning "Neither md5sum nor md5 found, skipping checksum verification"
+        return 0
+      fi
+      ;;
     sha256)
       if command -v sha256sum >/dev/null 2>&1; then
         actual_checksum=$(sha256sum "$file" | cut -d' ' -f1)
@@ -327,40 +337,65 @@ else
   if check_cache "$LATEST_VERSION" "$PLATFORM" "$ARCH"; then
     log "Using cached binary"
   else
-    # Construct download URLs
-    DOWNLOAD_URL="https://github.com/ArjenSchwarz/strata/releases/download/${LATEST_VERSION}/strata_${PLATFORM}_${ARCH}"
-    CHECKSUM_URL="https://github.com/ArjenSchwarz/strata/releases/download/${LATEST_VERSION}/checksums.txt"
+    # Determine file extension based on platform
+    if [ "$PLATFORM" = "windows" ]; then
+      FILE_EXT="zip"
+    else
+      FILE_EXT="tar.gz"
+    fi
     
-    # Download binary with retry
-    log "Downloading Strata binary" "$DOWNLOAD_URL"
-    if ! download_with_retry "$DOWNLOAD_URL" "$TEMP_DIR/$BINARY_NAME"; then
-      warning "Failed to download binary after multiple attempts, falling back to compilation"
+    # Construct download URLs with correct filename format
+    ARCHIVE_NAME="strata-${LATEST_VERSION}-${PLATFORM}-${ARCH}.${FILE_EXT}"
+    DOWNLOAD_URL="https://github.com/ArjenSchwarz/strata/releases/download/${LATEST_VERSION}/${ARCHIVE_NAME}"
+    CHECKSUM_URL="https://github.com/ArjenSchwarz/strata/releases/download/${LATEST_VERSION}/${ARCHIVE_NAME}.md5"
+    
+    # Download archive with retry
+    log "Downloading Strata archive" "$DOWNLOAD_URL"
+    ARCHIVE_PATH="$TEMP_DIR/$ARCHIVE_NAME"
+    if ! download_with_retry "$DOWNLOAD_URL" "$ARCHIVE_PATH"; then
+      warning "Failed to download archive after multiple attempts, falling back to compilation"
       if ! compile_from_source "$LATEST_VERSION"; then
         error "Failed to compile from source after download failure"
       fi
     else
+      # Extract binary from archive
+      log "Extracting binary from archive"
+      if [ "$PLATFORM" = "windows" ]; then
+        # Extract from zip
+        if command -v unzip >/dev/null 2>&1; then
+          unzip -q "$ARCHIVE_PATH" -d "$TEMP_DIR/extract/"
+          cp "$TEMP_DIR/extract/$BINARY_NAME" "$TEMP_DIR/$BINARY_NAME"
+        else
+          error "unzip command not found, cannot extract Windows archive"
+        fi
+      else
+        # Extract from tar.gz
+        tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR/"
+        cp "$TEMP_DIR/$BINARY_NAME" "$TEMP_DIR/$BINARY_NAME" 2>/dev/null || true
+      fi
+      
+      # Ensure binary is executable
       chmod +x "$TEMP_DIR/$BINARY_NAME"
       
       # Download and verify checksum if available
-      log "Downloading checksums" "$CHECKSUM_URL"
-      if download_with_retry "$CHECKSUM_URL" "$TEMP_DIR/checksums.txt"; then
-        # Extract expected checksum for our binary
-        BINARY_FILENAME="strata_${PLATFORM}_${ARCH}"
-        EXPECTED_CHECKSUM=$(grep "$BINARY_FILENAME" "$TEMP_DIR/checksums.txt" | cut -d' ' -f1)
+      log "Downloading checksum" "$CHECKSUM_URL"
+      if download_with_retry "$CHECKSUM_URL" "$TEMP_DIR/checksum.md5"; then
+        # Extract expected checksum for our archive
+        EXPECTED_CHECKSUM=$(cat "$TEMP_DIR/checksum.md5" | cut -d' ' -f1)
         
         if [ -n "$EXPECTED_CHECKSUM" ]; then
-          # Verify checksum
-          if ! verify_checksum "$TEMP_DIR/$BINARY_NAME" "$EXPECTED_CHECKSUM" "sha256"; then
+          # Verify checksum of the archive
+          if ! verify_checksum "$ARCHIVE_PATH" "$EXPECTED_CHECKSUM" "md5"; then
             warning "Checksum verification failed, falling back to compilation"
             if ! compile_from_source "$LATEST_VERSION"; then
               error "Failed to compile from source after checksum verification failure"
             fi
           fi
         else
-          warning "Could not find checksum for $BINARY_FILENAME in checksums.txt"
+          warning "Could not extract checksum from checksum file"
         fi
       else
-        warning "Failed to download checksums, skipping verification"
+        warning "Failed to download checksum, skipping verification"
       fi
       
       # Verify binary works
