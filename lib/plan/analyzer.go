@@ -155,10 +155,10 @@ func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, p
 
 	// Navigate through the path in the after state to check for computed/unknown values
 	current := change.Change.After
-	for _, segment := range pathSlice {
+	for i := 0; i < len(pathSlice); i++ {
 		switch v := current.(type) {
 		case map[string]interface{}:
-			key, ok := segment.(string)
+			key, ok := pathSlice[i].(string)
 			if !ok {
 				return false
 			}
@@ -168,7 +168,7 @@ func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, p
 				return false
 			}
 		case []interface{}:
-			index, ok := segment.(float64)
+			index, ok := pathSlice[i].(float64)
 			if !ok {
 				return false
 			}

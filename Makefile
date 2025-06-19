@@ -1,9 +1,27 @@
 # Strata Makefile
 # Provides standard targets for common development tasks
 
+# Version information
+VERSION ?= dev
+BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# Build flags for version injection
+LDFLAGS := -X github.com/ArjenSchwarz/strata/cmd.Version=$(VERSION) \
+           -X github.com/ArjenSchwarz/strata/cmd.BuildTime=$(BUILD_TIME) \
+           -X github.com/ArjenSchwarz/strata/cmd.GitCommit=$(GIT_COMMIT)
+
 # Build the Strata application
 build:
-	go build .
+	go build -ldflags "$(LDFLAGS)" .
+
+# Build the Strata application with version information
+build-release:
+	@if [ "$(VERSION)" = "dev" ]; then \
+		echo "Error: VERSION must be set for release builds. Usage: make build-release VERSION=1.2.3"; \
+		exit 1; \
+	fi
+	go build -ldflags "$(LDFLAGS)" -o strata .
 
 # Run all tests
 test:
@@ -64,7 +82,8 @@ install:
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  build                 - Build the Strata application"
+	@echo "  build                 - Build the Strata application with version info"
+	@echo "  build-release         - Build release version (requires VERSION=x.y.z)"
 	@echo "  test                  - Run Go unit tests"
 	@echo "  test-action-unit      - Run GitHub Action unit tests"
 	@echo "  test-action-integration - Run GitHub Action integration tests"
@@ -76,5 +95,10 @@ help:
 	@echo "  clean                 - Clean build artifacts"
 	@echo "  install               - Install the application"
 	@echo "  help                  - Show this help message"
+	@echo ""
+	@echo "Build examples:"
+	@echo "  make build                    - Build with dev version"
+	@echo "  make build VERSION=1.2.3     - Build with specific version"
+	@echo "  make build-release VERSION=1.2.3 - Build release version"
 
-.PHONY: build test test-action-unit test-action-integration test-action run-sample run-sample-details fmt lint clean install help
+.PHONY: build build-release test test-action-unit test-action-integration test-action run-sample run-sample-details fmt lint clean install help
