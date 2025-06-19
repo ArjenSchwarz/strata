@@ -3,6 +3,10 @@ on:
     types:
       - published
 
+permissions:
+    contents: write
+    packages: write
+
 jobs:
   releases-matrix:
     name: Release Go Binary
