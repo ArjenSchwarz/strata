@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- GitHub Release Automation
+  - Added automated release workflow for building and publishing cross-platform binaries
+  - Added support for Linux, Windows, and macOS on both amd64 and arm64 architectures
+  - Implemented build-time version injection with git commit, build time, and version information
+  - Added automatic binary publishing to GitHub releases with LICENSE and README.md files
+  - Enhanced Claude development settings with additional GitHub CLI permissions
+
+### Added
 - Version Information System
   - Added version command with detailed version information display
   - Added --version flag support to root command
