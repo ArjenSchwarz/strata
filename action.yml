@@ -1,0 +1,89 @@
+name: 'Strata Terraform Plan Analysis'
+description: 'Analyze Terraform plans with Strata and provide clear summaries'
+author: 'Arjen Schwarz'
+branding:
+  icon: 'file-text'
+  color: 'purple'
+
+inputs:
+  plan-file:
+    description: 'Path to Terraform plan file'
+    required: true
+  output-format:
+    description: 'Output format (table, json, markdown)'
+    required: false
+    default: 'markdown'
+  config-file:
+    description: 'Path to custom Strata config file'
+    required: false
+  danger-threshold:
+    description: 'Danger threshold for highlighting risks'
+    required: false
+  show-details:
+    description: 'Show detailed change information'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'GitHub token for PR comments'
+    required: false
+    default: ${{ github.token }}
+  comment-on-pr:
+    description: 'Whether to comment on PR'
+    required: false
+    default: 'true'
+  update-comment:
+    description: 'Whether to update existing comment instead of creating new ones'
+    required: false
+    default: 'true'
+  comment-header:
+    description: 'Custom header for PR comments'
+    required: false
+    default: '🏗️ Terraform Plan Summary'
+
+outputs:
+  summary:
+    description: 'Plan summary text'
+    value: ${{ steps.strata-analysis.outputs.summary }}
+  has-changes:
+    description: 'Whether the plan contains changes'
+    value: ${{ steps.strata-analysis.outputs.has-changes }}
+  has-dangers:
+    description: 'Whether dangerous changes were detected'
+    value: ${{ steps.strata-analysis.outputs.has-dangers }}
+  json-summary:
+    description: 'Full summary in JSON format'
+    value: ${{ steps.strata-analysis.outputs.json-summary }}
+  change-count:
+    description: 'Total number of changes'
+    value: ${{ steps.strata-analysis.outputs.change-count }}
+  danger-count:
+    description: 'Number of dangerous changes'
+    value: ${{ steps.strata-analysis.outputs.danger-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Strata Cache
+      uses: actions/cache@v3
+      id: strata-cache
+      with:
+        path: ~/.cache/strata
+        key: strata-binary-${{ runner.os }}-${{ runner.arch }}
+        restore-keys: |
+          strata-binary-${{ runner.os }}-
+    
+    - name: Run Strata Analysis
+      id: strata-analysis
+      shell: bash
+      run: ${{ github.action_path }}/action.sh
+      env:
+        INPUT_PLAN_FILE: ${{ inputs.plan-file }}
+        INPUT_OUTPUT_FORMAT: ${{ inputs.output-format }}
+        INPUT_CONFIG_FILE: ${{ inputs.config-file }}
+        INPUT_DANGER_THRESHOLD: ${{ inputs.danger-threshold }}
+        INPUT_SHOW_DETAILS: ${{ inputs.show-details }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        INPUT_UPDATE_COMMENT: ${{ inputs.update-comment }}
+        INPUT_COMMENT_HEADER: ${{ inputs.comment-header }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
