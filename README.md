@@ -4,7 +4,35 @@
 
 Strata is a CLI tool to enhance your Terraform workflows with clear, concise summaries of plan changes. It doesn't modify your Terraform workflow or require any special configuration - it simply provides better visibility into what your Terraform plans will do, helping you make more informed decisions before applying changes.
 
-## Plan Summaries
+## Features
+
+### Version Information
+
+Strata provides version information through both a global flag and a dedicated command:
+
+```shell
+# Quick version check
+$ strata --version
+strata version 1.2.3
+
+# Detailed version information
+$ strata version
+strata version 1.2.3
+Built: 2025-01-15T10:30:00Z
+Commit: abc123d
+Go: go1.24.1
+
+# JSON output for scripts
+$ strata version --output json
+{
+  "version": "1.2.3",
+  "build_time": "2025-01-15T10:30:00Z",
+  "git_commit": "abc123d",
+  "go_version": "go1.24.1"
+}
+```
+
+### Plan Summaries
 
 The main functionality of Strata is to generate comprehensive summaries of Terraform plan files. You can create a summary using the `strata plan summary` command. For detailed help on this and other commands, add the `--help` flag.
 
@@ -238,11 +266,33 @@ jobs:
 git clone https://github.com/yourusername/strata.git
 cd strata
 
-# Build the project
-go build -o strata
+# Build the project (includes version information)
+make build
+
+# Build with specific version
+make build VERSION=1.2.3
+
+# Build release version (requires VERSION parameter)
+make build-release VERSION=1.2.3
 
 # Install locally
 go install
+```
+
+#### Manual Build with Version Information
+
+If you prefer to build manually with version information:
+
+```bash
+# Build with version injection
+go build -ldflags "-X github.com/ArjenSchwarz/strata/cmd.Version=1.2.3 \
+                   -X github.com/ArjenSchwarz/strata/cmd.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+                   -X github.com/ArjenSchwarz/strata/cmd.GitCommit=$(git rev-parse --short HEAD)" .
+
+# Check version
+./strata --version
+./strata version
+./strata version --output json
 ```
 
 ### Using Go Install

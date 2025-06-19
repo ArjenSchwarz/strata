@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Version Information System
+  - Added version command with detailed version information display
+  - Added --version flag support to root command
+  - Implemented build-time version injection via ldflags
+  - Added VersionInfo struct with version, build time, git commit, and Go version
+  - Added JSON output format support for version command
+  - Added comprehensive version helper functions with graceful handling of missing information
+  - Enhanced Makefile with version injection support for builds
+  - Added build-release target requiring explicit version specification
+  - Updated README.md with version information usage examples and build instructions
+  - Added comprehensive unit tests for version functionality
+  - Removed unused toggle flag from root command
+- Minor Code Improvements
+  - Fixed loop variable usage in analyzer.go for better code clarity
 - GitHub Action Integration
   - Created composite GitHub Action for Terraform plan analysis in CI/CD workflows
   - Added action.yml with comprehensive input/output definitions
