@@ -129,6 +129,102 @@ sensitive_properties:
     property: user_data
 ```
 
+## GitHub Action
+
+Strata is available as a GitHub Action that can be easily integrated into your CI/CD workflows. The action automatically analyzes Terraform plans and provides summaries in GitHub step summaries and pull request comments.
+
+### Basic Usage
+
+```yaml
+- name: Analyze Terraform Plan
+  uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+```
+
+### Advanced Usage
+
+```yaml
+- name: Analyze Terraform Plan
+  uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+    output-format: markdown
+    danger-threshold: 5
+    show-details: true
+    config-file: .strata.yaml
+    comment-on-pr: true
+    update-comment: true
+    comment-header: "🏗️ Infrastructure Changes"
+```
+
+### Complete Workflow Example
+
+```yaml
+name: Terraform Plan Analysis
+on:
+  pull_request:
+    paths: ['**.tf', '**.tfvars']
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan-analysis:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      
+    - name: Terraform Plan
+      run: terraform plan -out=terraform.tfplan
+      
+    - name: Analyze Plan with Strata
+      uses: ArjenSchwarz/strata@v1
+      with:
+        plan-file: terraform.tfplan
+        show-details: true
+```
+
+### Action Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|----------|
+| `plan-file` | Path to Terraform plan file | Yes | |
+| `output-format` | Output format (table, json, markdown) | No | `markdown` |
+| `config-file` | Path to custom Strata config file | No | |
+| `danger-threshold` | Danger threshold for highlighting risks | No | |
+| `show-details` | Show detailed change information | No | `false` |
+| `github-token` | GitHub token for PR comments | No | `${{ github.token }}` |
+| `comment-on-pr` | Whether to comment on PR | No | `true` |
+| `update-comment` | Whether to update existing comment | No | `true` |
+| `comment-header` | Custom header for PR comments | No | `🏗️ Terraform Plan Summary` |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `summary` | Plan summary text |
+| `has-changes` | Whether the plan contains changes |
+| `has-dangers` | Whether dangerous changes were detected |
+| `json-summary` | Full summary in JSON format |
+| `change-count` | Total number of changes |
+| `danger-count` | Number of dangerous changes |
+
+### Features
+
+- **Step Summary Integration**: Automatically adds rich Markdown summaries to GitHub step summaries
+- **Pull Request Comments**: Posts or updates comments on pull requests with plan analysis
+- **Multiple Output Formats**: Supports table, JSON, and Markdown output formats
+- **Danger Detection**: Highlights potentially risky changes based on configurable thresholds
+- **Caching**: Automatically caches Strata binaries for faster execution
+- **Error Handling**: Graceful error handling with clear messaging
+- **Permissions**: Only requires `contents: read` and `pull-requests: write` permissions
+
 ## Installation
 
 ### Prerequisites

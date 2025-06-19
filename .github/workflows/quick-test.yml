@@ -1,0 +1,184 @@
+name: Quick Action Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-scenario:
+        description: 'Test scenario to run'
+        required: true
+        default: 'basic'
+        type: choice
+        options:
+        - basic
+        - with-changes
+        - with-dangers
+        - error-handling
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quick-test:
+    name: Quick Test - ${{ inputs.test-scenario }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      
+    - name: Create Test Configuration
+      shell: bash
+      run: |
+        mkdir -p test-terraform
+        cd test-terraform
+        
+        case "${{ inputs.test-scenario }}" in
+          "basic")
+            cat > main.tf << 'EOF'
+        terraform {
+          required_providers {
+            local = {
+              source = "hashicorp/local"
+              version = "~> 2.0"
+            }
+          }
+        }
+        
+        resource "local_file" "test" {
+          content  = "Hello, World!"
+          filename = "${path.module}/hello.txt"
+        }
+        EOF
+            ;;
+            
+          "with-changes")
+            cat > main.tf << 'EOF'
+        terraform {
+          required_providers {
+            local = {
+              source = "hashicorp/local"
+              version = "~> 2.0"
+            }
+          }
+        }
+        
+        resource "local_file" "test1" {
+          content  = "File 1"
+          filename = "${path.module}/file1.txt"
+        }
+        
+        resource "local_file" "test2" {
+          content  = "File 2"
+          filename = "${path.module}/file2.txt"
+        }
+        
+        resource "local_file" "test3" {
+          content  = "File 3"
+          filename = "${path.module}/file3.txt"
+        }
+        EOF
+            ;;
+            
+          "with-dangers")
+            cat > main.tf << 'EOF'
+        terraform {
+          required_providers {
+            local = {
+              source = "hashicorp/local"
+              version = "~> 2.0"
+            }
+          }
+        }
+        
+        resource "local_file" "danger1" {
+          content  = "Danger 1"
+          filename = "${path.module}/danger1.txt"
+        }
+        
+        resource "local_file" "danger2" {
+          content  = "Danger 2"
+          filename = "${path.module}/danger2.txt"
+        }
+        
+        resource "local_file" "danger3" {
+          content  = "Danger 3"
+          filename = "${path.module}/danger3.txt"
+        }
+        
+        resource "local_file" "danger4" {
+          content  = "Danger 4"
+          filename = "${path.module}/danger4.txt"
+        }
+        
+        resource "local_file" "danger5" {
+          content  = "Danger 5"
+          filename = "${path.module}/danger5.txt"
+        }
+        EOF
+            
+            # Create config with low danger threshold
+            cat > .strata.yaml << 'EOF'
+        plan:
+          danger-threshold: 2
+        sensitive_resources:
+          - resource_type: local_file
+        EOF
+            ;;
+            
+          "error-handling")
+            # Don't create any Terraform files to test error handling
+            echo "Testing error handling - no Terraform files created"
+            ;;
+        esac
+        
+    - name: Terraform Init and Plan
+      if: inputs.test-scenario != 'error-handling'
+      shell: bash
+      run: |
+        cd test-terraform
+        terraform init
+        terraform plan -out=terraform.tfplan
+        
+    - name: Test Action
+      id: test-action
+      uses: ./
+      continue-on-error: ${{ inputs.test-scenario == 'error-handling' }}
+      with:
+        plan-file: ${{ inputs.test-scenario == 'error-handling' && 'nonexistent.tfplan' || 'test-terraform/terraform.tfplan' }}
+        show-details: true
+        config-file: ${{ inputs.test-scenario == 'with-dangers' && 'test-terraform/.strata.yaml' || '' }}
+        comment-on-pr: false  # Disable for manual testing
+        
+    - name: Display Results
+      shell: bash
+      run: |
+        echo "## Test Results for ${{ inputs.test-scenario }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.test-action.outcome }}" == "success" ]; then
+          echo "✅ **Action Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Action Status:** FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Outputs:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Summary: ${{ steps.test-action.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Has Changes: ${{ steps.test-action.outputs.has-changes }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Has Dangers: ${{ steps.test-action.outputs.has-dangers }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Change Count: ${{ steps.test-action.outputs.change-count }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Danger Count: ${{ steps.test-action.outputs.danger-count }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ inputs.test-scenario }}" == "error-handling" ]; then
+          if [ "${{ steps.test-action.outcome }}" == "failure" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Error handling test passed** - Action correctly failed for missing plan file" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Error handling test failed** - Action should have failed for missing plan file" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
