@@ -469,7 +469,7 @@ run_strata() {
   # Add plan file
   cmd="$cmd $plan_file"
   
-  log "Running Strata with parameters" "Output format: $output_format, Show details: $show_details"
+  log "Running Strata with parameters" "Format=$output_format Details=$show_details"
   
   # Execute command and capture output
   local output
