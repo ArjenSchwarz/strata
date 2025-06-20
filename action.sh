@@ -437,6 +437,7 @@ run_strata() {
   local output_format=$1
   local plan_file=$2
   local show_details=$3
+  local silent=${4:-false}
   
   # Convert plan file to absolute path if it's relative
   if [[ "$plan_file" != /* ]]; then
@@ -469,7 +470,9 @@ run_strata() {
   # Add plan file
   cmd="$cmd $plan_file"
   
-  log "Running Strata with parameters" "Format=$output_format Details=$show_details"
+  if [ "$silent" != "true" ]; then
+    log "Running Strata with parameters" "Format=$output_format Details=$show_details"
+  fi
   
   # Execute command and capture output
   local output
@@ -515,7 +518,7 @@ fi
 
 # Always get JSON output for parsing, regardless of primary output format
 log "Getting JSON output for parsing"
-JSON_OUTPUT=$(run_strata "json" "$INPUT_PLAN_FILE" "false")
+JSON_OUTPUT=$(run_strata "json" "$INPUT_PLAN_FILE" "false" "true")
 JSON_EXIT_CODE=$?
 
 if [ $JSON_EXIT_CODE -ne 0 ]; then
@@ -593,7 +596,7 @@ write_summary ""
 
 # Add detailed information in collapsible section if available
 if [ "$SHOW_DETAILS" = "true" ]; then
-  DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true")
+  DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true" "true")
   
   write_summary "<details>"
   write_summary "<summary>📋 Detailed Changes</summary>"
@@ -656,7 +659,7 @@ if [ "$COMMENT_ON_PR" = "true" ] && [ "$GITHUB_EVENT_NAME" = "pull_request" ]; t
     
     # Prepare detailed changes section
     if [ "$SHOW_DETAILS" = "true" ]; then
-      DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true")
+      DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true" "true")
       DETAILS_SECTION="<details>
 <summary>📋 Detailed Changes</summary>
 
