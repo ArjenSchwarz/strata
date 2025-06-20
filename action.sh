@@ -473,13 +473,7 @@ run_strata() {
   
   # Execute command and capture output
   local output
-  if [ "$output_format" = "json" ] && [ "$show_details" = "false" ]; then
-    # For JSON parsing, suppress stderr to avoid warnings mixing with JSON
-    output=$(eval "$cmd" 2>/dev/null)
-  else
-    # For display output, capture both stdout and stderr
-    output=$(eval "$cmd" 2>&1)
-  fi
+  output=$(eval "$cmd" 2>&1)
   local exit_code=$?
   
   if [ $exit_code -ne 0 ]; then
