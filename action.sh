@@ -11,7 +11,7 @@ log() {
 
 # Function to log errors
 error() {
-  echo "::error::$1"
+  echo "::error::$1" >&2
   
   # Write error to step summary if available
   if [ -n "$GITHUB_STEP_SUMMARY" ]; then
@@ -29,7 +29,7 @@ error() {
 
 # Function to log warnings
 warning() {
-  echo "::warning::$1"
+  echo "::warning::$1" >&2
 }
 
 # Function to set GitHub Actions outputs
