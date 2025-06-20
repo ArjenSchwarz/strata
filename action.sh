@@ -371,7 +371,24 @@ else
       else
         # Extract from tar.gz
         tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR/"
-        cp "$TEMP_DIR/$BINARY_NAME" "$TEMP_DIR/$BINARY_NAME" 2>/dev/null || true
+        # Find and copy the binary (it might be in a subdirectory)
+        if [ -f "$TEMP_DIR/$BINARY_NAME" ]; then
+          # Binary is in the root of the archive
+          log "Binary found in archive root"
+        elif [ -f "$TEMP_DIR/strata/$BINARY_NAME" ]; then
+          # Binary is in a strata subdirectory
+          cp "$TEMP_DIR/strata/$BINARY_NAME" "$TEMP_DIR/$BINARY_NAME"
+          log "Binary found in strata subdirectory"
+        else
+          # Try to find the binary anywhere in the extracted files
+          FOUND_BINARY=$(find "$TEMP_DIR" -name "$BINARY_NAME" -type f | head -1)
+          if [ -n "$FOUND_BINARY" ]; then
+            cp "$FOUND_BINARY" "$TEMP_DIR/$BINARY_NAME"
+            log "Binary found at: $FOUND_BINARY"
+          else
+            error "Could not find binary $BINARY_NAME in extracted archive"
+          fi
+        fi
       fi
       
       # Ensure binary is executable
@@ -420,11 +437,22 @@ run_strata() {
   local output_format=$1
   local plan_file=$2
   local show_details=$3
+  
+  # Convert plan file to absolute path if it's relative
+  if [[ "$plan_file" != /* ]]; then
+    plan_file="$(pwd)/$plan_file"
+  fi
+  
   local cmd="$TEMP_DIR/$BINARY_NAME plan summary"
   
   # Add optional arguments
   if [ -n "$INPUT_CONFIG_FILE" ]; then
-    cmd="$cmd --config $INPUT_CONFIG_FILE"
+    # Convert config file to absolute path if it's relative
+    local config_file="$INPUT_CONFIG_FILE"
+    if [[ "$config_file" != /* ]]; then
+      config_file="$(pwd)/$config_file"
+    fi
+    cmd="$cmd --config $config_file"
   fi
   
   if [ -n "$INPUT_DANGER_THRESHOLD" ]; then
@@ -565,7 +593,7 @@ write_summary ""
 
 # Add detailed information in collapsible section if available
 if [ "$SHOW_DETAILS" = "true" ]; then
-  DETAILED_OUTPUT=$("$TEMP_DIR"/$BINARY_NAME plan summary --output "$OUTPUT_FORMAT" --show-details "$INPUT_PLAN_FILE")
+  DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true")
   
   write_summary "<details>"
   write_summary "<summary>📋 Detailed Changes</summary>"
@@ -628,7 +656,7 @@ if [ "$COMMENT_ON_PR" = "true" ] && [ "$GITHUB_EVENT_NAME" = "pull_request" ]; t
     
     # Prepare detailed changes section
     if [ "$SHOW_DETAILS" = "true" ]; then
-      DETAILED_OUTPUT=$("$TEMP_DIR"/$BINARY_NAME plan summary --output "$OUTPUT_FORMAT" --show-details "$INPUT_PLAN_FILE")
+      DETAILED_OUTPUT=$(run_strata "$OUTPUT_FORMAT" "$INPUT_PLAN_FILE" "true")
       DETAILS_SECTION="<details>
 <summary>📋 Detailed Changes</summary>
 
