@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 # Function to log messages
 log() {
