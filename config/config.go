@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -126,5 +127,60 @@ func (config *Config) NewOutputSettings() *format.OutputSettings {
 		settings.UseEmoji = true
 	}
 
+	// Apply placeholder resolution to file path if specified
+	if settings.OutputFile != "" {
+		settings.OutputFile = config.resolvePlaceholders(settings.OutputFile)
+	}
+
+	// Default file format to stdout format if not specified
+	if settings.OutputFileFormat == "" {
+		settings.OutputFileFormat = settings.OutputFormat
+	}
+
 	return settings
+}
+
+// resolvePlaceholders replaces placeholder values in the given string with actual values
+func (config *Config) resolvePlaceholders(value string) string {
+	replacements := map[string]string{
+		"$TIMESTAMP":     time.Now().Format("2006-01-02T15-04-05"),
+		"$AWS_REGION":    config.getAWSRegion(),
+		"$AWS_ACCOUNTID": config.getAWSAccountID(),
+	}
+
+	result := value
+	for placeholder, replacement := range replacements {
+		result = strings.ReplaceAll(result, placeholder, replacement)
+	}
+
+	return result
+}
+
+// getAWSRegion returns the AWS region from environment variables or config
+func (config *Config) getAWSRegion() string {
+	// Try environment variable first
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		return region
+	}
+	if region := os.Getenv("AWS_DEFAULT_REGION"); region != "" {
+		return region
+	}
+	// Try config setting
+	if region := config.GetString("region"); region != "" {
+		return region
+	}
+	return "unknown"
+}
+
+// getAWSAccountID returns the AWS account ID from environment variables or config
+func (config *Config) getAWSAccountID() string {
+	// Try environment variable first
+	if accountID := os.Getenv("AWS_ACCOUNT_ID"); accountID != "" {
+		return accountID
+	}
+	// Try config setting
+	if accountID := config.GetString("account-id"); accountID != "" {
+		return accountID
+	}
+	return "unknown"
 }
