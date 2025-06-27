@@ -84,8 +84,10 @@ func init() {
 	rootCmd.PersistentFlags().String("file-format", "", "Optional format for the file, defaults to the same as output")
 
 	// Bind file output flags to Viper
-	viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
-	viper.BindPFlag("output-file-format", rootCmd.PersistentFlags().Lookup("file-format"))
+	err := viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
+	cobra.CheckErr(err)
+	err = viper.BindPFlag("output-file-format", rootCmd.PersistentFlags().Lookup("file-format"))
+	cobra.CheckErr(err)
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

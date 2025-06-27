@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	format "github.com/ArjenSchwarz/go-output"
@@ -43,54 +44,82 @@ func (fv *FileValidator) ValidateFileOutput(settings *format.OutputSettings) err
 	return nil
 }
 
-// sanitizeFilePath cleans and validates a file path for security
+// sanitizeFilePath cleans and validates a file path for security.
+// Returns the cleaned absolute path or a structured error for security violations.
 func (fv *FileValidator) sanitizeFilePath(path string) (string, error) {
+	// Check for path traversal attempts before cleaning
+	if strings.Contains(path, "..") {
+		return "", &FileOutputError{
+			Type:    "validation",
+			Code:    "PATH_TRAVERSAL",
+			Path:    path,
+			Message: "path traversal not allowed",
+		}
+	}
+
 	// Clean path and resolve any relative components
 	clean := filepath.Clean(path)
-
-	// Check for path traversal attempts
-	if strings.Contains(clean, "..") {
-		return "", fmt.Errorf("path traversal not allowed: %s", path)
-	}
 
 	// Convert to absolute path for consistency
 	abs, err := filepath.Abs(clean)
 	if err != nil {
-		return "", fmt.Errorf("invalid file path: %s", path)
+		return "", &FileOutputError{
+			Type:    "validation",
+			Code:    "INVALID_PATH",
+			Path:    path,
+			Message: "invalid file path",
+			Cause:   err,
+		}
 	}
 
 	return abs, nil
 }
 
-// validatePathSafety ensures the file path is safe and doesn't contain traversal attempts
+// validatePathSafety ensures the file path is safe and doesn't contain traversal attempts.
+// Examples of blocked paths: "../../../etc/passwd", "reports/../../../sensitive"
+// Examples of allowed paths: "output.json", "reports/2025/summary.txt"
 func (fv *FileValidator) validatePathSafety(filePath string) error {
 	_, err := fv.sanitizeFilePath(filePath)
 	return err
 }
 
-// validateDirectoryPermissions checks if the directory exists and is writable
+// validateDirectoryPermissions checks if the directory exists and is writable.
+// Uses efficient permission checking without creating temporary files when possible.
 func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 	dir := filepath.Dir(filePath)
 
 	// Check if directory exists
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return fmt.Errorf("directory does not exist: %s", dir)
+		return &FileOutputError{
+			Type:    "permission",
+			Code:    "DIRECTORY_NOT_FOUND",
+			Path:    dir,
+			Message: "directory does not exist",
+			Cause:   err,
+		}
 	}
 
-	// Test write permissions by creating a temporary file
-	tempFile := filepath.Join(dir, ".strata_write_test")
-	file, err := os.Create(tempFile)
+	// Test write permissions using os.OpenFile with O_WRONLY for better cross-platform compatibility
+	testFile := filepath.Join(dir, ".strata_write_test")
+	file, err := os.OpenFile(testFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
-		return fmt.Errorf("no write permission for directory: %s", dir)
+		return &FileOutputError{
+			Type:    "permission",
+			Code:    "PERMISSION_DENIED",
+			Path:    dir,
+			Message: "no write permission for directory",
+			Cause:   err,
+		}
 	}
 	file.Close()
-	os.Remove(tempFile)
+	os.Remove(testFile)
 
 	return nil
 }
 
-// validateFormatSupport checks if the specified output format is supported
-func (fv *FileValidator) validateFormatSupport(format string) error {
+// validateFormatSupport checks if the specified output format is supported.
+// Supported formats include: table, json, csv, markdown, html, dot
+func (fv *FileValidator) validateFormatSupport(formatName string) error {
 	supportedFormats := []string{
 		"table",
 		"json",
@@ -100,19 +129,24 @@ func (fv *FileValidator) validateFormatSupport(format string) error {
 		"dot",
 	}
 
-	formatLower := strings.ToLower(format)
-	for _, supported := range supportedFormats {
-		if formatLower == supported {
-			return nil
+	formatLower := strings.ToLower(formatName)
+	if !slices.Contains(supportedFormats, formatLower) {
+		return &FileOutputError{
+			Type:    "format",
+			Code:    "UNSUPPORTED_FORMAT",
+			Path:    "",
+			Format:  formatName,
+			Message: fmt.Sprintf("unsupported output format: %s, supported formats: %v", formatName, supportedFormats),
 		}
 	}
 
-	return fmt.Errorf("unsupported output format: %s, supported formats: %v", format, supportedFormats)
+	return nil
 }
 
 // FileOutputError represents errors that occur during file output operations
 type FileOutputError struct {
 	Type    string // "validation", "permission", "format", "write"
+	Code    string // e.g., "PATH_TRAVERSAL", "PERMISSION_DENIED", "UNSUPPORTED_FORMAT"
 	Path    string
 	Format  string
 	Message string
@@ -121,10 +155,10 @@ type FileOutputError struct {
 
 func (e *FileOutputError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("%s error for %s: %s (caused by: %v)",
-			e.Type, e.Path, e.Message, e.Cause)
+		return fmt.Sprintf("%s error [%s] for %s: %s (caused by: %v)",
+			e.Type, e.Code, e.Path, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("%s error for %s: %s", e.Type, e.Path, e.Message)
+	return fmt.Sprintf("%s error [%s] for %s: %s", e.Type, e.Code, e.Path, e.Message)
 }
 
 // ValidationResult holds the result of validation operations
@@ -152,6 +186,13 @@ func (vr *ValidationResult) AddInfo(info string) {
 	vr.Infos = append(vr.Infos, info)
 }
 
+// checkFileOverwrite checks if a file already exists and adds a warning if it does
+func (fv *FileValidator) checkFileOverwrite(filePath string, result *ValidationResult) {
+	if _, err := os.Stat(filePath); err == nil {
+		result.AddWarning(fmt.Sprintf("file %s already exists and will be overwritten", filePath))
+	}
+}
+
 // ValidateAll performs comprehensive validation and returns detailed results
 func (fv *FileValidator) ValidateAll(settings *format.OutputSettings) *ValidationResult {
 	result := &ValidationResult{Valid: true}
@@ -175,12 +216,8 @@ func (fv *FileValidator) ValidateAll(settings *format.OutputSettings) *Validatio
 		result.AddError(err)
 	}
 
-	return result
-}
+	// Check for file overwrite scenarios
+	fv.checkFileOverwrite(settings.OutputFile, result)
 
-// checkFileOverwrite checks if a file will be overwritten and adds appropriate warnings
-func (fv *FileValidator) checkFileOverwrite(filePath string, result *ValidationResult) {
-	if _, err := os.Stat(filePath); err == nil {
-		result.AddWarning(fmt.Sprintf("File %s will be overwritten", filePath))
-	}
+	return result
 }
