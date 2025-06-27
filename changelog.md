@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- File Output System
+  - Added comprehensive file output functionality with dual output support (stdout + file)
+  - Added file output validation system with security checks for path traversal prevention
+  - Added placeholder support for dynamic file naming ($TIMESTAMP, $AWS_REGION, $AWS_ACCOUNTID)
+  - Added --file and --file-format global flags for specifying output file and format
+  - Added FileValidator with comprehensive validation for file paths, formats, and permissions
+  - Added file output configuration options in config files (output-file, output-file-format)
+  - Added extensive unit tests for file validation and placeholder resolution
+  - Added integration tests for file output functionality
+  - Updated README.md with comprehensive file output documentation and examples
+  - Updated command help text with file output usage examples and placeholder documentation
+  - Enhanced config system with placeholder resolution for AWS context and timestamps
+  - Added security features including path sanitization and directory permission validation
+
+### Added
 - GitHub Release Automation
   - Added automated release workflow for building and publishing cross-platform binaries
   - Added support for Linux, Windows, and macOS on both amd64 and arm64 architectures

@@ -40,6 +40,14 @@ This command parses Terraform plan files and presents the changes in a
 user-friendly format, highlighting potentially destructive operations
 and providing statistical summaries.
 
+File Output:
+The --file and --file-format flags allow you to save output to a file in addition
+to displaying it on stdout. The file format can be different from the stdout format.
+File paths support placeholders for dynamic naming:
+  $TIMESTAMP    - Current timestamp (2006-01-02T15-04-05 format)
+  $AWS_REGION   - AWS region from context
+  $AWS_ACCOUNTID - AWS account ID from context
+
 Examples:
   # Generate summary from plan file
   strata plan summary terraform.tfplan
@@ -49,6 +57,12 @@ Examples:
 
   # Generate summary with custom danger threshold
   strata plan summary --danger-threshold 5 terraform.tfplan
+
+  # Save output to file while displaying table on stdout
+  strata plan summary --file output.json --file-format json terraform.tfplan
+
+  # Use placeholders in filename for dynamic naming
+  strata plan summary --file "report-$TIMESTAMP-$AWS_REGION.md" --file-format markdown terraform.tfplan
 
   # Generate summary with vertical statistics format
   strata plan summary --stats-format vertical terraform.tfplan
@@ -120,6 +134,15 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 
 	// Create formatter and output summary
 	formatter := plan.NewFormatter(cfg)
+
+	// Validate file output settings before executing formatter
+	outputSettings := cfg.NewOutputSettings()
+	if outputSettings.OutputFile != "" {
+		validator := config.NewFileValidator(cfg)
+		if err := validator.ValidateFileOutput(outputSettings); err != nil {
+			return fmt.Errorf("file output validation failed: %w", err)
+		}
+	}
 
 	return formatter.OutputSummary(summary, outputFormat, showDetails)
 }

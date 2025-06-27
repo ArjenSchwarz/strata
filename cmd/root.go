@@ -79,6 +79,14 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.strata.yaml)")
 
+	// File output flags
+	rootCmd.PersistentFlags().String("file", "", "Optional file to save the output to, in addition to stdout")
+	rootCmd.PersistentFlags().String("file-format", "", "Optional format for the file, defaults to the same as output")
+
+	// Bind file output flags to Viper
+	viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
+	viper.BindPFlag("output-file-format", rootCmd.PersistentFlags().Lookup("file-format"))
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 
