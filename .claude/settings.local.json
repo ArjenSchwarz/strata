@@ -11,7 +11,13 @@
       "Bash(git pull:*)",
       "Bash(gh pr view:*)",
       "Bash(gh api:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(test/integration_test.sh)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(shellcheck:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
