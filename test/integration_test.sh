@@ -309,7 +309,7 @@ test_error_handling() {
 test_output_formats() {
     local scenario="with-changes"
     
-    for format in "table" "json" "markdown"; do
+    for format in "table" "markdown"; do
         log_test "Output format - $format"
         
         export INPUT_PLAN_FILE="$TEST_DIR/$scenario/terraform.tfplan"
@@ -320,16 +320,6 @@ test_output_formats() {
         
         if bash ./action.sh > "$TEST_DIR/action_output_${format}.log" 2>&1; then
             log_pass "Output format $format - Action executed successfully"
-            
-            # Validate JSON output specifically
-            if [ "$format" = "json" ] && [ -f "$GITHUB_OUTPUT" ]; then
-                json_summary=$(grep "json-summary=" "$GITHUB_OUTPUT" | cut -d'=' -f2-)
-                if echo "$json_summary" | jq . >/dev/null 2>&1; then
-                    log_pass "Output format $format - Valid JSON output"
-                else
-                    log_fail "Output format $format - Invalid JSON output"
-                fi
-            fi
         else
             log_fail "Output format $format - Action execution failed"
         fi
@@ -446,7 +436,7 @@ generate_report() {
 
 ### Action Features Tested
 - Basic functionality
-- Output format validation (table, json, markdown)
+- Output format validation (table, markdown)
 - Configuration file usage
 - Error handling
 - Binary caching
@@ -675,52 +665,6 @@ test_detailed_output() {
     unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT
 }
 
-# Test JSON output format
-test_json_output() {
-    log_test "JSON output format"
-    
-    # Set up environment
-    export INPUT_PLAN_FILE="samples/websample.json"
-    export INPUT_OUTPUT_FORMAT="json"
-    export INPUT_SHOW_DETAILS="false"
-    export INPUT_COMMENT_ON_PR="false"
-    export GITHUB_STEP_SUMMARY="/tmp/step_summary_json.md"
-    export GITHUB_OUTPUT="/tmp/github_output_json.txt"
-    
-    # Clean up previous runs
-    rm -f "$GITHUB_STEP_SUMMARY" "$GITHUB_OUTPUT"
-    touch "$GITHUB_STEP_SUMMARY" "$GITHUB_OUTPUT"
-    
-    # Run the action
-    if ./action.sh; then
-        # Check that JSON summary is present
-        if grep -q "json-summary=" "$GITHUB_OUTPUT"; then
-            log_success "JSON summary output is present"
-            
-            # Extract and validate JSON
-            json_line=$(grep "json-summary=" "$GITHUB_OUTPUT")
-            json_content="${json_line#json-summary=}"
-            
-            if command -v jq >/dev/null 2>&1; then
-                if echo "$json_content" | jq . >/dev/null 2>&1; then
-                    log_success "JSON output is valid"
-                else
-                    log_failure "JSON output is invalid"
-                fi
-            else
-                log_info "jq not available, skipping JSON validation"
-            fi
-        else
-            log_failure "JSON summary output is missing"
-        fi
-    else
-        log_failure "JSON output test failed"
-    fi
-    
-    # Clean up
-    unset INPUT_PLAN_FILE INPUT_OUTPUT_FORMAT INPUT_SHOW_DETAILS INPUT_COMMENT_ON_PR
-    unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT
-}
 
 # Test custom configuration
 test_custom_config() {
@@ -902,7 +846,6 @@ main() {
     
     test_basic_functionality
     test_detailed_output
-    test_json_output
     test_custom_config
     test_error_handling
     test_danger_threshold

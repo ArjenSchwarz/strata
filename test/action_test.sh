@@ -427,6 +427,184 @@ test_github_context() {
     unset GITHUB_EVENT_NAME
 }
 
+# Test dual output functionality
+test_dual_output_functions() {
+    log_test "Dual output functionality"
+    
+    # Test temporary file creation and tracking
+    test_temp_file_creation() {
+        # Initialize test tracking
+        rm -f "$TEST_DIR/temp_files_list"
+        
+        create_temp_file_test() {
+            local temp_file
+            temp_file=$(mktemp)
+            if [ $? -ne 0 ] || [ ! -f "$temp_file" ]; then
+                return 1
+            fi
+            
+            chmod 600 "$temp_file"
+            # Use a different approach to track files
+            echo "$temp_file" >> "$TEST_DIR/temp_files_list"
+            echo "$temp_file"
+        }
+        
+        cleanup_temp_files_test() {
+            if [ -f "$TEST_DIR/temp_files_list" ]; then
+                while IFS= read -r temp_file; do
+                    if [ -f "$temp_file" ]; then
+                        rm -f "$temp_file"
+                    fi
+                done < "$TEST_DIR/temp_files_list"
+                rm -f "$TEST_DIR/temp_files_list"
+            fi
+        }
+        
+        # Test file creation
+        temp_file=$(create_temp_file_test)
+        if [ -f "$temp_file" ]; then
+            echo -e "${GREEN}[PASS]${NC} Temporary file creation should work"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Temporary file creation should work"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+        
+        # Test file permissions
+        if [ -f "$temp_file" ]; then
+            perms=$(stat -c "%a" "$temp_file" 2>/dev/null || stat -f "%A" "$temp_file" 2>/dev/null)
+            if [ "$perms" = "600" ]; then
+                echo -e "${GREEN}[PASS]${NC} Temporary file should have restrictive permissions"
+                TESTS_PASSED=$((TESTS_PASSED + 1))
+            else
+                echo -e "${RED}[FAIL]${NC} Temporary file should have restrictive permissions (got $perms)"
+                TESTS_FAILED=$((TESTS_FAILED + 1))
+            fi
+        fi
+        
+        # Test file tracking - check if the file was tracked
+        if [ -f "$TEST_DIR/temp_files_list" ] && [ "$(wc -l < "$TEST_DIR/temp_files_list")" -eq 1 ]; then
+            echo -e "${GREEN}[PASS]${NC} Temporary file should be tracked"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            local count=0
+            if [ -f "$TEST_DIR/temp_files_list" ]; then
+                count=$(wc -l < "$TEST_DIR/temp_files_list")
+            fi
+            echo -e "${RED}[FAIL]${NC} Temporary file should be tracked (got $count files)"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+        
+        # Test cleanup
+        cleanup_temp_files_test
+        if [ ! -f "$TEST_DIR/temp_files_list" ]; then
+            echo -e "${GREEN}[PASS]${NC} Temporary files should be cleaned up"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Temporary files should be cleaned up"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+    }
+    
+    # Test dual output command construction
+    test_dual_output_command() {
+        construct_dual_output_command() {
+            local stdout_format=$1
+            local file_path=$2
+            local plan_file=$3
+            
+            local cmd="strata plan summary"
+            cmd="$cmd --output $stdout_format --file $file_path --file-format markdown"
+            cmd="$cmd $plan_file"
+            
+            echo "$cmd"
+        }
+        
+        result=$(construct_dual_output_command "table" "/tmp/test.md" "plan.tfplan")
+        expected="strata plan summary --output table --file /tmp/test.md --file-format markdown plan.tfplan"
+        
+        assert_equals "$expected" "$result" "Dual output command should be constructed correctly"
+    }
+    
+    # Test error handling for file operations
+    test_file_error_handling() {
+        handle_file_error() {
+            local operation=$1
+            local error_type=$2
+            
+            case "$operation" in
+                "create")
+                    if [ "$error_type" = "permission_denied" ]; then
+                        echo "fallback_to_single_output"
+                    fi
+                    ;;
+                "read")
+                    if [ "$error_type" = "file_not_found" ]; then
+                        echo "use_stdout_fallback"
+                    fi
+                    ;;
+            esac
+        }
+        
+        result=$(handle_file_error "create" "permission_denied")
+        assert_equals "fallback_to_single_output" "$result" "Should fallback to single output on file creation error"
+        
+        result=$(handle_file_error "read" "file_not_found")
+        assert_equals "use_stdout_fallback" "$result" "Should use stdout fallback on file read error"
+    }
+    
+    # Test format validation
+    test_format_validation() {
+        validate_dual_output_formats() {
+            local stdout_format=$1
+            local file_format=$2
+            
+            # Validate stdout format
+            case "$stdout_format" in
+                table|json|markdown) ;;
+                *) return 1 ;;
+            esac
+            
+            # Validate file format
+            case "$file_format" in
+                markdown|json) ;;
+                *) return 1 ;;
+            esac
+            
+            return 0
+        }
+        
+        if validate_dual_output_formats "table" "markdown"; then
+            echo -e "${GREEN}[PASS]${NC} Valid format combination should be accepted"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Valid format combination should be accepted"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+        
+        if ! validate_dual_output_formats "invalid" "markdown"; then
+            echo -e "${GREEN}[PASS]${NC} Invalid stdout format should be rejected"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Invalid stdout format should be rejected"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+        
+        if ! validate_dual_output_formats "table" "invalid"; then
+            echo -e "${GREEN}[PASS]${NC} Invalid file format should be rejected"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Invalid file format should be rejected"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+    }
+    
+    test_temp_file_creation
+    test_dual_output_command
+    test_file_error_handling
+    test_format_validation
+}
+
 # Run all tests
 echo "Running GitHub Action Unit Tests..."
 echo "=================================="
@@ -441,6 +619,7 @@ test_file_validation
 test_cache_functionality
 test_environment_variables
 test_github_context
+test_dual_output_functions
 
 # Print test summary
 echo ""
