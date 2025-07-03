@@ -17,7 +17,15 @@
       "Bash(awk:*)",
       "Bash(sed:*)",
       "Bash(shellcheck:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)",
+      "Bash(timeout 10 ./strata plan summary:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(timeout 30 bash test/test_comprehensive_unit.sh)",
+      "Bash(source:*)",
+      "Bash(validate_file_path \"/tmp/test.txt\" \"temp_file\")"
     ],
     "deny": []
   }

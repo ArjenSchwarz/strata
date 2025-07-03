@@ -7,7 +7,6 @@ set -e
 
 # Source the action script functions (we'll need to extract them for testing)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ACTION_SCRIPT="$SCRIPT_DIR/../action.sh"
 
 # Test configuration
 TEST_DIR=$(mktemp -d)
@@ -21,50 +20,23 @@ export GITHUB_SERVER_URL="https://github.com"
 export GITHUB_JOB="test-job"
 
 # Initialize test variables
-TEMP_FILES=()
 MARKDOWN_CONTENT=""
 
 echo "=== Enhanced Error Handling Tests ==="
 echo "Test directory: $TEST_DIR"
 
-# Extract and source the functions we need to test
-# We'll create a temporary file with just the functions
-FUNCTIONS_FILE="$TEST_DIR/functions.sh"
+# Source the modular action functions
+LIB_DIR="$SCRIPT_DIR/../lib/action"
 
-# Extract the error handling functions from action.sh
-sed -n '/^# Function to handle dual output errors gracefully/,/^}$/p' "$ACTION_SCRIPT" > "$FUNCTIONS_FILE"
-sed -n '/^# Function to handle file operation errors with fallback mechanisms/,/^}$/p' "$ACTION_SCRIPT" >> "$FUNCTIONS_FILE"
-sed -n '/^# Function to create structured error content for GitHub features/,/^}$/p' "$ACTION_SCRIPT" >> "$FUNCTIONS_FILE"
-sed -n '/^# Enhanced cleanup function with comprehensive error handling/,/^}$/p' "$ACTION_SCRIPT" >> "$FUNCTIONS_FILE"
-sed -n '/^# Function to validate file paths for security/,/^}$/p' "$ACTION_SCRIPT" >> "$FUNCTIONS_FILE"
+# Source all modules that contain the functions we need to test
+source "$LIB_DIR/utils.sh"
+source "$LIB_DIR/security.sh"
+source "$LIB_DIR/files.sh"
+source "$LIB_DIR/strata.sh"
+source "$LIB_DIR/github.sh"
 
-# Add helper functions for testing
-cat >> "$FUNCTIONS_FILE" << 'EOF'
-
-# Test helper functions
-log() {
-  echo "[LOG] $1: $2" >&2
-}
-
-warning() {
-  echo "[WARNING] $1" >&2
-}
-
-create_temp_file() {
-  local temp_file
-  temp_file=$(mktemp)
-  if [ $? -ne 0 ] || [ ! -f "$temp_file" ]; then
-    return 1
-  fi
-  chmod 600 "$temp_file"
-  TEMP_FILES+=("$temp_file")
-  echo "$temp_file"
-}
-
-EOF
-
-# Source the functions
-source "$FUNCTIONS_FILE"
+# Use the modular create_temp_file function, but ensure we're using the same TEMP_FILES array
+# The create_secure_temp_file function from files.sh should work fine
 
 # Test 1: Test handle_dual_output_error function
 echo
@@ -78,9 +50,11 @@ test_handle_dual_output_error() {
   
   echo "Testing handle_dual_output_error with exit code $test_exit_code"
   
-  # Call the function
+  # Call the function (disable exit on error temporarily)
+  set +e
   handle_dual_output_error $test_exit_code "$test_output" "$test_context"
   local result=$?
+  set -e
   
   # Check that it returns the same exit code
   if [ $result -eq $test_exit_code ]; then
@@ -136,9 +110,11 @@ test_handle_file_operation_error() {
   # Reset MARKDOWN_CONTENT
   MARKDOWN_CONTENT=""
   
-  # Call the function
+  # Call the function (disable exit on error temporarily)
+  set +e
   handle_file_operation_error "$test_operation" "$test_file_path" "$test_error_message" "$test_fallback_content"
   local result=$?
+  set -e
   
   # Check that it returns error code
   if [ $result -eq 1 ]; then
@@ -238,11 +214,16 @@ echo "==========================================="
 test_cleanup_temp_files() {
   echo "Testing cleanup_temp_files function"
   
-  # Create some test temporary files
+  # Create some test temporary files manually and add to array
   local temp_file1
   local temp_file2
-  temp_file1=$(create_temp_file)
-  temp_file2=$(create_temp_file)
+  temp_file1=$(mktemp -t "strata_test.XXXXXXXXXX")
+  temp_file2=$(mktemp -t "strata_test.XXXXXXXXXX")
+  chmod 600 "$temp_file1" "$temp_file2"
+  
+  # Manually add to TEMP_FILES array to test cleanup
+  TEMP_FILES+=("$temp_file1")
+  TEMP_FILES+=("$temp_file2")
   
   if [ -z "$temp_file1" ] || [ -z "$temp_file2" ]; then
     echo "✗ Failed to create test temporary files"
@@ -303,7 +284,11 @@ test_validate_file_path() {
   
   # Test valid path
   local valid_path="/tmp/valid_file.txt"
-  if validate_file_path "$valid_path" "temp_file"; then
+  set +e
+  validate_file_path "$valid_path" "temp_file"
+  local result1=$?
+  set -e
+  if [ $result1 -eq 0 ]; then
     echo "✓ Valid path accepted: $valid_path"
   else
     echo "✗ Valid path rejected: $valid_path"
@@ -312,7 +297,11 @@ test_validate_file_path() {
   
   # Test path traversal attempt
   local invalid_path="/tmp/../etc/passwd"
-  if ! validate_file_path "$invalid_path" "temp_file"; then
+  set +e
+  validate_file_path "$invalid_path" "temp_file"
+  local result2=$?
+  set -e
+  if [ $result2 -ne 0 ]; then
     echo "✓ Path traversal attempt rejected: $invalid_path"
   else
     echo "✗ Path traversal attempt accepted: $invalid_path"
@@ -320,7 +309,11 @@ test_validate_file_path() {
   fi
   
   # Test empty path
-  if ! validate_file_path "" "temp_file"; then
+  set +e
+  validate_file_path "" "temp_file"
+  local result3=$?
+  set -e
+  if [ $result3 -ne 0 ]; then
     echo "✓ Empty path rejected"
   else
     echo "✗ Empty path accepted"
@@ -350,11 +343,12 @@ test_error_handling_integration() {
   
   # Test the error handling flow
   local test_stdout="Test stdout output"
-  local test_plan_file="/tmp/test.tfplan"
   
-  # This should trigger the file operation error handling
+  # This should trigger the file operation error handling (disable exit on error temporarily)
+  set +e
   handle_file_operation_error "create_temp_file" "N/A" "mktemp failed" "$test_stdout"
   local result=$?
+  set -e
   
   if [ $result -eq 1 ]; then
     echo "✓ Error handling returned expected error code"

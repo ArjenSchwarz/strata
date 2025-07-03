@@ -103,8 +103,11 @@ fi
 # Test 2: Error handling for invalid plan file
 log_test "Error handling for invalid plan file"
 
-INVALID_OUTPUT=$(./strata plan summary /nonexistent/file.json --file "$TEST_DIR/error.md" --file-format markdown --output table 2>&1)
+# Use timeout to prevent hanging and temporarily disable set -e
+set +e
+INVALID_OUTPUT=$(timeout 10 ./strata plan summary /nonexistent/file.json --file "$TEST_DIR/error.md" --file-format markdown --output table 2>&1)
 INVALID_EXIT_CODE=$?
+set -e
 
 if [ $INVALID_EXIT_CODE -ne 0 ]; then
     assert_success "Should handle invalid plan file gracefully"
@@ -120,8 +123,11 @@ READONLY_DIR="$TEST_DIR/readonly"
 mkdir -p "$READONLY_DIR"
 chmod 555 "$READONLY_DIR"
 
-PERM_OUTPUT=$(./strata plan summary samples/danger-sample.json --file "$READONLY_DIR/output.md" --file-format markdown --output table 2>&1)
+# Use timeout to prevent hanging and temporarily disable set -e
+set +e
+PERM_OUTPUT=$(timeout 10 ./strata plan summary samples/danger-sample.json --file "$READONLY_DIR/output.md" --file-format markdown --output table 2>&1)
 PERM_EXIT_CODE=$?
+set -e
 
 # Should still produce stdout output even if file writing fails
 if [ -n "$PERM_OUTPUT" ]; then
