@@ -85,7 +85,7 @@ download_with_retry() {
     attempt=$((attempt + 1))
     if [ $attempt -le $max_attempts ]; then
       sleep_time=$((2 ** (attempt - 1)))
-      log "Retrying download in ${sleep_time}s"
+      log "Retrying Download" "Waiting ${sleep_time} seconds before retrying."
       sleep $sleep_time
     fi
   done
