@@ -25,6 +25,9 @@ type Config struct {
 	// Plan-specific configuration
 	Plan PlanConfig `mapstructure:"plan"`
 
+	// Terraform workflow configuration
+	Terraform TerraformConfig `mapstructure:"terraform"`
+
 	// Sensitive resources and properties configuration
 	SensitiveResources  []SensitiveResource `mapstructure:"sensitive_resources"`
 	SensitiveProperties []SensitiveProperty `mapstructure:"sensitive_properties"`
@@ -38,6 +41,48 @@ type PlanConfig struct {
 	ShowStatisticsSummary   bool   `mapstructure:"show-statistics-summary"`
 	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
 	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
+}
+
+// TerraformConfig holds configuration specific to Terraform workflow operations
+type TerraformConfig struct {
+	// Path to Terraform binary
+	Path string `mapstructure:"path"`
+
+	// Default arguments for terraform plan
+	PlanArgs []string `mapstructure:"plan-args"`
+
+	// Default arguments for terraform apply
+	ApplyArgs []string `mapstructure:"apply-args"`
+
+	// Backend configuration
+	Backend BackendConfig `mapstructure:"backend"`
+
+	// Danger threshold for highlighting risks
+	DangerThreshold int `mapstructure:"danger-threshold"`
+
+	// Whether to show detailed output by default
+	ShowDetails bool `mapstructure:"show-details"`
+
+	// Default timeout for operations
+	Timeout string `mapstructure:"timeout"`
+
+	// Environment variables to set for Terraform commands
+	Environment map[string]string `mapstructure:"environment"`
+}
+
+// BackendConfig holds configuration for Terraform backends
+type BackendConfig struct {
+	// Type of backend (e.g., s3, gcs, azurerm)
+	Type string `mapstructure:"type"`
+
+	// Backend-specific configuration
+	Config map[string]interface{} `mapstructure:"config"`
+
+	// Lock timeout
+	LockTimeout string `mapstructure:"lock-timeout"`
+
+	// Disable locking
+	DisableLocking bool `mapstructure:"disable-locking"`
 }
 
 func (config *Config) GetLCString(setting string) string {

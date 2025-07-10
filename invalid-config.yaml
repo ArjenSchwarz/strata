@@ -1,0 +1,6 @@
+terraform:
+  path: ""
+  danger-threshold: -1
+  timeout: "invalid-duration"
+plan:
+  statistics-summary-format: "invalid-format"
