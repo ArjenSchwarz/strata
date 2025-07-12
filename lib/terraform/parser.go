@@ -65,22 +65,23 @@ func (p *DefaultOutputParser) detectChangesFromResourceLines(output string, resu
 		line = strings.TrimSpace(line)
 
 		// Look for resource change indicators
-		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "++") {
+		switch {
+		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "++"):
 			result.ResourceChanges.Add++
 			hasChanges = true
-		} else if strings.HasPrefix(line, "~") {
+		case strings.HasPrefix(line, "~"):
 			result.ResourceChanges.Change++
 			hasChanges = true
-		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "--") {
+		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "--"):
 			result.ResourceChanges.Destroy++
 			hasChanges = true
-		} else if strings.Contains(line, "will be created") {
+		case strings.Contains(line, "will be created"):
 			result.ResourceChanges.Add++
 			hasChanges = true
-		} else if strings.Contains(line, "will be updated") || strings.Contains(line, "will be modified") {
+		case strings.Contains(line, "will be updated") || strings.Contains(line, "will be modified"):
 			result.ResourceChanges.Change++
 			hasChanges = true
-		} else if strings.Contains(line, "will be destroyed") {
+		case strings.Contains(line, "will be destroyed"):
 			result.ResourceChanges.Destroy++
 			hasChanges = true
 		}

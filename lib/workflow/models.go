@@ -60,8 +60,11 @@ type WorkflowOptions struct {
 type Action int
 
 const (
+	// ActionApply represents the action to apply the Terraform plan.
 	ActionApply Action = iota
+	// ActionViewDetails represents the action to view detailed information.
 	ActionViewDetails
+	// ActionCancel represents the action to cancel the workflow.
 	ActionCancel
 )
 

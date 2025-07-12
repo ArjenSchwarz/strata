@@ -16,6 +16,13 @@ linters:
     - goconst
     - gocritic
     - unconvert
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: false
+          arguments:
+            - "disableStutteringCheck"
 
 issues:
   max-issues-per-linter: 0

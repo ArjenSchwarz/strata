@@ -1,3 +1,4 @@
+// Package workflow provides workflow management and automation utilities.
 package workflow
 
 import (

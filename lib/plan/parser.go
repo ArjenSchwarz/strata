@@ -98,7 +98,7 @@ func (p *Parser) ValidateStructure(plan *tfjson.Plan) error {
 }
 
 // extractWorkspaceInfo extracts workspace information from the plan
-func (p *Parser) extractWorkspaceInfo(plan *tfjson.Plan) string {
+func (p *Parser) extractWorkspaceInfo(_ *tfjson.Plan) string {
 	// Try to get workspace from plan metadata
 	// For now, return "default" as a fallback
 	// TODO: Extract actual workspace from plan when available
@@ -106,7 +106,7 @@ func (p *Parser) extractWorkspaceInfo(plan *tfjson.Plan) string {
 }
 
 // extractBackendInfo extracts backend configuration from the plan
-func (p *Parser) extractBackendInfo(plan *tfjson.Plan) BackendInfo {
+func (p *Parser) extractBackendInfo(_ *tfjson.Plan) BackendInfo {
 	// Try to extract backend info from plan
 	// For now, return local backend as fallback
 	// TODO: Extract actual backend info from plan when available

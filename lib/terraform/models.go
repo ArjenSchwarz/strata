@@ -140,10 +140,15 @@ type StateError struct {
 type StateErrorType string
 
 const (
-	StateErrorLockTimeout    StateErrorType = "lock_timeout"
-	StateErrorLockConflict   StateErrorType = "lock_conflict"
-	StateErrorBackendConfig  StateErrorType = "backend_config"
-	StateErrorPermissions    StateErrorType = "permissions"
+	// StateErrorLockTimeout indicates that a timeout occurred while trying to acquire a state lock.
+	StateErrorLockTimeout StateErrorType = "lock_timeout"
+	// StateErrorLockConflict indicates that there was a conflict when trying to acquire a state lock.
+	StateErrorLockConflict StateErrorType = "lock_conflict"
+	// StateErrorBackendConfig indicates that there was an error with the backend configuration.
+	StateErrorBackendConfig StateErrorType = "backend_config"
+	// StateErrorPermissions indicates that there were insufficient permissions for state operations.
+	StateErrorPermissions StateErrorType = "permissions"
+	// StateErrorNetworkTimeout indicates that a network timeout occurred during state operations.
 	StateErrorNetworkTimeout StateErrorType = "network_timeout"
 )
 

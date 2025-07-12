@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Package cmd provides command-line interface functionality for the Strata application.
 package cmd
 
 import (
@@ -85,7 +87,7 @@ var (
 	applyDangerThreshold int
 )
 
-func runApply(cmd *cobra.Command, args []string) error {
+func runApply(cmd *cobra.Command, _ []string) error {
 	// Load configuration from file
 	cfg, err := loadConfiguration()
 	if err != nil {
@@ -117,9 +119,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("terraform-path") {
 		cfg.Terraform.Path = terraformPath
 	}
-	if cmd.Flags().Changed("working-dir") {
-		// This is not stored in config, but used directly
-	}
+	// working-dir flag is used directly, not stored in config
 	if cmd.Flags().Changed("plan-args") {
 		cfg.Terraform.PlanArgs = planArgs
 	}
@@ -130,9 +130,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		cfg.Terraform.DangerThreshold = applyDangerThreshold
 		cfg.Plan.DangerThreshold = applyDangerThreshold
 	}
-	if cmd.Flags().Changed("output") {
-		// This is not stored in config, but used directly
-	}
+	// output flag is used directly, not stored in config
 
 	// Create workflow manager
 	workflowManager := workflow.NewWorkflowManager(cfg)
@@ -162,13 +160,14 @@ func runApply(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(os.Stderr, strataErr.FormatUserMessage())
 
 			// Set appropriate exit code based on error type
-			if strataErr.GetCode() == errors.ErrorCodeWorkflowCancelled {
+			switch {
+			case strataErr.GetCode() == errors.ErrorCodeWorkflowCancelled:
 				os.Exit(2) // User cancelled
-			} else if strataErr.IsUserError() {
+			case strataErr.IsUserError():
 				os.Exit(1) // User error
-			} else if strataErr.IsCritical() {
+			case strataErr.IsCritical():
 				os.Exit(3) // Critical system error
-			} else {
+			default:
 				os.Exit(1) // General error
 			}
 		} else {
@@ -187,42 +186,42 @@ func init() {
 	// Terraform path flag
 	applyCmd.Flags().StringVar(&terraformPath, "terraform-path", "terraform",
 		"Path to the Terraform binary")
-	viper.BindPFlag("terraform.path", applyCmd.Flags().Lookup("terraform-path"))
+	_ = viper.BindPFlag("terraform.path", applyCmd.Flags().Lookup("terraform-path"))
 
 	// Working directory flag
 	applyCmd.Flags().StringVar(&workingDir, "working-dir", ".",
 		"Working directory for Terraform commands")
-	viper.BindPFlag("terraform.working-dir", applyCmd.Flags().Lookup("working-dir"))
+	_ = viper.BindPFlag("terraform.working-dir", applyCmd.Flags().Lookup("working-dir"))
 
 	// Plan arguments flag
 	applyCmd.Flags().StringSliceVar(&planArgs, "plan-args", []string{},
 		"Additional arguments to pass to terraform plan")
-	viper.BindPFlag("terraform.plan-args", applyCmd.Flags().Lookup("plan-args"))
+	_ = viper.BindPFlag("terraform.plan-args", applyCmd.Flags().Lookup("plan-args"))
 
 	// Apply arguments flag
 	applyCmd.Flags().StringSliceVar(&applyArgs, "apply-args", []string{},
 		"Additional arguments to pass to terraform apply")
-	viper.BindPFlag("terraform.apply-args", applyCmd.Flags().Lookup("apply-args"))
+	_ = viper.BindPFlag("terraform.apply-args", applyCmd.Flags().Lookup("apply-args"))
 
 	// Non-interactive flag
 	applyCmd.Flags().BoolVar(&nonInteractive, "non-interactive", false,
 		"Run in non-interactive mode (auto-approve)")
-	viper.BindPFlag("terraform.non-interactive", applyCmd.Flags().Lookup("non-interactive"))
+	_ = viper.BindPFlag("terraform.non-interactive", applyCmd.Flags().Lookup("non-interactive"))
 
 	// Force flag
 	applyCmd.Flags().BoolVar(&force, "force", false,
 		"Force apply in non-interactive mode even with destructive changes")
-	viper.BindPFlag("terraform.force", applyCmd.Flags().Lookup("force"))
+	_ = viper.BindPFlag("terraform.force", applyCmd.Flags().Lookup("force"))
 
 	// Output format flag (inherited from plan summary)
 	applyCmd.Flags().StringVarP(&applyOutputFormat, "output", "o", "table",
 		"Output format for plan summary (table, json, html, markdown)")
-	viper.BindPFlag("output", applyCmd.Flags().Lookup("output"))
+	_ = viper.BindPFlag("output", applyCmd.Flags().Lookup("output"))
 
 	// Danger threshold flag (inherited from plan summary)
 	applyCmd.Flags().IntVar(&applyDangerThreshold, "danger-threshold", 3,
 		"Number of destructive changes to trigger danger warning")
-	viper.BindPFlag("plan.danger-threshold", applyCmd.Flags().Lookup("danger-threshold"))
+	_ = viper.BindPFlag("plan.danger-threshold", applyCmd.Flags().Lookup("danger-threshold"))
 }
 
 // loadConfiguration loads configuration from file and returns a Config struct
@@ -253,7 +252,7 @@ func loadConfiguration() (*config.Config, error) {
 				Code:       errors.ErrorCodeConfigurationInvalid,
 				Message:    "Error reading configuration file",
 				Underlying: err,
-				Context: map[string]interface{}{
+				Context: map[string]any{
 					"config_paths": []string{"./strata.yaml", "$HOME/strata.yaml"},
 				},
 				Suggestions: []string{
@@ -309,7 +308,7 @@ func validateConfiguration(cfg *config.Config) error {
 		return &errors.StrataError{
 			Code:    errors.ErrorCodeConfigurationInvalid,
 			Message: "Terraform path cannot be empty",
-			Context: map[string]interface{}{
+			Context: map[string]any{
 				"field": "terraform.path",
 			},
 			Suggestions: []string{
@@ -326,7 +325,7 @@ func validateConfiguration(cfg *config.Config) error {
 		return &errors.StrataError{
 			Code:    errors.ErrorCodeConfigurationInvalid,
 			Message: "Terraform danger threshold must be non-negative",
-			Context: map[string]interface{}{
+			Context: map[string]any{
 				"field": "terraform.danger-threshold",
 				"value": cfg.Terraform.DangerThreshold,
 			},
@@ -341,7 +340,7 @@ func validateConfiguration(cfg *config.Config) error {
 		return &errors.StrataError{
 			Code:    errors.ErrorCodeConfigurationInvalid,
 			Message: "Plan danger threshold must be non-negative",
-			Context: map[string]interface{}{
+			Context: map[string]any{
 				"field": "plan.danger-threshold",
 				"value": cfg.Plan.DangerThreshold,
 			},
@@ -360,7 +359,7 @@ func validateConfiguration(cfg *config.Config) error {
 				Code:       errors.ErrorCodeConfigurationInvalid,
 				Message:    "Invalid timeout format",
 				Underlying: err,
-				Context: map[string]interface{}{
+				Context: map[string]any{
 					"field": "terraform.timeout",
 					"value": cfg.Terraform.Timeout,
 				},
@@ -387,7 +386,7 @@ func validateConfiguration(cfg *config.Config) error {
 			return &errors.StrataError{
 				Code:    errors.ErrorCodeConfigurationInvalid,
 				Message: "Invalid statistics summary format",
-				Context: map[string]interface{}{
+				Context: map[string]any{
 					"field":         "plan.statistics-summary-format",
 					"value":         cfg.Plan.StatisticsSummaryFormat,
 					"valid_formats": validFormats,

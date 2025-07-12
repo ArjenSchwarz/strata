@@ -111,51 +111,6 @@ func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat s
 	return nil
 }
 
-// createResourceChangesData converts the resource changes into OutputHolder format for detailed view
-func (f *Formatter) createResourceChangesData(summary *PlanSummary) []format.OutputHolder {
-	var data []format.OutputHolder
-
-	// Add resource changes
-	for _, change := range summary.ResourceChanges {
-		warning := ""
-		if change.IsDestructive {
-			warning = "⚠️ DESTRUCTIVE"
-		}
-
-		data = append(data, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"Type":    "Resource Change",
-				"Key":     change.Address,
-				"Value":   string(change.ChangeType),
-				"Details": change.Type,
-				"Warning": warning,
-				"Icon":    getChangeIcon(change.ChangeType),
-			},
-		})
-	}
-
-	// Add output changes
-	for _, change := range summary.OutputChanges {
-		sensitive := ""
-		if change.Sensitive {
-			sensitive = "🔒 SENSITIVE"
-		}
-
-		data = append(data, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"Type":    "Output Change",
-				"Key":     change.Name,
-				"Value":   string(change.ChangeType),
-				"Details": sensitive,
-				"Warning": "",
-				"Icon":    getChangeIcon(change.ChangeType),
-			},
-		})
-	}
-
-	return data
-}
-
 // formatPlanInfo formats and outputs the plan information section using a horizontal layout
 func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) error {
 	// Validate inputs
@@ -237,16 +192,17 @@ func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputF
 	for _, change := range sensitiveChanges {
 		// Determine the display ID based on change type
 		displayID := change.PhysicalID
-		if change.ChangeType == ChangeTypeCreate {
+		switch change.ChangeType {
+		case ChangeTypeCreate:
 			displayID = "-"
-		} else if change.ChangeType == ChangeTypeDelete {
+		case ChangeTypeDelete:
 			displayID = change.PhysicalID
 		}
 
 		// Format replacement type for display
 		replacementDisplay := string(change.ReplacementType)
 		if change.ChangeType == ChangeTypeDelete {
-			replacementDisplay = "N/A"
+			replacementDisplay = notApplicableValue
 		}
 
 		// Format danger information
@@ -306,16 +262,17 @@ func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputForma
 	for _, change := range summary.ResourceChanges {
 		// Determine the display ID based on change type
 		displayID := change.PhysicalID
-		if change.ChangeType == ChangeTypeCreate {
+		switch change.ChangeType {
+		case ChangeTypeCreate:
 			displayID = "-"
-		} else if change.ChangeType == ChangeTypeDelete {
+		case ChangeTypeDelete:
 			displayID = change.PhysicalID
 		}
 
 		// Format replacement type for display
 		replacementDisplay := string(change.ReplacementType)
 		if change.ChangeType == ChangeTypeDelete {
-			replacementDisplay = "N/A"
+			replacementDisplay = notApplicableValue
 		}
 
 		// Format danger information
@@ -365,21 +322,5 @@ func getActionDisplay(changeType ChangeType) string {
 		return "Replace"
 	default:
 		return "No-op"
-	}
-}
-
-// getChangeIcon returns the appropriate icon for a change type
-func getChangeIcon(changeType ChangeType) string {
-	switch changeType {
-	case ChangeTypeCreate:
-		return "+"
-	case ChangeTypeUpdate:
-		return "~"
-	case ChangeTypeDelete:
-		return "-"
-	case ChangeTypeReplace:
-		return "±"
-	default:
-		return " "
 	}
 }

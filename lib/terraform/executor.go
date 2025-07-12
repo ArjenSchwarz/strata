@@ -1,3 +1,4 @@
+// Package terraform provides Terraform execution and integration utilities.
 package terraform
 
 import (

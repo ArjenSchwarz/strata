@@ -19,13 +19,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Package cmd provides command-line interface functionality for the Strata application.
 package cmd
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/ArjenSchwarz/strata/config"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -33,7 +34,6 @@ import (
 )
 
 var cfgFile string
-var settings = new(config.Config)
 
 // Version information - set via ldflags during build
 var (

@@ -1,3 +1,4 @@
+// Package plan provides Terraform plan analysis and processing functionality.
 package plan
 
 import (
@@ -5,6 +6,10 @@ import (
 
 	"github.com/ArjenSchwarz/strata/config"
 	tfjson "github.com/hashicorp/terraform-json"
+)
+
+const (
+	notApplicableValue = "N/A"
 )
 
 // Analyzer processes Terraform plan data and generates summaries
@@ -111,7 +116,7 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 	// Check if this is a replacement (delete + create)
 	if changeType == ChangeTypeReplace {
 		// Parse ReplacePaths field from Terraform plan
-		if change.Change.ReplacePaths != nil && len(change.Change.ReplacePaths) > 0 {
+		if len(change.Change.ReplacePaths) > 0 {
 			// Analyze the ReplacePaths to determine if replacement is conditional
 			// If any path indicates a computed/unknown value, it's conditional
 			for _, path := range change.Change.ReplacePaths {
@@ -131,11 +136,6 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 
 	// Delete operations are not replacements
 	return ReplacementNever
-}
-
-// isConditionalReplacement checks if a resource change is a conditional replacement
-func (a *Analyzer) isConditionalReplacement(change *tfjson.ResourceChange) bool {
-	return a.analyzeReplacementNecessity(change) == ReplacementConditional
 }
 
 // isConditionalReplacementPath analyzes a ReplacePaths element to determine if it's conditional
@@ -342,7 +342,7 @@ func (a *Analyzer) extractPhysicalID(change *tfjson.ResourceChange) string {
 func (a *Analyzer) extractPlannedID(change *tfjson.ResourceChange) string {
 	// For deleted resources, there's no planned ID
 	if change.Change.After == nil {
-		return "N/A"
+		return notApplicableValue
 	}
 
 	// Try to extract ID from the after state

@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Package cmd provides command-line interface functionality for the Strata application.
 package cmd
 
 import (
@@ -82,7 +84,7 @@ var (
 	statisticsSummaryFormat string
 )
 
-func runPlanSummary(cmd *cobra.Command, args []string) error {
+func runPlanSummary(_ *cobra.Command, args []string) error {
 	planFile := args[0]
 
 	// Create parser and load plan
@@ -153,30 +155,30 @@ func init() {
 	// Output format flag
 	planSummaryCmd.Flags().StringVarP(&outputFormat, "output", "o", "table",
 		"Output format (table, json, html, markdown)")
-	viper.BindPFlag("output", planSummaryCmd.Flags().Lookup("output"))
+	_ = viper.BindPFlag("output", planSummaryCmd.Flags().Lookup("output"))
 
 	// Danger threshold flag
 	planSummaryCmd.Flags().IntVar(&dangerThreshold, "danger-threshold", 3,
 		"Number of destructive changes to trigger danger warning")
-	viper.BindPFlag("plan.danger-threshold", planSummaryCmd.Flags().Lookup("danger-threshold"))
+	_ = viper.BindPFlag("plan.danger-threshold", planSummaryCmd.Flags().Lookup("danger-threshold"))
 
 	// Show details flag
 	planSummaryCmd.Flags().BoolVar(&showDetails, "details", false,
 		"Show detailed change information")
-	viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details"))
+	_ = viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details"))
 
 	// Highlight dangers flag
 	planSummaryCmd.Flags().BoolVar(&highlightDangers, "highlight-dangers", true,
 		"Highlight potentially destructive changes")
-	viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers"))
+	_ = viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers"))
 
 	// Show statistics summary flag
 	planSummaryCmd.Flags().BoolVar(&showStatisticsSummary, "show-statistics", true,
 		"Show statistics summary table")
-	viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics"))
+	_ = viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics"))
 
 	// Statistics summary format flag
 	planSummaryCmd.Flags().StringVar(&statisticsSummaryFormat, "stats-format", "horizontal",
 		"Statistics summary format (horizontal, vertical)")
-	viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format"))
+	_ = viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format"))
 }

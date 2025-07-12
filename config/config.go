@@ -1,3 +1,4 @@
+// Package config provides configuration management functionality for the Strata application.
 package config
 
 import (
@@ -7,6 +8,10 @@ import (
 
 	format "github.com/ArjenSchwarz/go-output"
 	"github.com/spf13/viper"
+)
+
+const (
+	outputFormatMarkdown = "markdown"
 )
 
 // SensitiveResource defines a resource type that should be flagged as sensitive
@@ -85,6 +90,7 @@ type BackendConfig struct {
 	DisableLocking bool `mapstructure:"disable-locking"`
 }
 
+// GetLCString returns the lowercase string value for the given setting.
 func (config *Config) GetLCString(setting string) string {
 	if viper.IsSet(setting) {
 		return strings.ToLower(viper.GetString(setting))
@@ -92,6 +98,7 @@ func (config *Config) GetLCString(setting string) string {
 	return ""
 }
 
+// GetString returns the string value for the given setting.
 func (config *Config) GetString(setting string) string {
 	if viper.IsSet(setting) {
 		return viper.GetString(setting)
@@ -99,6 +106,7 @@ func (config *Config) GetString(setting string) string {
 	return ""
 }
 
+// GetStringSlice returns the string slice value for the given setting.
 func (config *Config) GetStringSlice(setting string) []string {
 	if viper.IsSet(setting) {
 		return viper.GetStringSlice(setting)
@@ -106,10 +114,12 @@ func (config *Config) GetStringSlice(setting string) []string {
 	return []string{}
 }
 
+// GetBool returns the boolean value for the given setting.
 func (config *Config) GetBool(setting string) bool {
 	return viper.GetBool(setting)
 }
 
+// GetInt returns the integer value for the given setting.
 func (config *Config) GetInt(setting string) int {
 	if viper.IsSet(setting) {
 		return viper.GetInt(setting)
@@ -117,11 +127,12 @@ func (config *Config) GetInt(setting string) int {
 	return 0
 }
 
+// GetSeparator returns the appropriate separator string based on the output format.
 func (config *Config) GetSeparator() string {
 	switch config.GetLCString("output") {
 	case "table":
 		return "\r\n"
-	case "markdown":
+	case outputFormatMarkdown:
 		return "\n"
 	case "dot":
 		return ","
@@ -130,6 +141,7 @@ func (config *Config) GetSeparator() string {
 	}
 }
 
+// GetFieldOrEmptyValue returns the value if not empty, otherwise returns an appropriate empty value based on output format.
 func (config *Config) GetFieldOrEmptyValue(value string) string {
 	if value != "" {
 		return value
@@ -137,7 +149,7 @@ func (config *Config) GetFieldOrEmptyValue(value string) string {
 	switch config.GetLCString("output") {
 	case "json":
 		return ""
-	case "markdown":
+	case outputFormatMarkdown:
 		return "-"
 	default:
 		return "-"
@@ -154,6 +166,7 @@ func (config *Config) GetTimezoneLocation() *time.Location {
 	return location
 }
 
+// NewOutputSettings creates and configures a new OutputSettings instance based on the current configuration.
 func (config *Config) NewOutputSettings() *format.OutputSettings {
 	settings := format.NewOutputSettings()
 	settings.UseEmoji = true
@@ -166,7 +179,7 @@ func (config *Config) NewOutputSettings() *format.OutputSettings {
 	settings.TableMaxColumnWidth = config.GetInt("table.max-column-width")
 
 	// Configure markdown settings if needed
-	if config.GetLCString("output") == "markdown" {
+	if config.GetLCString("output") == outputFormatMarkdown {
 		// Ensure markdown tables are properly formatted
 		settings.UseColors = false
 		settings.UseEmoji = true

@@ -9,62 +9,91 @@ import (
 type ErrorCode string
 
 const (
-	// Installation and setup errors
-	ErrorCodeTerraformNotFound      ErrorCode = "TERRAFORM_NOT_FOUND"
+	// ErrorCodeTerraformNotFound indicates that the Terraform binary was not found in the system PATH.
+	ErrorCodeTerraformNotFound ErrorCode = "TERRAFORM_NOT_FOUND"
+	// ErrorCodeTerraformNotExecutable indicates that the Terraform binary exists but is not executable.
 	ErrorCodeTerraformNotExecutable ErrorCode = "TERRAFORM_NOT_EXECUTABLE"
-	ErrorCodeInvalidVersion         ErrorCode = "INVALID_VERSION"
-	ErrorCodeWorkingDirNotFound     ErrorCode = "WORKING_DIR_NOT_FOUND"
-	ErrorCodeConfigurationInvalid   ErrorCode = "CONFIGURATION_INVALID"
+	// ErrorCodeInvalidVersion indicates that an invalid version was specified or detected.
+	ErrorCodeInvalidVersion ErrorCode = "INVALID_VERSION"
+	// ErrorCodeWorkingDirNotFound indicates that the specified working directory was not found.
+	ErrorCodeWorkingDirNotFound ErrorCode = "WORKING_DIR_NOT_FOUND"
+	// ErrorCodeConfigurationInvalid indicates that the configuration is invalid or malformed.
+	ErrorCodeConfigurationInvalid ErrorCode = "CONFIGURATION_INVALID"
 
-	// Plan execution errors
-	ErrorCodePlanFailed         ErrorCode = "PLAN_FAILED"
+	// ErrorCodePlanFailed indicates that the Terraform plan command failed to execute successfully.
+	ErrorCodePlanFailed ErrorCode = "PLAN_FAILED"
+	// ErrorCodePlanFileNotCreated indicates that the plan file was not created successfully.
 	ErrorCodePlanFileNotCreated ErrorCode = "PLAN_FILE_NOT_CREATED"
-	ErrorCodePlanFileCorrupted  ErrorCode = "PLAN_FILE_CORRUPTED"
-	ErrorCodePlanTimeout        ErrorCode = "PLAN_TIMEOUT"
-	ErrorCodePlanInterrupted    ErrorCode = "PLAN_INTERRUPTED"
-	ErrorCodeInvalidPlanArgs    ErrorCode = "INVALID_PLAN_ARGS"
+	// ErrorCodePlanFileCorrupted indicates that the plan file is corrupted or unreadable.
+	ErrorCodePlanFileCorrupted ErrorCode = "PLAN_FILE_CORRUPTED"
+	// ErrorCodePlanTimeout indicates that the Terraform plan command timed out.
+	ErrorCodePlanTimeout ErrorCode = "PLAN_TIMEOUT"
+	// ErrorCodePlanInterrupted indicates that the Terraform plan command was interrupted.
+	ErrorCodePlanInterrupted ErrorCode = "PLAN_INTERRUPTED"
+	// ErrorCodeInvalidPlanArgs indicates that invalid arguments were provided to the plan command.
+	ErrorCodeInvalidPlanArgs ErrorCode = "INVALID_PLAN_ARGS"
 
-	// Apply execution errors
-	ErrorCodeApplyFailed         ErrorCode = "APPLY_FAILED"
-	ErrorCodeApplyTimeout        ErrorCode = "APPLY_TIMEOUT"
-	ErrorCodeApplyInterrupted    ErrorCode = "APPLY_INTERRUPTED"
-	ErrorCodeInvalidApplyArgs    ErrorCode = "INVALID_APPLY_ARGS"
+	// ErrorCodeApplyFailed indicates that the Terraform apply command failed to execute successfully.
+	ErrorCodeApplyFailed ErrorCode = "APPLY_FAILED"
+	// ErrorCodeApplyTimeout indicates that the Terraform apply command timed out.
+	ErrorCodeApplyTimeout ErrorCode = "APPLY_TIMEOUT"
+	// ErrorCodeApplyInterrupted indicates that the Terraform apply command was interrupted.
+	ErrorCodeApplyInterrupted ErrorCode = "APPLY_INTERRUPTED"
+	// ErrorCodeInvalidApplyArgs indicates that invalid arguments were provided to the apply command.
+	ErrorCodeInvalidApplyArgs ErrorCode = "INVALID_APPLY_ARGS"
+	// ErrorCodeApplyRollbackFailed indicates that the rollback after a failed apply operation failed.
 	ErrorCodeApplyRollbackFailed ErrorCode = "APPLY_ROLLBACK_FAILED"
 
-	// State management errors
-	ErrorCodeStateLockTimeout     ErrorCode = "STATE_LOCK_TIMEOUT"
-	ErrorCodeStateLockConflict    ErrorCode = "STATE_LOCK_CONFLICT"
-	ErrorCodeStateBackendConfig   ErrorCode = "STATE_BACKEND_CONFIG"
-	ErrorCodeStatePermissions     ErrorCode = "STATE_PERMISSIONS"
-	ErrorCodeStateNetworkTimeout  ErrorCode = "STATE_NETWORK_TIMEOUT"
-	ErrorCodeStateCorrupted       ErrorCode = "STATE_CORRUPTED"
+	// ErrorCodeStateLockTimeout indicates that a timeout occurred while trying to acquire a state lock.
+	ErrorCodeStateLockTimeout ErrorCode = "STATE_LOCK_TIMEOUT"
+	// ErrorCodeStateLockConflict indicates that there is a conflict with the state lock.
+	ErrorCodeStateLockConflict ErrorCode = "STATE_LOCK_CONFLICT"
+	// ErrorCodeStateBackendConfig indicates that the state backend configuration is invalid.
+	ErrorCodeStateBackendConfig ErrorCode = "STATE_BACKEND_CONFIG"
+	// ErrorCodeStatePermissions indicates insufficient permissions to access the state.
+	ErrorCodeStatePermissions ErrorCode = "STATE_PERMISSIONS"
+	// ErrorCodeStateNetworkTimeout indicates a network timeout while accessing remote state.
+	ErrorCodeStateNetworkTimeout ErrorCode = "STATE_NETWORK_TIMEOUT"
+	// ErrorCodeStateCorrupted indicates that the state file is corrupted.
+	ErrorCodeStateCorrupted ErrorCode = "STATE_CORRUPTED"
+	// ErrorCodeStateVersionMismatch indicates a version mismatch in the state file.
 	ErrorCodeStateVersionMismatch ErrorCode = "STATE_VERSION_MISMATCH"
 
-	// Workflow errors
-	ErrorCodeWorkflowCancelled    ErrorCode = "WORKFLOW_CANCELLED"
-	ErrorCodeUserInputFailed      ErrorCode = "USER_INPUT_FAILED"
-	ErrorCodeInvalidUserInput     ErrorCode = "INVALID_USER_INPUT"
+	// ErrorCodeWorkflowCancelled indicates that the workflow was cancelled by the user.
+	ErrorCodeWorkflowCancelled ErrorCode = "WORKFLOW_CANCELLED"
+	// ErrorCodeUserInputFailed indicates that user input collection failed.
+	ErrorCodeUserInputFailed ErrorCode = "USER_INPUT_FAILED"
+	// ErrorCodeInvalidUserInput indicates that the user provided invalid input.
+	ErrorCodeInvalidUserInput ErrorCode = "INVALID_USER_INPUT"
+	// ErrorCodeNonInteractiveForced indicates that non-interactive mode was forced when interaction was required.
 	ErrorCodeNonInteractiveForced ErrorCode = "NON_INTERACTIVE_FORCED"
-	ErrorCodeDestructiveChanges   ErrorCode = "DESTRUCTIVE_CHANGES"
+	// ErrorCodeDestructiveChanges indicates that destructive changes were detected.
+	ErrorCodeDestructiveChanges ErrorCode = "DESTRUCTIVE_CHANGES"
 
-	// Analysis errors
+	// ErrorCodePlanAnalysisFailed indicates that the analysis of the Terraform plan failed.
 	ErrorCodePlanAnalysisFailed ErrorCode = "PLAN_ANALYSIS_FAILED"
-	ErrorCodeInvalidPlanFormat  ErrorCode = "INVALID_PLAN_FORMAT"
-	ErrorCodeParsingFailed      ErrorCode = "PARSING_FAILED"
+	// ErrorCodeInvalidPlanFormat indicates that the plan file format is invalid or unsupported.
+	ErrorCodeInvalidPlanFormat ErrorCode = "INVALID_PLAN_FORMAT"
+	// ErrorCodeParsingFailed indicates that parsing of the plan file failed.
+	ErrorCodeParsingFailed ErrorCode = "PARSING_FAILED"
 
-	// System errors
+	// ErrorCodeInsufficientPermissions indicates that the operation failed due to insufficient permissions.
 	ErrorCodeInsufficientPermissions ErrorCode = "INSUFFICIENT_PERMISSIONS"
-	ErrorCodeDiskSpaceFull           ErrorCode = "DISK_SPACE_FULL"
-	ErrorCodeNetworkUnavailable      ErrorCode = "NETWORK_UNAVAILABLE"
+	// ErrorCodeDiskSpaceFull indicates that the disk is full and the operation cannot continue.
+	ErrorCodeDiskSpaceFull ErrorCode = "DISK_SPACE_FULL"
+	// ErrorCodeNetworkUnavailable indicates that the network is unavailable.
+	ErrorCodeNetworkUnavailable ErrorCode = "NETWORK_UNAVAILABLE"
+	// ErrorCodeSystemResourceExhausted indicates that system resources are exhausted.
 	ErrorCodeSystemResourceExhausted ErrorCode = "SYSTEM_RESOURCE_EXHAUSTED"
-	ErrorCodeTempFileCleanupFailed   ErrorCode = "TEMP_FILE_CLEANUP_FAILED"
+	// ErrorCodeTempFileCleanupFailed indicates that cleanup of temporary files failed.
+	ErrorCodeTempFileCleanupFailed ErrorCode = "TEMP_FILE_CLEANUP_FAILED"
 )
 
 // StrataError is the base error type for all Strata errors
 type StrataError struct {
 	Code           ErrorCode
 	Message        string
-	Context        map[string]interface{}
+	Context        map[string]any
 	Underlying     error
 	Suggestions    []string
 	RecoveryAction string
@@ -89,9 +118,9 @@ func (e *StrataError) GetCode() ErrorCode {
 }
 
 // GetContext returns the error context
-func (e *StrataError) GetContext() map[string]interface{} {
+func (e *StrataError) GetContext() map[string]any {
 	if e.Context == nil {
-		return make(map[string]interface{})
+		return make(map[string]any)
 	}
 	return e.Context
 }
@@ -107,9 +136,9 @@ func (e *StrataError) GetRecoveryAction() string {
 }
 
 // WithContext adds context information to the error
-func (e *StrataError) WithContext(key string, value interface{}) *StrataError {
+func (e *StrataError) WithContext(key string, value any) *StrataError {
 	if e.Context == nil {
-		e.Context = make(map[string]interface{})
+		e.Context = make(map[string]any)
 	}
 	e.Context[key] = value
 	return e

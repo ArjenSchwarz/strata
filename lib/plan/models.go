@@ -10,20 +10,28 @@ import (
 type ChangeType string
 
 const (
-	ChangeTypeCreate  ChangeType = "create"
-	ChangeTypeUpdate  ChangeType = "update"
-	ChangeTypeDelete  ChangeType = "delete"
+	// ChangeTypeCreate represents a resource creation operation.
+	ChangeTypeCreate ChangeType = "create"
+	// ChangeTypeUpdate represents a resource update operation.
+	ChangeTypeUpdate ChangeType = "update"
+	// ChangeTypeDelete represents a resource deletion operation.
+	ChangeTypeDelete ChangeType = "delete"
+	// ChangeTypeReplace represents a resource replacement operation.
 	ChangeTypeReplace ChangeType = "replace"
-	ChangeTypeNoOp    ChangeType = "no-op"
+	// ChangeTypeNoOp represents no operation on a resource.
+	ChangeTypeNoOp ChangeType = "no-op"
 )
 
 // ReplacementType represents the necessity of replacement for a resource
 type ReplacementType string
 
 const (
-	ReplacementNever       ReplacementType = "Never"       // Resource will not be replaced
+	// ReplacementNever indicates that the resource will not be replaced.
+	ReplacementNever ReplacementType = "Never" // Resource will not be replaced
+	// ReplacementConditional indicates that the resource may be replaced depending on conditions.
 	ReplacementConditional ReplacementType = "Conditional" // Resource may be replaced depending on conditions
-	ReplacementAlways      ReplacementType = "Always"      // Resource will definitely be replaced
+	// ReplacementAlways indicates that the resource will definitely be replaced.
+	ReplacementAlways ReplacementType = "Always" // Resource will definitely be replaced
 )
 
 // ResourceChange represents a change to a Terraform resource

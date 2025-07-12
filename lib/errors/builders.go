@@ -1,10 +1,10 @@
+// Package errors provides error handling utilities and custom error types for the Strata application.
 package errors
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // NewTerraformNotFoundError creates an error for when Terraform is not found
@@ -330,29 +330,4 @@ func truncateOutput(output string, maxLength int) string {
 		return output
 	}
 	return output[:maxLength] + "... (truncated)"
-}
-
-// extractErrorFromOutput attempts to extract meaningful error information from command output
-func extractErrorFromOutput(output string) string {
-	lines := strings.Split(output, "\n")
-	var errorLines []string
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.Contains(strings.ToLower(line), "error") ||
-			strings.Contains(strings.ToLower(line), "failed") ||
-			strings.Contains(strings.ToLower(line), "invalid") {
-			errorLines = append(errorLines, line)
-		}
-	}
-
-	if len(errorLines) > 0 {
-		return strings.Join(errorLines, "\n")
-	}
-
-	// If no specific error lines found, return first few lines
-	if len(lines) > 5 {
-		return strings.Join(lines[:5], "\n") + "..."
-	}
-	return output
 }

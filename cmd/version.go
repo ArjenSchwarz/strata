@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Package cmd provides command-line interface functionality for the Strata application.
 package cmd
 
 import (
@@ -27,6 +29,10 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+)
+
+const (
+	unknownValue = "unknown"
 )
 
 // VersionInfo holds version information for display
@@ -57,16 +63,16 @@ func getVersionString() string {
 
 // getBuildTimeString returns the build time string, omitting if unknown
 func getBuildTimeString() string {
-	if BuildTime == "" || BuildTime == "unknown" {
-		return "unknown"
+	if BuildTime == "" || BuildTime == unknownValue {
+		return unknownValue
 	}
 	return BuildTime
 }
 
 // getGitCommitString returns the git commit string, omitting if unknown
 func getGitCommitString() string {
-	if GitCommit == "" || GitCommit == "unknown" {
-		return "unknown"
+	if GitCommit == "" || GitCommit == unknownValue {
+		return unknownValue
 	}
 	return GitCommit
 }
@@ -82,26 +88,26 @@ var versionCmd = &cobra.Command{
 This command shows the current version of Strata, along with build information
 when available. Use this to verify which version you're running or for
 troubleshooting purposes.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		versionInfo := GetVersionInfo()
 
 		switch versionOutputFormat {
 		case "json":
 			jsonData, err := json.MarshalIndent(versionInfo, "", "  ")
 			if err != nil {
-				fmt.Fprintf(cmd.OutOrStderr(), "Error marshaling version info to JSON: %v\n", err)
+				_, _ = fmt.Fprintf(cmd.OutOrStderr(), "Error marshaling version info to JSON: %v\n", err)
 				return
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(jsonData))
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(jsonData))
 		default:
-			fmt.Fprintf(cmd.OutOrStdout(), "strata version %s\n", versionInfo.Version)
-			if versionInfo.BuildTime != "unknown" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Built: %s\n", versionInfo.BuildTime)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "strata version %s\n", versionInfo.Version)
+			if versionInfo.BuildTime != unknownValue {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Built: %s\n", versionInfo.BuildTime)
 			}
-			if versionInfo.GitCommit != "unknown" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Commit: %s\n", versionInfo.GitCommit)
+			if versionInfo.GitCommit != unknownValue {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Commit: %s\n", versionInfo.GitCommit)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Go: %s\n", versionInfo.GoVersion)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Go: %s\n", versionInfo.GoVersion)
 		}
 	},
 }

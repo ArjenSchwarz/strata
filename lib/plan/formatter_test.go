@@ -505,28 +505,6 @@ func TestFormatter_formatSensitiveResourceChanges(t *testing.T) {
 	}
 }
 
-func TestGetChangeIcon(t *testing.T) {
-	tests := []struct {
-		changeType ChangeType
-		expected   string
-	}{
-		{ChangeTypeCreate, "+"},
-		{ChangeTypeUpdate, "~"},
-		{ChangeTypeDelete, "-"},
-		{ChangeTypeReplace, "±"},
-		{ChangeTypeNoOp, " "},
-	}
-
-	for _, tt := range tests {
-		t.Run(string(tt.changeType), func(t *testing.T) {
-			result := getChangeIcon(tt.changeType)
-			if result != tt.expected {
-				t.Errorf("getChangeIcon(%v) = %v, want %v", tt.changeType, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestNewFormatter(t *testing.T) {
 	cfg := &config.Config{}
 	formatter := NewFormatter(cfg)
