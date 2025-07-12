@@ -41,6 +41,13 @@ func NewWorkflowManager(config *config.Config) WorkflowManager {
 func (w *DefaultWorkflowManager) Run(ctx context.Context, options *WorkflowOptions) error {
 	startTime := time.Now()
 
+	// Set up cleanup tracking for temporary resources
+	var tempResources []string
+	defer func() {
+		// Clean up any temporary resources on exit
+		w.cleanupTempResources(tempResources)
+	}()
+
 	// Detect CI/CD environment and adjust behavior
 	cicdEnv := w.detectCICDEnvironment()
 	if cicdEnv != "" {
@@ -87,14 +94,24 @@ func (w *DefaultWorkflowManager) Run(ctx context.Context, options *WorkflowOptio
 	fmt.Println("Executing Terraform plan...")
 	planFile, err := w.executor.Plan(ctx, options.PlanArgs)
 	if err != nil {
-		// If it's already a StrataError, return it directly
-		if strataErr, ok := err.(*errors.StrataError); ok {
-			return strataErr
+		// Add plan file to cleanup list if it was created but plan failed
+		if planFile != "" {
+			tempResources = append(tempResources, planFile)
 		}
-		// Otherwise wrap it
-		return errors.NewPlanFailedError("terraform plan", 1, "", err).
-			WithContext("args", options.PlanArgs)
+
+		// Enhance error with recovery suggestions
+		recoveredErr := w.recoverFromError(err, "terraform plan execution")
+
+		// Provide user guidance for interactive sessions
+		if !options.NonInteractive {
+			w.provideUserGuidance(recoveredErr)
+		}
+
+		return recoveredErr
 	}
+
+	// Add plan file to cleanup list for later cleanup
+	tempResources = append(tempResources, planFile)
 
 	// Step 3: Analyze the plan using existing Strata functionality
 	fmt.Println("Analyzing plan...")
@@ -181,19 +198,21 @@ func (w *DefaultWorkflowManager) Run(ctx context.Context, options *WorkflowOptio
 	case ActionApply:
 		fmt.Println("Applying changes...")
 		if err := w.executor.Apply(ctx, planFile, options.ApplyArgs); err != nil {
+			// Enhance error with recovery suggestions
+			recoveredErr := w.recoverFromError(err, "terraform apply execution")
+
 			// In CI/CD environments, provide detailed error information
 			if cicdEnv != "" {
 				fmt.Printf("❌ Apply failed in %s environment\n", cicdEnv)
-				fmt.Printf("Error details: %v\n", err)
+				fmt.Printf("Error details: %v\n", recoveredErr)
 			}
-			// If it's already a StrataError, return it directly
-			if strataErr, ok := err.(*errors.StrataError); ok {
-				return strataErr
+
+			// Provide user guidance for interactive sessions
+			if !options.NonInteractive {
+				w.provideUserGuidance(recoveredErr)
 			}
-			// Otherwise wrap it
-			return errors.NewApplyFailedError("terraform apply", 1, "", err).
-				WithContext("plan_file", planFile).
-				WithContext("cicd_env", cicdEnv)
+
+			return recoveredErr
 		}
 		fmt.Printf("✅ Workflow completed successfully in %v\n", time.Since(startTime))
 
@@ -672,4 +691,207 @@ func (w *DefaultWorkflowManager) generateMachineReadableOutput(summary *plan.Pla
 	fmt.Printf("DESTRUCTIVE_CHANGES=%d\n", w.countDestructiveChanges(summary))
 	fmt.Printf("HIGH_RISK_CHANGES=%d\n", summary.Statistics.HighRisk)
 	fmt.Printf("CICD_ENV=%s\n", cicdEnv)
+}
+
+// Error recovery and cleanup methods
+
+// cleanupTempResources cleans up temporary resources created during workflow execution
+func (w *DefaultWorkflowManager) cleanupTempResources(tempResources []string) {
+	if len(tempResources) == 0 {
+		return
+	}
+
+	fmt.Printf("🧹 Cleaning up %d temporary resources...\n", len(tempResources))
+
+	for _, resource := range tempResources {
+		if err := w.cleanupSingleResource(resource); err != nil {
+			fmt.Printf("Warning: Failed to cleanup resource %s: %v\n", resource, err)
+		}
+	}
+}
+
+// cleanupSingleResource cleans up a single temporary resource
+func (w *DefaultWorkflowManager) cleanupSingleResource(resource string) error {
+	// Check if it's a file path
+	if strings.HasPrefix(resource, "/") || strings.Contains(resource, ".") {
+		// Treat as file path
+		if _, err := os.Stat(resource); err == nil {
+			if err := os.Remove(resource); err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", resource, err)
+			}
+			fmt.Printf("  ✅ Removed temporary file: %s\n", resource)
+		}
+		return nil
+	}
+
+	// Add other resource types as needed (directories, etc.)
+	return nil
+}
+
+// recoverFromError attempts to recover from common errors and provide user guidance
+func (w *DefaultWorkflowManager) recoverFromError(err error, context string) error {
+	if err == nil {
+		return nil
+	}
+
+	// If it's already a StrataError, enhance it with recovery context
+	if strataErr, ok := err.(*errors.StrataError); ok {
+		return w.enhanceStrataError(strataErr, context)
+	}
+
+	// Convert generic errors to StrataErrors with recovery suggestions
+	return w.convertToRecoverableError(err, context)
+}
+
+// enhanceStrataError enhances existing StrataErrors with additional recovery context
+func (w *DefaultWorkflowManager) enhanceStrataError(strataErr *errors.StrataError, context string) *errors.StrataError {
+	// Add context about where the error occurred
+	strataErr = strataErr.WithContext("workflow_context", context)
+
+	// Add workflow-specific recovery suggestions based on error type
+	switch strataErr.GetCode() {
+	case errors.ErrorCodeTerraformNotFound:
+		strataErr = strataErr.WithSuggestion("Run 'which terraform' to check if Terraform is installed")
+		strataErr = strataErr.WithSuggestion("Consider using a Terraform version manager like tfenv")
+
+	case errors.ErrorCodePlanFailed:
+		strataErr = strataErr.WithSuggestion("Try running 'terraform validate' first to check configuration")
+		strataErr = strataErr.WithSuggestion("Check if 'terraform init' needs to be run")
+
+	case errors.ErrorCodeApplyFailed:
+		strataErr = strataErr.WithSuggestion("Review the plan output to understand what was being applied")
+		strataErr = strataErr.WithSuggestion("Check if partial apply occurred - some resources may have been created")
+		strataErr = strataErr.WithSuggestion("Consider running 'terraform refresh' to update state")
+
+	case errors.ErrorCodeStateLockTimeout, errors.ErrorCodeStateLockConflict:
+		strataErr = strataErr.WithSuggestion("Check if other team members are running Terraform")
+		strataErr = strataErr.WithSuggestion("Wait a few minutes and try again")
+		strataErr = strataErr.WithSuggestion("Use 'terraform force-unlock' only if you're certain it's safe")
+
+	case errors.ErrorCodeUserInputFailed:
+		strataErr = strataErr.WithSuggestion("Use --non-interactive flag for automated environments")
+		strataErr = strataErr.WithSuggestion("Ensure you're running in a proper terminal environment")
+	}
+
+	return strataErr
+}
+
+// convertToRecoverableError converts generic errors to StrataErrors with recovery suggestions
+func (w *DefaultWorkflowManager) convertToRecoverableError(err error, context string) *errors.StrataError {
+	errStr := strings.ToLower(err.Error())
+
+	// Analyze error message for common patterns
+	if strings.Contains(errStr, "permission denied") {
+		return &errors.StrataError{
+			Code:       errors.ErrorCodeInsufficientPermissions,
+			Message:    fmt.Sprintf("Permission error in %s", context),
+			Underlying: err,
+			Context: map[string]interface{}{
+				"workflow_context": context,
+			},
+			Suggestions: []string{
+				"Check file and directory permissions",
+				"Ensure you have the necessary access rights",
+				"Try running with appropriate user permissions",
+			},
+			RecoveryAction: "Fix permissions and retry the operation",
+		}
+	}
+
+	if strings.Contains(errStr, "no space") || strings.Contains(errStr, "disk full") {
+		return &errors.StrataError{
+			Code:       errors.ErrorCodeDiskSpaceFull,
+			Message:    fmt.Sprintf("Disk space error in %s", context),
+			Underlying: err,
+			Context: map[string]interface{}{
+				"workflow_context": context,
+			},
+			Suggestions: []string{
+				"Free up disk space in the working directory",
+				"Check disk usage with 'df -h'",
+				"Consider using a different directory with more space",
+			},
+			RecoveryAction: "Free up disk space and retry",
+		}
+	}
+
+	if strings.Contains(errStr, "network") || strings.Contains(errStr, "connection") {
+		return &errors.StrataError{
+			Code:       errors.ErrorCodeNetworkUnavailable,
+			Message:    fmt.Sprintf("Network error in %s", context),
+			Underlying: err,
+			Context: map[string]interface{}{
+				"workflow_context": context,
+			},
+			Suggestions: []string{
+				"Check internet connectivity",
+				"Verify DNS resolution",
+				"Check firewall and proxy settings",
+				"Try again after a few minutes",
+			},
+			RecoveryAction: "Fix network connectivity and retry",
+		}
+	}
+
+	if strings.Contains(errStr, "timeout") {
+		return &errors.StrataError{
+			Code:       errors.ErrorCodePlanTimeout,
+			Message:    fmt.Sprintf("Timeout error in %s", context),
+			Underlying: err,
+			Context: map[string]interface{}{
+				"workflow_context": context,
+			},
+			Suggestions: []string{
+				"Increase timeout using --timeout flag",
+				"Check for network or service issues",
+				"Consider breaking down the operation into smaller parts",
+			},
+			RecoveryAction: "Increase timeout or check for underlying issues",
+		}
+	}
+
+	// Generic error with basic recovery suggestions
+	return &errors.StrataError{
+		Code:       errors.ErrorCodeSystemResourceExhausted,
+		Message:    fmt.Sprintf("Error in %s: %s", context, err.Error()),
+		Underlying: err,
+		Context: map[string]interface{}{
+			"workflow_context": context,
+		},
+		Suggestions: []string{
+			"Check system resources and stability",
+			"Try the operation again",
+			"Review the error details for specific issues",
+		},
+		RecoveryAction: "Address the underlying issue and retry",
+	}
+}
+
+// provideUserGuidance provides interactive guidance to help users recover from errors
+func (w *DefaultWorkflowManager) provideUserGuidance(err error) {
+	if strataErr, ok := err.(*errors.StrataError); ok {
+		fmt.Println("\n" + strings.Repeat("=", 60))
+		fmt.Println("🔧 ERROR RECOVERY GUIDANCE")
+		fmt.Println(strings.Repeat("=", 60))
+
+		fmt.Printf("Error: %s\n", strataErr.Message)
+
+		if len(strataErr.GetSuggestions()) > 0 {
+			fmt.Println("\n💡 Suggested actions:")
+			for i, suggestion := range strataErr.GetSuggestions() {
+				fmt.Printf("  %d. %s\n", i+1, suggestion)
+			}
+		}
+
+		if strataErr.GetRecoveryAction() != "" {
+			fmt.Printf("\n🔧 Recovery Action: %s\n", strataErr.GetRecoveryAction())
+		}
+
+		// Provide context-specific guidance
+		if context, exists := strataErr.GetContext()["workflow_context"]; exists {
+			fmt.Printf("\n📍 Context: Error occurred during %s\n", context)
+		}
+
+		fmt.Println(strings.Repeat("=", 60))
+	}
 }

@@ -57,6 +57,7 @@ const (
 	ErrorCodeDiskSpaceFull           ErrorCode = "DISK_SPACE_FULL"
 	ErrorCodeNetworkUnavailable      ErrorCode = "NETWORK_UNAVAILABLE"
 	ErrorCodeSystemResourceExhausted ErrorCode = "SYSTEM_RESOURCE_EXHAUSTED"
+	ErrorCodeTempFileCleanupFailed   ErrorCode = "TEMP_FILE_CLEANUP_FAILED"
 )
 
 // StrataError is the base error type for all Strata errors
