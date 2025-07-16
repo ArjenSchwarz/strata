@@ -267,6 +267,17 @@ Strata is available as a GitHub Action that can be easily integrated into your C
     comment-header: "🏗️ Infrastructure Changes"
 ```
 
+### Required Permissions
+
+**IMPORTANT:** For the GitHub Action to post comments on pull requests, you must configure the proper permissions in your workflow:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write  # Required for commenting on PRs
+  issues: write         # Required for issue comments (PRs are issues)
+```
+
 ### Complete Workflow Example
 
 ```yaml
@@ -275,9 +286,11 @@ on:
   pull_request:
     paths: ['**.tf', '**.tfvars']
 
+# REQUIRED: These permissions are needed for PR comments
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   plan-analysis:
@@ -297,6 +310,7 @@ jobs:
       with:
         plan-file: terraform.tfplan
         show-details: true
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Action Inputs
@@ -332,7 +346,19 @@ jobs:
 - **Danger Detection**: Highlights potentially risky changes based on configurable thresholds
 - **Caching**: Automatically caches Strata binaries for faster execution
 - **Error Handling**: Graceful error handling with clear messaging
-- **Permissions**: Only requires `contents: read` and `pull-requests: write` permissions
+
+### GitHub Token Requirements
+
+For the action to post comments on pull requests, your workflow must include the following permissions:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write  # Required for commenting on PRs
+  issues: write         # Required for issue comments (PRs are issues)
+```
+
+**Note:** The action uses the built-in `GITHUB_TOKEN` which is automatically provided by GitHub Actions. No additional token setup is required - just ensure the proper permissions are configured in your workflow.
 
 ## Installation
 

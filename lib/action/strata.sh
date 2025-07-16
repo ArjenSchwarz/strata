@@ -386,9 +386,10 @@ run_strata_dual_output() {
     return $?
   fi
   
-  local cmd="$TEMP_DIR/$BINARY_NAME plan summary"
+  # Start building command with binary name
+  local cmd="$TEMP_DIR/$BINARY_NAME"
   
-  # Add optional arguments
+  # Add optional global config argument
   if [ -n "$INPUT_CONFIG_FILE" ]; then
     local config_file="$INPUT_CONFIG_FILE"
     if [[ "$config_file" != /* ]]; then
@@ -397,23 +398,27 @@ run_strata_dual_output() {
     cmd="$cmd --config $config_file"
   fi
   
+  # Check if dual output is supported by testing the --file flag
+  if "$TEMP_DIR/$BINARY_NAME" --help 2>&1 | grep -q -- "--file"; then
+    log "Dual output supported" "Using --file flag for markdown output"
+    # Add global file output flags
+    cmd="$cmd --file $temp_markdown_file --file-format markdown"
+  else
+    log "Dual output not supported" "Falling back to single output mode"
+  fi
+  
+  # Add the subcommand
+  cmd="$cmd plan summary"
+  
+  # Add subcommand-specific arguments
+  cmd="$cmd --output $stdout_format"
+  
   if [ -n "$INPUT_DANGER_THRESHOLD" ]; then
     cmd="$cmd --danger-threshold $INPUT_DANGER_THRESHOLD"
   fi
   
   if [ "$show_details" = "true" ]; then
     cmd="$cmd --details"
-  fi
-  
-  # Try dual output first, fall back to single output if not supported
-  cmd="$cmd --output $stdout_format"
-  
-  # Check if dual output is supported by testing the --file flag
-  if "$TEMP_DIR/$BINARY_NAME" plan summary --help 2>&1 | grep -q -- "--file"; then
-    log "Dual output supported" "Using --file flag for markdown output"
-    cmd="$cmd --file $temp_markdown_file --file-format markdown"
-  else
-    log "Dual output not supported" "Falling back to single output mode"
   fi
   
   # Add plan file

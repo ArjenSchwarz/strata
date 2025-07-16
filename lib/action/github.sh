@@ -183,17 +183,22 @@ post_pr_comment() {
         local remaining
         remaining=$(echo "$rate_limit_check" | grep -i "x-ratelimit-remaining" | cut -d':' -f2 | tr -d ' \r\n')
         
-        if [ -n "$remaining" ] && [ "$remaining" -le 5 ]; then
+        # Validate remaining is numeric before using in arithmetic
+        if [ -n "$remaining" ] && [[ "$remaining" =~ ^[0-9]+$ ]] && [ "$remaining" -le 5 ]; then
           local reset_time
           reset_time=$(echo "$rate_limit_check" | grep -i "x-ratelimit-reset" | cut -d':' -f2 | tr -d ' \r\n')
-          local current_time
-          current_time=$(date +%s)
-          local wait_time
-          wait_time=$((reset_time - current_time + 5))
           
-          if [ "$wait_time" -gt 0 ]; then
-            warning "Rate limit almost reached ($remaining remaining). Waiting for $wait_time seconds before retry."
-            sleep "$wait_time"
+          # Validate reset_time is numeric before using in arithmetic
+          if [ -n "$reset_time" ] && [[ "$reset_time" =~ ^[0-9]+$ ]]; then
+            local current_time
+            current_time=$(date +%s)
+            local wait_time
+            wait_time=$((reset_time - current_time + 5))
+            
+            if [ "$wait_time" -gt 0 ]; then
+              warning "Rate limit almost reached ($remaining remaining). Waiting for $wait_time seconds before retry."
+              sleep "$wait_time"
+            fi
           fi
         fi
         
