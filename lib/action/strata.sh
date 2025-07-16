@@ -336,7 +336,7 @@ run_strata_dual_output() {
   local show_details=$3
   
   # DEBUGGING: Add very visible marker to confirm function is called
-  echo "##[warning]DEBUG: run_strata_dual_output function called with args: $1, $2, $3"
+  echo "##[warning]DEBUG: run_strata_dual_output function ENTRY POINT"
   
   # Comprehensive logging for dual output initialization
   log "Initializing dual output execution" "Display format: $stdout_format, File format: markdown, Show details: $show_details"

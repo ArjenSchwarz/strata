@@ -13,6 +13,25 @@ source "$SCRIPT_DIR/lib/action/security.sh"
 source "$SCRIPT_DIR/lib/action/files.sh"
 source "$SCRIPT_DIR/lib/action/binary.sh"
 source "$SCRIPT_DIR/lib/action/strata.sh"
+
+# DEBUGGING: Show what strata.sh file we loaded
+echo "##[warning]DEBUG: Sourced strata.sh from: $SCRIPT_DIR/lib/action/strata.sh"
+if [ -f "$SCRIPT_DIR/lib/action/strata.sh" ]; then
+    echo "##[warning]DEBUG: strata.sh file exists, checking for debug markers:"
+    grep -n "DEBUG.*ENTRY POINT" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No ENTRY POINT debug marker found"
+    grep -n "DEBUG.*command building" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No command building debug marker found"
+fi
+
+# DEBUGGING: Verify function is loaded correctly
+echo "##[warning]DEBUG: Checking if run_strata_dual_output function is available:"
+if declare -f run_strata_dual_output > /dev/null; then
+    echo "##[warning]DEBUG: run_strata_dual_output function is defined"
+    echo "##[warning]DEBUG: First few lines of function:"
+    declare -f run_strata_dual_output | head -10
+else
+    echo "##[warning]DEBUG: run_strata_dual_output function NOT FOUND!"
+fi
+
 source "$SCRIPT_DIR/lib/action/github.sh"
 
 # Initialize global variables and environment
