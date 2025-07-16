@@ -426,14 +426,35 @@ run_strata_dual_output() {
   
   log "Executing Strata with dual output" "Command: $cmd"
   
+  # Display the full command for debugging
+  echo "::group::Strata Command"
+  echo "Executing: $cmd"
+  echo "::endgroup::"
+  
   # Execute command and capture stdout with enhanced error handling
   log "Executing Strata command" "Starting dual output execution"
+  
+  # Execute command directly to show output in real-time, then capture it
+  echo "::group::Strata Real-time Output"
+  eval "$cmd"
+  local exit_code=$?
+  echo "::endgroup::"
+  
+  # Also capture the output for processing
   local stdout_output
   stdout_output=$(eval "$cmd" 2>&1)
-  local exit_code=$?
+  local capture_exit_code=$?
   
   # Log execution results
   log "Strata execution completed" "Exit code: $exit_code, Output size: ${#stdout_output} chars"
+  
+  # Display stdout output in the GitHub Actions log for visibility
+  if [ -n "$stdout_output" ]; then
+    log "Strata stdout output" "Displaying terminal output for debugging"
+    echo "::group::Strata Terminal Output"
+    echo "$stdout_output"
+    echo "::endgroup::"
+  fi
   
   # Handle execution errors with structured error content
   if [ $exit_code -ne 0 ]; then
