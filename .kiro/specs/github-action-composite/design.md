@@ -1,0 +1,376 @@
+# Design Document: GitHub Action Composite
+
+## Overview
+
+This design document outlines the implementation approach for creating a composite GitHub Action that allows other repositories to integrate Strata's Terraform plan analysis capabilities into their CI/CD pipelines. The action will provide seamless integration with GitHub's native features including step summaries, pull request comments, and workflow outputs.
+
+The implementation will leverage GitHub's composite action framework to provide a reusable, self-contained action that can be easily consumed by other repositories. The design focuses on providing clear feedback to developers about infrastructure changes while maintaining security and performance best practices.
+
+## Architecture
+
+The GitHub Action composite will be implemented as a self-contained action that integrates with the existing Strata architecture:
+
+1. **Action Layer** (`action.yml`, `action.sh`):
+   - Define the action interface and metadata
+   - Handle input validation and parameter processing
+   - Orchestrate the execution flow
+
+2. **Binary Distribution**:
+   - Download pre-built Strata binary from GitHub releases (primary)
+   - Aggressive caching for performance optimization
+   - Emergency fallback to source compilation only if download fails
+
+3. **Integration Layer**:
+   - GitHub Step Summary integration via `$GITHUB_STEP_SUMMARY`
+   - Pull Request comment management via GitHub API
+   - Output variable management for downstream workflow steps
+
+4. **Security Layer**:
+   - Input validation and sanitization
+   - Token permission validation
+   - Error handling and safe failure modes
+
+## Components and Interfaces
+
+### Action Metadata (`action.yml`)
+
+The action will be defined with a comprehensive interface that supports various use cases:
+
+```yaml
+name: 'Strata Terraform Plan Analysis'
+description: 'Analyze Terraform plans with Strata and provide clear summaries'
+author: 'Arjen Schwarz'
+branding:
+  icon: 'file-text'
+  color: 'purple'
+
+inputs:
+  plan-file:
+    description: 'Path to Terraform plan file'
+    required: true
+  output-format:
+    description: 'Output format optimized for GitHub (markdown recommended)'
+    required: false
+    default: 'markdown'
+  config-file:
+    description: 'Path to custom Strata config file'
+    required: false
+  danger-threshold:
+    description: 'Danger threshold for highlighting risks'
+    required: false
+  show-details:
+    description: 'Show detailed change information'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'GitHub token for PR comments'
+    required: false
+    default: ${{ github.token }}
+  comment-on-pr:
+    description: 'Whether to comment on PR'
+    required: false
+    default: 'true'
+  update-comment:
+    description: 'Whether to update existing comment instead of creating new ones'
+    required: false
+    default: 'false'
+  comment-header:
+    description: 'Custom header for PR comments'
+    required: false
+    default: '🏗️ Terraform Plan Summary'
+
+outputs:
+  summary:
+    description: 'Plan summary text'
+  has-changes:
+    description: 'Whether the plan contains changes'
+  has-dangers:
+    description: 'Whether dangerous changes were detected'
+  json-summary:
+    description: 'Full summary in JSON format'
+  change-count:
+    description: 'Total number of changes'
+  danger-count:
+    description: 'Number of dangerous changes'
+```
+
+### Execution Script (`action.sh`)
+
+The main execution script will handle the complete workflow:
+
+1. **Input Validation**:
+   - Verify plan file exists and is readable
+   - Validate input parameters
+   - Check GitHub context for PR operations
+
+2. **Binary Management**:
+   - Download appropriate Strata binary for the runner platform
+   - Verify binary integrity and permissions
+   - Cache binary for performance
+
+3. **Plan Analysis**:
+   - Execute Strata with markdown output optimized for GitHub
+   - Always perform fresh analysis (no result caching)
+   - Parse results for downstream processing
+
+4. **Output Generation**:
+   - Write to GitHub Step Summary with rich Markdown content
+   - Generate PR comments if in pull request context
+   - Set action outputs for workflow consumption
+   - Continue with warnings if analysis fails (never fail workflow)
+
+### Step Summary Integration
+
+The action will leverage GitHub's `$GITHUB_STEP_SUMMARY` environment variable to provide rich Markdown output:
+
+```markdown
+# 🏗️ Terraform Plan Analysis
+
+## Plan Information
+| Format | Version | Changes |
+|--------|---------|---------|
+| {format_version} | {terraform_version} | {total_changes} |
+
+## Statistics Summary
+| TO ADD | TO CHANGE | TO DESTROY | REPLACEMENTS | HIGH RISK |
+|--------|-----------|------------|--------------|-----------|
+| {add_count} | {change_count} | {destroy_count} | {replace_count} | {danger_count} |
+
+## Resource Changes
+{resource_changes_table}
+
+<details>
+<summary>📋 Detailed Changes</summary>
+
+{detailed_changes}
+
+</details>
+
+---
+*Generated by [Strata](https://github.com/ArjenSchwarz/strata)*
+```
+
+### Pull Request Comment Management
+
+The action will implement intelligent PR comment management:
+
+1. **Comment Identification**:
+   - Use unique comment identifiers to track Strata comments
+   - Search existing comments to avoid duplication
+
+2. **Update Strategy**:
+   - Create new comments by default for clear workflow history
+   - Option to update existing comments to reduce noise
+   - Handle comment size limitations gracefully
+
+3. **Content Structure**:
+   - Collapsible sections for detailed information
+   - Visual indicators for dangerous changes
+   - Links to workflow runs for context
+
+## Data Models
+
+### Action Configuration
+
+The action will process inputs into a structured configuration:
+
+```go
+type ActionConfig struct {
+    PlanFile        string
+    OutputFormat    string
+    ConfigFile      string
+    DangerThreshold int
+    ShowDetails     bool
+    GitHubToken     string
+    CommentOnPR     bool
+    UpdateComment   bool
+    CommentHeader   string
+}
+```
+
+### Output Structure
+
+The action will generate structured outputs:
+
+```go
+type ActionOutput struct {
+    Summary        string          `json:"summary"`
+    HasChanges     bool            `json:"has_changes"`
+    HasDangers     bool            `json:"has_dangers"`
+    JSONSummary    string          `json:"json_summary"`
+    ChangeCount    int             `json:"change_count"`
+    DangerCount    int             `json:"danger_count"`
+    Statistics     ChangeStatistics `json:"statistics"`
+}
+```
+
+## Implementation Details
+
+### Binary Distribution Strategy
+
+The action will prioritize speed and reliability through pre-built binaries:
+
+1. **Primary**: Download pre-built binaries from GitHub releases
+   - Detect runner platform (linux, macos, windows, arm64 variants)
+   - Download platform-specific binary from latest or pinned release
+   - Verify checksum and GPG signature if available
+   - Optimized for speed with minimal network overhead
+
+2. **Fallback**: Build from source (emergency only)
+   - Only triggered if binary download fails after retries
+   - Clone repository at specific tag/commit
+   - Build using Go toolchain on runner
+   - Significantly slower but ensures availability
+
+3. **Caching Strategy**: Performance optimization
+   - Cache downloaded binaries based on version and platform
+   - Use GitHub Actions cache API with 7-day retention
+   - Cache key: `strata-binary-{version}-{platform}-{arch}`
+   - Implement cache invalidation on version updates
+
+### GitHub API Integration
+
+The action will use the GitHub REST API for PR comment management:
+
+```bash
+# Search for existing comments
+comments=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments \
+  --jq '.[] | select(.body | contains("<!-- strata-comment-id -->")) | .id')
+
+if [ -n "$comments" ]; then
+  # Update existing comment
+  gh api repos/$GITHUB_REPOSITORY/issues/comments/$comment_id \
+    --method PATCH \
+    --field body="$comment_body"
+else
+  # Create new comment
+  gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments \
+    --field body="$comment_body"
+fi
+```
+
+### Error Handling Strategy
+
+The action will implement comprehensive error handling:
+
+1. **Input Validation Errors**:
+   - Clear error messages for missing or invalid inputs
+   - Suggestion for common mistakes
+   - Fail fast to prevent resource waste
+
+2. **Binary Download Errors**:
+   - Retry logic with exponential backoff
+   - Fallback to source compilation
+   - Clear messaging about what went wrong
+
+3. **Plan Analysis Errors**:
+   - Never fail the workflow - continue with warning status
+   - Capture and format Strata error output in step summary
+   - Distinguish between plan format issues and analysis failures
+   - Provide actionable error messages with troubleshooting guidance
+   - Set appropriate output variables to indicate failure state
+
+4. **GitHub API Errors**:
+   - Handle rate limiting gracefully
+   - Retry transient failures
+   - Provide fallbacks when API is unavailable
+
+### Security Considerations
+
+The action will implement security best practices:
+
+1. **Input Sanitization**:
+   - Validate file paths to prevent directory traversal
+   - Sanitize user-provided content in comments
+   - Escape shell commands properly
+
+2. **Token Management**:
+   - Use provided GitHub token by default
+   - Validate token permissions before API calls
+   - Never log or expose token values
+
+3. **Output Security**:
+   - Limit comment size to prevent abuse
+   - Filter sensitive information from outputs
+   - Implement safe failure modes
+
+## Testing Strategy
+
+### Unit Testing
+
+The action components will be tested individually:
+
+1. **Input Processing**:
+   - Test various input combinations
+   - Validate error handling for invalid inputs
+   - Test default value application
+
+2. **Binary Management**:
+   - Mock download scenarios
+   - Test cache behavior
+   - Validate platform detection
+
+3. **Output Generation**:
+   - Test Markdown generation
+   - Validate JSON output structure
+   - Test comment formatting
+
+### Integration Testing
+
+End-to-end testing will validate the complete workflow:
+
+1. **Repository Setup**:
+   - Create test repository with Terraform configurations
+   - Generate various plan scenarios
+   - Test different GitHub contexts (PR, push, manual)
+
+2. **Action Execution**:
+   - Test action in actual GitHub Actions environment
+   - Validate step summary output
+   - Test PR comment creation and updates
+
+3. **Error Scenarios**:
+   - Test with invalid plan files
+   - Test with insufficient permissions
+   - Test network failure scenarios
+
+### Manual Testing
+
+Real-world testing will ensure usability:
+
+1. **Developer Experience**:
+   - Test action setup and configuration
+   - Validate documentation clarity
+   - Test common workflow patterns
+
+2. **Output Quality**:
+   - Review step summary readability
+   - Validate PR comment usefulness
+   - Test with various plan sizes and complexities
+
+## Error Handling
+
+The action will follow GitHub Actions best practices for error handling:
+
+1. **Exit Codes**:
+   - Use appropriate exit codes for different failure types
+   - Allow workflows to handle failures appropriately
+   - Provide clear failure reasons
+
+2. **Error Messages**:
+   - Include context about what operation failed
+   - Provide actionable suggestions when possible
+   - Log sufficient detail for debugging
+
+3. **Graceful Degradation**:
+   - Continue with reduced functionality when possible
+   - Always provide some output even on partial failures
+   - Clear communication about what succeeded/failed
+
+## Conclusion
+
+This GitHub Action composite will provide a seamless way for teams to integrate Strata's Terraform plan analysis into their existing workflows. The design prioritizes developer experience, security, and reliability while maintaining flexibility for various use cases.
+
+The implementation will follow GitHub Actions best practices and leverage existing Strata capabilities to provide consistent, high-quality analysis results. The action will serve as a bridge between Strata's powerful analysis engine and GitHub's collaborative development environment.
+
+The modular design allows for future enhancements while maintaining backward compatibility, ensuring that the action can evolve with both Strata and GitHub Actions platform capabilities.
