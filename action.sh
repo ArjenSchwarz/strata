@@ -117,6 +117,10 @@ execute_strata_analysis() {
   
   # Execute with comprehensive error handling
   log "Executing main Strata analysis" "Plan file: $INPUT_PLAN_FILE, Show details: $SHOW_DETAILS"
+  
+  # DEBUGGING: Add marker before calling run_strata_dual_output
+  echo "##[warning]DEBUG: About to call run_strata_dual_output from action.sh"
+  
   STRATA_OUTPUT=$(run_strata_dual_output "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS")
   STRATA_EXIT_CODE=$?
 
