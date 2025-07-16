@@ -335,6 +335,9 @@ run_strata_dual_output() {
   local plan_file=$2
   local show_details=$3
   
+  # DEBUGGING: Add very visible marker to confirm function is called
+  echo "##[warning]DEBUG: run_strata_dual_output function called with args: $1, $2, $3"
+  
   # Comprehensive logging for dual output initialization
   log "Initializing dual output execution" "Display format: $stdout_format, File format: markdown, Show details: $show_details"
   log "Dual output configuration" "Stdout: $stdout_format (for terminal display), File: markdown (for GitHub features)"
@@ -386,6 +389,9 @@ run_strata_dual_output() {
     return $?
   fi
   
+  # DEBUGGING: Confirm we reach command building phase
+  echo "##[warning]DEBUG: Starting command building phase in run_strata_dual_output"
+  
   # Start building command with binary name
   local cmd="$TEMP_DIR/$BINARY_NAME"
   
@@ -426,6 +432,9 @@ run_strata_dual_output() {
   
   log "Executing Strata with dual output" "Command: $cmd"
   
+  # DEBUGGING: Add marker before command execution
+  echo "##[warning]DEBUG: About to execute command in run_strata_dual_output"
+  
   # Display the full command for debugging
   echo "::group::Strata Command"
   echo "Executing: $cmd"
@@ -433,6 +442,9 @@ run_strata_dual_output() {
   
   # Execute command and capture stdout with enhanced error handling
   log "Executing Strata command" "Starting dual output execution"
+  
+  # DEBUGGING: Add marker before real-time output
+  echo "##[warning]DEBUG: Starting real-time output capture"
   
   # Execute command and capture output with error handling
   echo "::group::Strata Real-time Output"
