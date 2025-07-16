@@ -20,6 +20,20 @@ type DefaultExecutor struct {
 	options *ExecutorOptions
 }
 
+// printf prints formatted output unless quiet mode is enabled
+func (e *DefaultExecutor) printf(format string, args ...interface{}) {
+	if !e.options.Quiet {
+		fmt.Printf(format, args...)
+	}
+}
+
+// println prints output unless quiet mode is enabled
+func (e *DefaultExecutor) println(args ...interface{}) {
+	if !e.options.Quiet {
+		fmt.Println(args...)
+	}
+}
+
 // NewExecutor creates a new Terraform executor with the given options
 func NewExecutor(options *ExecutorOptions) TerraformExecutor {
 	if options == nil {
@@ -43,6 +57,11 @@ func NewExecutor(options *ExecutorOptions) TerraformExecutor {
 	}
 	if options.Environment == nil {
 		options.Environment = make(map[string]string)
+	}
+
+	// Enable quiet mode during tests
+	if os.Getenv("GO_TEST_MODE") != "" || strings.Contains(os.Args[0], ".test") {
+		options.Quiet = true
 	}
 
 	return &DefaultExecutor{
@@ -106,7 +125,9 @@ func (e *DefaultExecutor) GetVersion(ctx context.Context) (string, error) {
 
 // Plan executes terraform plan and returns the path to the plan file
 func (e *DefaultExecutor) Plan(ctx context.Context, args []string) (string, error) {
-	fmt.Println("Generating Terraform plan...")
+	if !e.options.Quiet {
+		fmt.Println("Generating Terraform plan...")
+	}
 
 	// Generate a unique plan file name
 	planFile := filepath.Join(e.options.WorkingDir, fmt.Sprintf("terraform-%d.tfplan", time.Now().Unix()))
@@ -211,13 +232,17 @@ func (e *DefaultExecutor) Plan(ctx context.Context, args []string) (string, erro
 		return "", e.enhancePlanFileNotCreatedError(planFile, outputBuffer.String())
 	}
 
-	fmt.Println("Plan generated successfully")
+	if !e.options.Quiet {
+		fmt.Println("Plan generated successfully")
+	}
 	return planFile, nil
 }
 
 // Apply executes terraform apply with the given plan file
 func (e *DefaultExecutor) Apply(ctx context.Context, planFile string, args []string) error {
-	fmt.Println("Applying Terraform changes...")
+	if !e.options.Quiet {
+		fmt.Println("Applying Terraform changes...")
+	}
 
 	// Set up cleanup for the plan file after apply (success or failure)
 	defer func() {
@@ -305,7 +330,9 @@ func (e *DefaultExecutor) Apply(ctx context.Context, planFile string, args []str
 		return e.enhanceApplyFailedError(cmdArgs, cmd.ProcessState.ExitCode(), outputBuffer.String(), cmdErr)
 	}
 
-	fmt.Println("Changes applied successfully")
+	if !e.options.Quiet {
+		fmt.Println("Changes applied successfully")
+	}
 	return nil
 }
 

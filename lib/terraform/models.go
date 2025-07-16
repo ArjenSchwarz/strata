@@ -52,6 +52,9 @@ type ExecutorOptions struct {
 
 	// BackendConfig contains backend-specific configuration
 	BackendConfig *BackendConfig
+
+	// Quiet suppresses output during execution (useful for testing)
+	Quiet bool
 }
 
 // BackendConfig contains configuration for Terraform backends

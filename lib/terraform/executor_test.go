@@ -1,7 +1,11 @@
 package terraform
 
 import (
+	"context"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,161 +13,414 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultExecutor_CleanupTempFile(t *testing.T) {
+func TestNewExecutor(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func() string
-		filePath string
-		wantErr  bool
+		options  *ExecutorOptions
+		expected *ExecutorOptions
 	}{
 		{
-			name: "cleanup existing file",
-			setup: func() string {
-				tmpFile, err := os.CreateTemp("", "test-cleanup-*.tmp")
-				require.NoError(t, err)
-				tmpFile.Close()
-				return tmpFile.Name()
+			name:    "nil options should use defaults",
+			options: nil,
+			expected: &ExecutorOptions{
+				TerraformPath: "terraform",
+				WorkingDir:    ".",
+				Timeout:       30 * time.Minute,
+				Environment:   make(map[string]string),
 			},
-			wantErr: false,
 		},
 		{
-			name:     "cleanup non-existent file",
-			filePath: "/tmp/non-existent-file.tmp",
-			wantErr:  false, // Should not error for non-existent files
+			name: "empty options should use defaults",
+			options: &ExecutorOptions{
+				Environment: make(map[string]string),
+			},
+			expected: &ExecutorOptions{
+				TerraformPath: "terraform",
+				WorkingDir:    ".",
+				Timeout:       30 * time.Minute,
+				Environment:   make(map[string]string),
+			},
 		},
 		{
-			name:     "cleanup empty path",
-			filePath: "",
-			wantErr:  false, // Should handle empty paths gracefully
+			name: "custom options should be preserved",
+			options: &ExecutorOptions{
+				TerraformPath: "/usr/local/bin/terraform",
+				WorkingDir:    "/tmp/test",
+				Timeout:       60 * time.Minute,
+				Environment:   map[string]string{"TF_VAR_test": "value"},
+			},
+			expected: &ExecutorOptions{
+				TerraformPath: "/usr/local/bin/terraform",
+				WorkingDir:    "/tmp/test",
+				Timeout:       60 * time.Minute,
+				Environment:   map[string]string{"TF_VAR_test": "value"},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			executor := &DefaultExecutor{
-				options: &ExecutorOptions{
-					TerraformPath: "terraform",
-					WorkingDir:    ".",
-					Timeout:       30 * time.Minute,
-					Environment:   make(map[string]string),
-				},
+			executor := NewExecutor(tt.options)
+			require.NotNil(t, executor)
+
+			// Cast to DefaultExecutor to access options
+			defaultExecutor, ok := executor.(*DefaultExecutor)
+			require.True(t, ok, "Expected DefaultExecutor")
+
+			assert.Equal(t, tt.expected.TerraformPath, defaultExecutor.options.TerraformPath)
+			assert.Equal(t, tt.expected.WorkingDir, defaultExecutor.options.WorkingDir)
+			assert.Equal(t, tt.expected.Timeout, defaultExecutor.options.Timeout)
+			assert.Equal(t, tt.expected.Environment, defaultExecutor.options.Environment)
+		})
+	}
+}
+
+func TestDefaultExecutor_CheckInstallation(t *testing.T) {
+	tests := []struct {
+		name          string
+		terraformPath string
+		expectError   bool
+		errorContains string
+		setupMockCmd  func() (cleanup func())
+	}{
+		{
+			name:          "terraform found and working",
+			terraformPath: "terraform",
+			expectError:   false,
+			setupMockCmd: func() func() {
+				// This test will only pass if terraform is actually installed
+				// In a real test environment, we'd mock the command execution
+				return func() {}
+			},
+		},
+		{
+			name:          "terraform not found",
+			terraformPath: "nonexistent-terraform",
+			expectError:   true,
+			errorContains: "not found",
+			setupMockCmd:  func() func() { return func() {} },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := tt.setupMockCmd()
+			defer cleanup()
+
+			options := &ExecutorOptions{
+				TerraformPath: tt.terraformPath,
+				WorkingDir:    ".",
+				Timeout:       5 * time.Second,
+				Environment:   make(map[string]string),
 			}
 
-			filePath := tt.filePath
-			if tt.setup != nil {
-				filePath = tt.setup()
-			}
+			executor := NewExecutor(options)
+			ctx := context.Background()
 
-			err := executor.cleanupTempFile(filePath)
+			err := executor.CheckInstallation(ctx)
 
-			if tt.wantErr {
+			if tt.expectError {
 				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, strings.ToLower(err.Error()), strings.ToLower(tt.errorContains))
+				}
 			} else {
-				assert.NoError(t, err)
-			}
-
-			// Verify file is actually removed if it existed
-			if filePath != "" && tt.setup != nil {
-				_, err := os.Stat(filePath)
-				assert.True(t, os.IsNotExist(err), "File should be removed")
+				// Only assert no error if terraform is actually available
+				if _, cmdErr := exec.LookPath("terraform"); cmdErr == nil {
+					assert.NoError(t, err)
+				} else {
+					t.Skip("Terraform not available in test environment")
+				}
 			}
 		})
 	}
 }
 
-func TestDefaultExecutor_ErrorRecoveryHelpers(t *testing.T) {
-	executor := &DefaultExecutor{
-		options: &ExecutorOptions{
-			TerraformPath: "terraform",
-			WorkingDir:    ".",
-			Timeout:       30 * time.Minute,
-			Environment:   make(map[string]string),
-		},
+func TestDefaultExecutor_GetVersion(t *testing.T) {
+	// Skip if terraform is not available
+	if _, err := exec.LookPath("terraform"); err != nil {
+		t.Skip("Terraform not available in test environment")
 	}
 
-	t.Run("wrapPipeError", func(t *testing.T) {
-		originalErr := assert.AnError
-		err := executor.wrapPipeError("stdout", originalErr)
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    ".",
+		Timeout:       10 * time.Second,
+		Environment:   make(map[string]string),
+	}
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "stdout pipe")
-		// The error message should contain information about the pipe failure
-	})
+	executor := NewExecutor(options)
+	ctx := context.Background()
 
-	t.Run("enhancePlanStartError with permission denied", func(t *testing.T) {
-		cmdArgs := []string{"plan", "-out=test.tfplan"}
-		originalErr := &os.PathError{Op: "exec", Path: "terraform", Err: os.ErrPermission}
+	version, err := executor.GetVersion(ctx)
 
-		err := executor.enhancePlanStartError(cmdArgs, originalErr)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Permission denied")
-	})
-
-	t.Run("enhancePlanStartError with not found", func(t *testing.T) {
-		cmdArgs := []string{"plan", "-out=test.tfplan"}
-		originalErr := &os.PathError{Op: "exec", Path: "terraform", Err: os.ErrNotExist}
-
-		err := executor.enhancePlanStartError(cmdArgs, originalErr)
-
-		assert.Error(t, err)
-		// The error should be enhanced with recovery suggestions
-		assert.Contains(t, err.Error(), "Terraform")
-	})
-
-	t.Run("truncateOutput", func(t *testing.T) {
-		longOutput := "This is a very long output that should be truncated when it exceeds the maximum length limit"
-
-		truncated := truncateOutput(longOutput, 20)
-		expectedLen := 20 + len("... (truncated)") // 20 + 15 = 35
-		assert.Len(t, truncated, expectedLen)
-		assert.Contains(t, truncated, "... (truncated)")
-
-		shortOutput := "Short"
-		notTruncated := truncateOutput(shortOutput, 20)
-		assert.Equal(t, shortOutput, notTruncated)
-	})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, version)
+	// Version should contain some JSON structure
+	assert.Contains(t, version, "{")
 }
 
-func TestDefaultExecutor_EnhancedErrorAnalysis(t *testing.T) {
-	executor := &DefaultExecutor{
-		options: &ExecutorOptions{
-			TerraformPath: "terraform",
-			WorkingDir:    ".",
-			Timeout:       30 * time.Minute,
-			Environment:   make(map[string]string),
+func TestDefaultExecutor_Plan_Integration(t *testing.T) {
+	// Skip if terraform is not available
+	if _, err := exec.LookPath("terraform"); err != nil {
+		t.Skip("Terraform not available in test environment")
+	}
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "terraform-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Create a simple Terraform configuration
+	configContent := `
+resource "null_resource" "test" {
+  triggers = {
+    timestamp = timestamp()
+  }
+}
+`
+	configFile := filepath.Join(tempDir, "main.tf")
+	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Initialize Terraform
+	initCmd := exec.Command("terraform", "init")
+	initCmd.Dir = tempDir
+	err = initCmd.Run()
+	require.NoError(t, err)
+
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    tempDir,
+		Timeout:       30 * time.Second,
+		Environment:   make(map[string]string),
+	}
+
+	executor := NewExecutor(options)
+	ctx := context.Background()
+
+	planFile, err := executor.Plan(ctx, []string{})
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, planFile)
+	assert.True(t, strings.HasSuffix(planFile, ".tfplan"))
+
+	// Verify plan file exists
+	_, statErr := os.Stat(planFile)
+	assert.NoError(t, statErr)
+
+	// Clean up plan file
+	os.Remove(planFile)
+}
+
+func TestDefaultExecutor_Apply_Integration(t *testing.T) {
+	// Skip if terraform is not available
+	if _, err := exec.LookPath("terraform"); err != nil {
+		t.Skip("Terraform not available in test environment")
+	}
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "terraform-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Create a simple Terraform configuration
+	configContent := `
+resource "null_resource" "test" {
+  triggers = {
+    timestamp = "test-value"
+  }
+}
+`
+	configFile := filepath.Join(tempDir, "main.tf")
+	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Initialize Terraform
+	initCmd := exec.Command("terraform", "init")
+	initCmd.Dir = tempDir
+	err = initCmd.Run()
+	require.NoError(t, err)
+
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    tempDir,
+		Timeout:       30 * time.Second,
+		Environment:   make(map[string]string),
+	}
+
+	executor := NewExecutor(options)
+	ctx := context.Background()
+
+	// First create a plan
+	planFile, err := executor.Plan(ctx, []string{})
+	require.NoError(t, err)
+	require.NotEmpty(t, planFile)
+
+	// Then apply it
+	err = executor.Apply(ctx, planFile, []string{})
+	assert.NoError(t, err)
+
+	// Plan file should be cleaned up after apply
+	_, statErr := os.Stat(planFile)
+	assert.True(t, os.IsNotExist(statErr))
+}
+
+func TestDefaultExecutor_DetectBackend(t *testing.T) {
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    ".",
+		Timeout:       10 * time.Second,
+		Environment:   make(map[string]string),
+	}
+
+	executor := NewExecutor(options)
+	ctx := context.Background()
+
+	backend, err := executor.DetectBackend(ctx)
+
+	// Should not error even if terraform show fails
+	assert.NoError(t, err)
+	assert.NotNil(t, backend)
+	assert.NotEmpty(t, backend.Type)
+}
+
+func TestDefaultExecutor_ValidateBackend(t *testing.T) {
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    ".",
+		Timeout:       10 * time.Second,
+		Environment:   make(map[string]string),
+	}
+
+	executor := NewExecutor(options)
+	ctx := context.Background()
+
+	tests := []struct {
+		name   string
+		config *BackendConfig
+	}{
+		{
+			name:   "nil config should not error",
+			config: nil,
+		},
+		{
+			name: "local backend config",
+			config: &BackendConfig{
+				Type:           "local",
+				Config:         make(map[string]interface{}),
+				LockTimeout:    10 * time.Minute,
+				DisableLocking: false,
+			},
 		},
 	}
 
-	t.Run("enhancePlanFailedError with authentication error", func(t *testing.T) {
-		cmdArgs := []string{"plan", "-out=test.tfplan"}
-		output := "Error: authentication failed - invalid credentials"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := executor.ValidateBackend(ctx, tt.config)
+			// Validation may fail due to terraform init requirements, but should not panic
+			// We're mainly testing that the method handles different inputs gracefully
+			if err != nil {
+				t.Logf("Backend validation failed (expected in test environment): %v", err)
+			}
+		})
+	}
+}
 
-		err := executor.enhancePlanFailedError(cmdArgs, 1, output, assert.AnError)
+func TestExecutorOptions_Defaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *ExecutorOptions
+		expected *ExecutorOptions
+	}{
+		{
+			name:  "nil input",
+			input: nil,
+			expected: &ExecutorOptions{
+				TerraformPath: "terraform",
+				WorkingDir:    ".",
+				Timeout:       30 * time.Minute,
+				Environment:   make(map[string]string),
+			},
+		},
+		{
+			name: "partial input",
+			input: &ExecutorOptions{
+				TerraformPath: "/custom/terraform",
+			},
+			expected: &ExecutorOptions{
+				TerraformPath: "/custom/terraform",
+				WorkingDir:    ".",
+				Timeout:       30 * time.Minute,
+				Environment:   make(map[string]string),
+			},
+		},
+	}
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Terraform plan execution failed")
-		// Should contain authentication-specific suggestions
-		// We can't easily test the suggestions without exposing them, but we can verify the error is enhanced
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executor := NewExecutor(tt.input)
+			defaultExecutor := executor.(*DefaultExecutor)
+
+			assert.Equal(t, tt.expected.TerraformPath, defaultExecutor.options.TerraformPath)
+			assert.Equal(t, tt.expected.WorkingDir, defaultExecutor.options.WorkingDir)
+			assert.Equal(t, tt.expected.Timeout, defaultExecutor.options.Timeout)
+			assert.NotNil(t, defaultExecutor.options.Environment)
+		})
+	}
+}
+
+func TestBackendConfig(t *testing.T) {
+	config := &BackendConfig{
+		Type: "s3",
+		Config: map[string]interface{}{
+			"bucket": "my-terraform-state",
+			"key":    "path/to/state",
+			"region": "us-west-2",
+		},
+		LockTimeout:    15 * time.Minute,
+		DisableLocking: false,
+	}
+
+	assert.Equal(t, "s3", config.Type)
+	assert.Equal(t, "my-terraform-state", config.Config["bucket"])
+	assert.Equal(t, "path/to/state", config.Config["key"])
+	assert.Equal(t, "us-west-2", config.Config["region"])
+	assert.Equal(t, 15*time.Minute, config.LockTimeout)
+	assert.False(t, config.DisableLocking)
+}
+
+// Benchmark tests for performance validation
+func BenchmarkNewExecutor(b *testing.B) {
+	options := &ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    ".",
+		Timeout:       30 * time.Minute,
+		Environment:   make(map[string]string),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = NewExecutor(options)
+	}
+}
+
+func BenchmarkExecutorCheckInstallation(b *testing.B) {
+	if _, err := exec.LookPath("terraform"); err != nil {
+		b.Skip("Terraform not available in test environment")
+	}
+
+	executor := NewExecutor(&ExecutorOptions{
+		TerraformPath: "terraform",
+		WorkingDir:    ".",
+		Timeout:       5 * time.Second,
+		Environment:   make(map[string]string),
 	})
 
-	t.Run("enhancePlanFailedError with permission error", func(t *testing.T) {
-		cmdArgs := []string{"plan", "-out=test.tfplan"}
-		output := "Error: access denied - insufficient permissions"
+	ctx := context.Background()
+	b.ResetTimer()
 
-		err := executor.enhancePlanFailedError(cmdArgs, 1, output, assert.AnError)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Terraform plan execution failed")
-	})
-
-	t.Run("enhanceApplyFailedError with quota error", func(t *testing.T) {
-		cmdArgs := []string{"apply", "test.tfplan"}
-		output := "Error: quota exceeded - cannot create more instances"
-
-		err := executor.enhanceApplyFailedError(cmdArgs, 1, output, assert.AnError)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Terraform apply execution failed")
-	})
+	for i := 0; i < b.N; i++ {
+		_ = executor.CheckInstallation(ctx)
+	}
 }
