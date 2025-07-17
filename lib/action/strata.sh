@@ -6,58 +6,6 @@
 # Global variable to store markdown content from dual output
 MARKDOWN_CONTENT=""
 
-# Function to run Strata with specified parameters (renamed to avoid conflict)
-run_strata_ORIGINAL() {
-  local output_format=$1
-  local plan_file=$2
-  local show_details=$3
-  
-  # Convert plan file to absolute path if it's relative
-  if [[ "$plan_file" != /* ]]; then
-    plan_file="$(pwd)/$plan_file"
-  fi
-  
-  local cmd="$TEMP_DIR/$BINARY_NAME plan summary"
-  
-  # Add optional arguments
-  if [ -n "$INPUT_CONFIG_FILE" ]; then
-    # Convert config file to absolute path if it's relative
-    local config_file="$INPUT_CONFIG_FILE"
-    if [[ "$config_file" != /* ]]; then
-      config_file="$(pwd)/$config_file"
-    fi
-    cmd="$cmd --config $config_file"
-  fi
-  
-  if [ -n "$INPUT_DANGER_THRESHOLD" ]; then
-    cmd="$cmd --danger-threshold $INPUT_DANGER_THRESHOLD"
-  fi
-  
-  if [ "$show_details" = "true" ]; then
-    cmd="$cmd --details"
-  fi
-  
-  # Add output format
-  cmd="$cmd --output $output_format"
-  
-  # Add plan file
-  cmd="$cmd $plan_file"
-  
-  log "Running Strata with parameters" "Format=$output_format Details=$show_details"
-  
-  # Execute command and capture output
-  local output
-  output=$(eval "$cmd" 2>&1)
-  local exit_code=$?
-  
-  if [ $exit_code -ne 0 ]; then
-    warning "Strata execution failed with exit code $exit_code"
-    warning "Error output: $output"
-  fi
-  
-  echo "$output"
-  return $exit_code
-}
 
 # Function to create structured error content for GitHub features
 create_structured_error_content() {
@@ -195,149 +143,17 @@ For more details, check the [workflow run logs](${GITHUB_SERVER_URL}/${GITHUB_RE
   echo "$error_content"
 }
 
-# Function to handle dual output errors gracefully
-handle_dual_output_error() {
-  local exit_code=$1
-  local stdout_output="$2"
-  local error_context="${3:-dual_output_execution}"
-  
-  log "Handling dual output error" "Exit code: $exit_code, Context: $error_context"
-  
-  # Create structured error content for GitHub features
-  local error_content="## ⚠️ Strata Analysis Error
 
-Strata encountered an issue while analyzing the Terraform plan.
 
-**Error Context:** $error_context  
-**Exit Code:** $exit_code
-
-**Error Details:**
-\`\`\`
-$stdout_output
-\`\`\`
-
-**Possible causes:**
-- Invalid plan file format
-- Unsupported Terraform version
-- Plan file corruption
-- File permission issues
-- Insufficient disk space
-- Network connectivity issues (if downloading binary)
-
-**Troubleshooting steps:**
-1. Verify the plan file was generated successfully
-2. Check file permissions and disk space
-3. Ensure Terraform version compatibility
-4. Review action logs for additional details
-
-Please check the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) for complete logs."
-  
-  # Set fallback markdown content
-  MARKDOWN_CONTENT="$error_content"
-  
-  # Log error handling completion
-  log "Error content generated" "Size: ${#error_content} chars"
-  
-  # Ensure cleanup happens even in error scenarios
-  cleanup_temp_files
-  
-  return "$exit_code"
-}
-
-# Function to handle file operation errors with fallback mechanisms
-handle_file_operation_error() {
-  local operation=$1
-  local file_path=$2
-  local error_message="$3"
-  local fallback_content="$4"
-  
-  warning "File operation failed: $operation on $file_path - $error_message"
-  log "Implementing fallback mechanism" "Operation: $operation"
-  
-  case "$operation" in
-    "create_temp_file")
-      warning "Could not create temporary file, falling back to stdout-only mode"
-      log "File output disabled" "Reason: temporary file creation failed"
-      
-      # Set fallback markdown content
-      if [ -n "$fallback_content" ]; then
-        MARKDOWN_CONTENT="## Terraform Plan Summary
-
-> **Note:** Dual output mode unavailable - using single output format.
-
-$fallback_content"
-      else
-        MARKDOWN_CONTENT="## ⚠️ File Operation Error
-
-Could not create temporary file for dual output processing.
-
-**Error:** $error_message
-
-Continuing with stdout-only mode."
-      fi
-      return 1
-      ;;
-    "write_temp_file")
-      warning "Could not write to temporary file, using fallback content"
-      log "File write failed" "Path: $file_path"
-      
-      if [ -n "$fallback_content" ]; then
-        MARKDOWN_CONTENT="## Terraform Plan Summary
-
-> **Note:** File write operation failed - using fallback content.
-
-$fallback_content"
-      else
-        MARKDOWN_CONTENT="## ⚠️ File Write Error
-
-Could not write to temporary file: $file_path
-
-**Error:** $error_message"
-      fi
-      return 1
-      ;;
-    "read_temp_file")
-      warning "Could not read temporary file, using stdout content as fallback"
-      log "File read failed" "Path: $file_path"
-      
-      if [ -n "$fallback_content" ]; then
-        MARKDOWN_CONTENT="$fallback_content"
-      else
-        MARKDOWN_CONTENT="## ⚠️ File Read Error
-
-Could not read temporary file: $file_path
-
-**Error:** $error_message"
-      fi
-      return 1
-      ;;
-    *)
-      warning "Unknown file operation error: $operation"
-      if [ -n "$fallback_content" ]; then
-        MARKDOWN_CONTENT="$fallback_content"
-      else
-        MARKDOWN_CONTENT="## ⚠️ Unknown File Operation Error
-
-An unknown file operation error occurred.
-
-**Operation:** $operation  
-**File:** $file_path  
-**Error:** $error_message"
-      fi
-      return 1
-      ;;
-  esac
-}
-
-# Enhanced function to run Strata with dual output
-run_strata_dual_output() {
-  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata_dual_output called"
+# Function to run Strata with dual output
+run_strata() {
+  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata called"
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
   
   # DEBUGGING: Add very visible marker to confirm function is called
-  echo "##[warning]DEBUG: run_strata_dual_output function ENTRY POINT"
+  echo "##[warning]DEBUG: run_strata function ENTRY POINT"
   
   # Comprehensive logging for dual output initialization
   log "Initializing dual output execution" "Display format: $stdout_format, File format: markdown, Show details: $show_details"
@@ -348,7 +164,7 @@ run_strata_dual_output() {
   if ! validate_file_path "$plan_file" "plan_file"; then
     local error_msg="Invalid plan file path: $plan_file"
     warning "$error_msg"
-    handle_dual_output_error 1 "$error_msg" "plan_file_validation"
+    error "$error_msg"
     return 1
   fi
   
@@ -380,7 +196,7 @@ run_strata_dual_output() {
   fi
   
   # DEBUGGING: Confirm we reach command building phase
-  echo "##[warning]DEBUG: Starting command building phase in run_strata_dual_output"
+  echo "##[warning]DEBUG: Starting command building phase in run_strata"
   
   # Start building command with binary name
   local cmd="$TEMP_DIR/$BINARY_NAME"
@@ -423,7 +239,7 @@ run_strata_dual_output() {
   log "Executing Strata with dual output" "Command: $cmd"
   
   # DEBUGGING: Add marker before command execution
-  echo "##[warning]DEBUG: About to execute command in run_strata_dual_output"
+  echo "##[warning]DEBUG: About to execute command in run_strata"
   
   # Display the full command for debugging
   echo "::group::Strata Command"
@@ -459,7 +275,8 @@ run_strata_dual_output() {
     warning "Error output: $stdout_output"
     log "Dual output execution failed" "Both stdout and file output affected"
     
-    handle_dual_output_error $exit_code "$stdout_output" "main_execution"
+    warning "Strata execution failed with exit code $exit_code"
+    warning "Error output: $stdout_output"
     
     echo "$stdout_output"
     return $exit_code
@@ -482,20 +299,19 @@ run_strata_dual_output() {
         if [ $read_result -eq 0 ] && [ -n "$MARKDOWN_CONTENT" ]; then
           log "Successfully generated markdown content" "Size: $file_size bytes"
         else
-          # Handle read failure
-          handle_file_operation_error "read_temp_file" "$temp_markdown_file" "cat command failed (exit code: $read_result)" "$stdout_output"
+          # Handle read failure - use stdout as fallback
+          log "File read failed, using stdout content" "Path: $temp_markdown_file"
+          MARKDOWN_CONTENT="$stdout_output"
         fi
       else
-        # Handle size check or empty file
-        if [ $size_check_result -ne 0 ]; then
-          handle_file_operation_error "read_temp_file" "$temp_markdown_file" "wc command failed (exit code: $size_check_result)" "$stdout_output"
-        else
-          handle_file_operation_error "read_temp_file" "$temp_markdown_file" "file is empty (size: $file_size)" "$stdout_output"
-        fi
+        # Handle size check or empty file - use stdout as fallback
+        log "File is empty or size check failed, using stdout content" "Path: $temp_markdown_file, Size: $file_size"
+        MARKDOWN_CONTENT="$stdout_output"
       fi
     else
-      # Handle unreadable file
-      handle_file_operation_error "read_temp_file" "$temp_markdown_file" "file is not readable" "$stdout_output"
+      # Handle unreadable file - use stdout as fallback
+      log "File is not readable, using stdout content" "Path: $temp_markdown_file"
+      MARKDOWN_CONTENT="$stdout_output"
     fi
   else
     # Handle missing file - this is expected when dual output is not supported

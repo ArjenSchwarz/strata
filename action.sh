@@ -23,13 +23,13 @@ if [ -f "$SCRIPT_DIR/lib/action/strata.sh" ]; then
 fi
 
 # DEBUGGING: Verify function is loaded correctly
-echo "##[warning]DEBUG: Checking if run_strata_dual_output function is available:"
-if declare -f run_strata_dual_output > /dev/null; then
-    echo "##[warning]DEBUG: run_strata_dual_output function is defined"
+echo "##[warning]DEBUG: Checking if run_strata function is available:"
+if declare -f run_strata > /dev/null; then
+    echo "##[warning]DEBUG: run_strata function is defined"
     echo "##[warning]DEBUG: First few lines of function:"
-    declare -f run_strata_dual_output | head -10
+    declare -f run_strata | head -10
 else
-    echo "##[warning]DEBUG: run_strata_dual_output function NOT FOUND!"
+    echo "##[warning]DEBUG: run_strata function NOT FOUND!"
 fi
 
 source "$SCRIPT_DIR/lib/action/github.sh"
@@ -137,10 +137,10 @@ execute_strata_analysis() {
   # Execute with comprehensive error handling
   log "Executing main Strata analysis" "Plan file: $INPUT_PLAN_FILE, Show details: $SHOW_DETAILS"
   
-  # DEBUGGING: Add marker before calling run_strata_dual_output
-  echo "##[warning]DEBUG: About to call run_strata_dual_output from action.sh"
+  # DEBUGGING: Add marker before calling run_strata
+  echo "##[warning]DEBUG: About to call run_strata from action.sh"
   
-  STRATA_OUTPUT=$(run_strata_dual_output "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS")
+  STRATA_OUTPUT=$(run_strata "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS")
   STRATA_EXIT_CODE=$?
 
   # Log the results of dual output execution
@@ -148,7 +148,8 @@ execute_strata_analysis() {
     log "Dual output execution successful" "Exit code: $STRATA_EXIT_CODE"
   else
     log "Dual output execution failed" "Exit code: $STRATA_EXIT_CODE"
-    handle_dual_output_error $STRATA_EXIT_CODE "$STRATA_OUTPUT" "main_execution"
+    warning "Strata analysis failed with exit code $STRATA_EXIT_CODE"
+    warning "Error output: $STRATA_OUTPUT"
   fi
 
   # Handle execution failure with structured error content
