@@ -179,20 +179,19 @@ run_strata() {
     fi
   fi
   
-  # Create secure temporary file for markdown output with enhanced error handling
-  log "Creating secure temporary file for markdown output" "Purpose: dual output file generation"
-  local temp_markdown_file
-  temp_markdown_file=$(create_secure_temp_file "markdown_output")
-  local temp_file_result=$?
-  
-  if [ $temp_file_result -ne 0 ]; then
-    error "Failed to create temporary file for dual output"
-    return 1
+  # Use a predictable markdown file in the workspace instead of temp file
+  local markdown_file
+  if [ -n "$GITHUB_WORKSPACE" ]; then
+    markdown_file="$GITHUB_WORKSPACE/strata-run-output.md"
+  else
+    markdown_file="$(pwd)/strata-run-output.md"
   fi
   
-  # Validate temporary file path
-  if ! validate_file_path "$temp_markdown_file" "temp_file"; then
-    error "Invalid temporary file path: $temp_markdown_file"
+  log "Using workspace markdown file" "Path: $markdown_file"
+  
+  # Validate markdown file path
+  if ! validate_file_path "$markdown_file" "workspace_file"; then
+    error "Invalid markdown file path: $markdown_file"
     return 1
   fi
   
@@ -216,8 +215,8 @@ run_strata() {
   if "$TEMP_DIR/$BINARY_NAME" --help 2>&1 | grep -q -- "--file"; then
     log "Dual output supported" "Using --file flag for markdown output"
     # Add global file output flags
-    cmd="$cmd --file $temp_markdown_file --file-format markdown"
-    log "DEBUG: Added file output flags" "--file $temp_markdown_file --file-format markdown"
+    cmd="$cmd --file $markdown_file --file-format markdown"
+    log "DEBUG: Added file output flags" "--file $markdown_file --file-format markdown"
   else
     log "Dual output not supported" "Falling back to single output mode"
     log "DEBUG: Help output check" "$(\"$TEMP_DIR/$BINARY_NAME\" --help 2>&1 | head -10)"
@@ -241,7 +240,7 @@ run_strata() {
   cmd="$cmd $plan_file"
   
   log "Executing Strata with dual output" "Command: $cmd"
-  log "DEBUG: Final command breakdown" "Binary: $TEMP_DIR/$BINARY_NAME, Temp file: $temp_markdown_file"
+  log "DEBUG: Final command breakdown" "Binary: $TEMP_DIR/$BINARY_NAME, Markdown file: $markdown_file"
   
   # DEBUGGING: Add marker before command execution
   log "DEBUG: About to execute command" "in run_strata function"
@@ -290,20 +289,20 @@ run_strata() {
   fi
   
   # Handle file operations with comprehensive error checking
-  log "DEBUG: Checking for markdown file" "Path: $temp_markdown_file"
-  if [ -f "$temp_markdown_file" ]; then
+  log "DEBUG: Checking for markdown file" "Path: $markdown_file"
+  if [ -f "$markdown_file" ]; then
     log "DEBUG: Markdown file exists" "Checking file contents"
     # Check if file is readable
-    if [ -r "$temp_markdown_file" ]; then
+    if [ -r "$markdown_file" ]; then
       # Read markdown content with size validation and error handling
       local file_size
-      file_size=$(wc -c < "$temp_markdown_file" 2>/dev/null)
+      file_size=$(wc -c < "$markdown_file" 2>/dev/null)
       local size_check_result=$?
       
       log "DEBUG: File size check" "Size: $file_size bytes, Check result: $size_check_result"
       if [ $size_check_result -eq 0 ] && [ "$file_size" -gt 0 ]; then
         # Attempt to read file content
-        MARKDOWN_CONTENT=$(cat "$temp_markdown_file" 2>/dev/null)
+        MARKDOWN_CONTENT=$(cat "$markdown_file" 2>/dev/null)
         local read_result=$?
         
         log "DEBUG: File read attempt" "Read result: $read_result, Content length: ${#MARKDOWN_CONTENT}"
@@ -311,22 +310,22 @@ run_strata() {
           log "Successfully generated markdown content" "Size: $file_size bytes"
         else
           # Handle read failure - use stdout as fallback
-          log "File read failed, using stdout content" "Path: $temp_markdown_file"
+          log "File read failed, using stdout content" "Path: $markdown_file"
           MARKDOWN_CONTENT="$stdout_output"
         fi
       else
         # Handle size check or empty file - use stdout as fallback
-        log "File is empty or size check failed, using stdout content" "Path: $temp_markdown_file, Size: $file_size"
+        log "File is empty or size check failed, using stdout content" "Path: $markdown_file, Size: $file_size"
         MARKDOWN_CONTENT="$stdout_output"
       fi
     else
       # Handle unreadable file - use stdout as fallback
-      log "File is not readable, using stdout content" "Path: $temp_markdown_file"
+      log "File is not readable, using stdout content" "Path: $markdown_file"
       MARKDOWN_CONTENT="$stdout_output"
     fi
   else
     # Handle missing file - this is expected when dual output is not supported
-    log "DEBUG: Markdown file missing" "File does not exist: $temp_markdown_file"
+    log "DEBUG: Markdown file missing" "File does not exist: $markdown_file"
     log "Format conversion status" "SINGLE OUTPUT MODE - using stdout content for markdown"
     
     # Convert stdout output to markdown format if needed
@@ -351,6 +350,12 @@ $stdout_output
   fi
   
   log "Dual output execution completed"
+  
+  # Clean up the markdown file from workspace (optional)
+  if [ -f "$markdown_file" ]; then
+    log "DEBUG: Cleaning up workspace markdown file" "Path: $markdown_file"
+    rm -f "$markdown_file" 2>/dev/null || true
+  fi
   
   echo "$stdout_output"
   return $exit_code
