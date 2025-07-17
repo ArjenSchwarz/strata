@@ -437,10 +437,13 @@ distribute_output() {
       
       # Use markdown content if available, otherwise use stdout
       if [ -n "$markdown_content" ]; then
+        log "DEBUG: Using markdown content for PR comment" "Size: ${#markdown_content} chars"
         pr_comment_content="${pr_comment_content}${markdown_content}"
       else
+        log "DEBUG: Using stdout content for PR comment" "Size: ${#stdout_output} chars"
         pr_comment_content="${pr_comment_content}${stdout_output}"
       fi
+      log "DEBUG: PR comment content after adding summary" "Size: ${#pr_comment_content} chars"
       
       pr_comment_content="${pr_comment_content}
 
@@ -449,12 +452,15 @@ ${details_section}"
       # Process content for PR comment context
       local processed_pr_comment
       processed_pr_comment=$(process_markdown_for_context "pr-comment" "$pr_comment_content")
+      log "DEBUG: After processing for context" "Size: ${#processed_pr_comment} chars"
       
       # Optimize and sanitize content
       local optimized_pr_comment
       optimized_pr_comment=$(echo "$processed_pr_comment" | optimize_content_for_context "pr-comment")
+      log "DEBUG: After optimization" "Size: ${#optimized_pr_comment} chars"
       local sanitized_pr_comment
       sanitized_pr_comment=$(sanitize_github_content "$optimized_pr_comment")
+      log "DEBUG: After sanitization" "Size: ${#sanitized_pr_comment} chars"
       
       # Post the PR comment
       log "Posting PR comment" "PR number: $pr_number, Content size: ${#sanitized_pr_comment} chars"
