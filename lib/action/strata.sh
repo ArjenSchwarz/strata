@@ -353,8 +353,13 @@ run_strata_dual_output() {
   fi
   
   # Convert plan file to absolute path if it's relative
+  # Use GITHUB_WORKSPACE as the base directory in GitHub Actions environment
   if [[ "$plan_file" != /* ]]; then
-    plan_file="$(pwd)/$plan_file"
+    if [ -n "$GITHUB_WORKSPACE" ]; then
+      plan_file="$GITHUB_WORKSPACE/$plan_file"
+    else
+      plan_file="$(pwd)/$plan_file"
+    fi
   fi
   
   # Create secure temporary file for markdown output with enhanced error handling
