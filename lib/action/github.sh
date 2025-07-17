@@ -470,7 +470,8 @@ ${details_section}"
       
       # Optimize and sanitize content
       local optimized_pr_comment
-      optimized_pr_comment=$(echo "$processed_pr_comment" | optimize_content_for_context "pr-comment")
+      # optimized_pr_comment=$(echo "$processed_pr_comment" | optimize_content_for_context "pr-comment")
+      optimized_pr_comment=$(optimize_content_for_context "pr-comment" "$processed_pr_comment")
       log "DEBUG: After optimization" "Size: ${#optimized_pr_comment} chars"
       local sanitized_pr_comment
       sanitized_pr_comment=$(sanitize_github_content "$optimized_pr_comment")
