@@ -331,6 +331,7 @@ An unknown file operation error occurred.
 
 # Enhanced function to run Strata with dual output
 run_strata_dual_output() {
+  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata_dual_output called"
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
