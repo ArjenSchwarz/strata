@@ -18,18 +18,18 @@ source "$SCRIPT_DIR/lib/action/strata.sh"
 echo "##[warning]DEBUG: Sourced strata.sh from: $SCRIPT_DIR/lib/action/strata.sh"
 if [ -f "$SCRIPT_DIR/lib/action/strata.sh" ]; then
     echo "##[warning]DEBUG: strata.sh file exists, checking for debug markers:"
-    grep -n "DEBUG.*ENTRY POINT" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No ENTRY POINT debug marker found"
+    grep -n "NEW_DEBUG" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No NEW_DEBUG marker found"
     grep -n "DEBUG.*command building" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No command building debug marker found"
 fi
 
 # DEBUGGING: Verify function is loaded correctly
-echo "##[warning]DEBUG: Checking if run_strata_dual_output function is available:"
-if declare -f run_strata_dual_output > /dev/null; then
-    echo "##[warning]DEBUG: run_strata_dual_output function is defined"
+echo "##[warning]DEBUG: Checking if run_strata function is available:"
+if declare -f run_strata > /dev/null; then
+    echo "##[warning]DEBUG: run_strata function is defined"
     echo "##[warning]DEBUG: First few lines of function:"
-    declare -f run_strata_dual_output | head -10
+    declare -f run_strata | head -10
 else
-    echo "##[warning]DEBUG: run_strata_dual_output function NOT FOUND!"
+    echo "##[warning]DEBUG: run_strata function NOT FOUND!"
 fi
 
 source "$SCRIPT_DIR/lib/action/github.sh"

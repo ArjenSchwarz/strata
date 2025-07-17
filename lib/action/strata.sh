@@ -6,8 +6,8 @@
 # Global variable to store markdown content from dual output
 MARKDOWN_CONTENT=""
 
-# Function to run Strata with specified parameters
-run_strata() {
+# Function to run Strata with specified parameters (renamed to avoid conflict)
+run_strata_ORIGINAL() {
   local output_format=$1
   local plan_file=$2
   local show_details=$3
@@ -329,9 +329,9 @@ An unknown file operation error occurred.
   esac
 }
 
-# Enhanced function to run Strata with dual output
-run_strata_dual_output() {
-  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata_dual_output called"
+# Enhanced function to run Strata with dual output (renamed to run_strata for debugging)
+run_strata() {
+  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata called (this is actually the dual output function!)"
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
@@ -366,7 +366,7 @@ run_strata_dual_output() {
   if [ $temp_file_result -ne 0 ]; then
     # Fallback to single output mode with proper error handling
     local fallback_output
-    fallback_output=$(run_strata "$stdout_format" "$plan_file" "$show_details")
+    fallback_output=$(run_strata_ORIGINAL "$stdout_format" "$plan_file" "$show_details")
     local fallback_exit_code=$?
     
     # Use file operation error handler
@@ -385,7 +385,7 @@ run_strata_dual_output() {
     
     # Fallback to single output
     local fallback_output
-    fallback_output=$(run_strata "$stdout_format" "$plan_file" "$show_details")
+    fallback_output=$(run_strata_ORIGINAL "$stdout_format" "$plan_file" "$show_details")
     echo "$fallback_output"
     return $?
   fi
