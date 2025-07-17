@@ -148,6 +148,7 @@ For more details, check the [workflow run logs](${GITHUB_SERVER_URL}/${GITHUB_RE
 # Function to run Strata with dual output
 run_strata() {
   echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata called"
+  log "[warning]DEBUG: FUNCTION ENTRY" "called"
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
