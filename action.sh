@@ -181,39 +181,63 @@ Please check the action logs for more details."
     fi
   fi
 
-  # Always get JSON output for parsing, regardless of primary output format
-  log "Generating JSON output for statistics parsing" "Format: json, Purpose: statistics extraction"
-  run_strata "json" "$INPUT_PLAN_FILE" "false"
-  JSON_EXIT_CODE=$?
-  JSON_OUTPUT="$STRATA_OUTPUT"
-
-  if [ $JSON_EXIT_CODE -ne 0 ]; then
-    warning "Failed to get JSON output for parsing, some features may not work correctly"
-    log "JSON parsing error" "Exit code: $JSON_EXIT_CODE"
-    
-    # Set default values for parsing to ensure action continues
-    HAS_CHANGES="false"
-    HAS_DANGERS="false"
-    CHANGE_COUNT="0"
-    DANGER_COUNT="0"
-    ADD_COUNT="0"
-    CHANGE_COUNT_DETAIL="0"
-    DESTROY_COUNT="0"
-    REPLACE_COUNT="0"
-  else
-    log "JSON output retrieved successfully" "Size: ${#JSON_OUTPUT} chars"
-    
-    # Parse JSON output for statistics
-    HAS_CHANGES=$(extract_json_value "$JSON_OUTPUT" "hasChanges" "false")
-    HAS_DANGERS=$(extract_json_value "$JSON_OUTPUT" "hasDangers" "false")
-    CHANGE_COUNT=$(extract_json_value "$JSON_OUTPUT" "totalChanges" "0")
-    DANGER_COUNT=$(extract_json_value "$JSON_OUTPUT" "dangerCount" "0")
-
-    # Extract additional statistics if available
-    ADD_COUNT=$(extract_json_value "$JSON_OUTPUT" "addCount" "0")
-    CHANGE_COUNT_DETAIL=$(extract_json_value "$JSON_OUTPUT" "changeCount" "0")
-    DESTROY_COUNT=$(extract_json_value "$JSON_OUTPUT" "destroyCount" "0")
-    REPLACE_COUNT=$(extract_json_value "$JSON_OUTPUT" "replaceCount" "0")
+  # Parse statistics from the table output
+  log "Parsing statistics from table output" "Source: table format"
+  
+  # Extract statistics from table output using simple parsing
+  # Set reasonable defaults
+  HAS_CHANGES="false"
+  HAS_DANGERS="false"
+  CHANGE_COUNT="0"
+  DANGER_COUNT="0"
+  ADD_COUNT="0"
+  CHANGE_COUNT_DETAIL="0"
+  DESTROY_COUNT="0"
+  REPLACE_COUNT="0"
+  
+  # Parse from table output if available
+  if [ -n "$STRATA_OUTPUT" ]; then
+    # Look for the summary table in the output
+    if echo "$STRATA_OUTPUT" | grep -q "TOTAL.*ADDED.*REMOVED"; then
+      # Extract the data row from the table
+      local table_data
+      table_data=$(echo "$STRATA_OUTPUT" | grep -A1 "TOTAL.*ADDED.*REMOVED" | tail -1)
+      
+      if [ -n "$table_data" ]; then
+        # Split the table data into fields
+        local total added removed modified replacements conditionals high_risk
+        read -r total added removed modified replacements conditionals high_risk <<< "$table_data"
+        
+        # Clean up the values (remove any non-numeric characters)
+        total=$(echo "$total" | tr -d '[:alpha:][:space:]')
+        added=$(echo "$added" | tr -d '[:alpha:][:space:]')
+        removed=$(echo "$removed" | tr -d '[:alpha:][:space:]')
+        modified=$(echo "$modified" | tr -d '[:alpha:][:space:]')
+        replacements=$(echo "$replacements" | tr -d '[:alpha:][:space:]')
+        high_risk=$(echo "$high_risk" | tr -d '[:alpha:][:space:]')
+        
+        # Set the parsed values
+        ADD_COUNT="${added:-0}"
+        DESTROY_COUNT="${removed:-0}"
+        CHANGE_COUNT_DETAIL="${modified:-0}"
+        REPLACE_COUNT="${replacements:-0}"
+        DANGER_COUNT="${high_risk:-0}"
+        
+        # Calculate total changes
+        CHANGE_COUNT=$((ADD_COUNT + DESTROY_COUNT + CHANGE_COUNT_DETAIL + REPLACE_COUNT))
+        
+        # Determine if there are changes or dangers
+        if [ "$CHANGE_COUNT" -gt 0 ]; then
+          HAS_CHANGES="true"
+        fi
+        
+        if [ "$DANGER_COUNT" -gt 0 ]; then
+          HAS_DANGERS="true"
+        fi
+        
+        log "Statistics parsed successfully" "Changes: $CHANGE_COUNT, Dangers: $DANGER_COUNT"
+      fi
+    fi
   fi
 
   # Distribute outputs to GitHub contexts

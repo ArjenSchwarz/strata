@@ -503,9 +503,6 @@ ${details_section}"
   set_output "has-dangers" "$HAS_DANGERS"
   log "Action output set" "has-dangers: $HAS_DANGERS"
   
-  # Keep json-summary as JSON for backward compatibility and programmatic access
-  set_output "json-summary" "$JSON_OUTPUT"
-  log "Action output set" "json-summary: ${#JSON_OUTPUT} chars (JSON format)"
   
   set_output "change-count" "$CHANGE_COUNT"
   log "Action output set" "change-count: $CHANGE_COUNT"
