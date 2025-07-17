@@ -86,14 +86,20 @@ add_collapsible_sections() {
     echo "$content" | awk '
       BEGIN { in_section = 0; section_content = ""; section_header = "" }
       /^## / {
-        if (in_section && section_content != "") {
-          print "<details>"
-          print "<summary>" section_header "</summary>"
-          print ""
-          print section_content
-          print ""
-          print "</details>"
-          print ""
+        if (in_section) {
+          if (section_content != "") {
+            print "<details>"
+            print "<summary>" section_header "</summary>"
+            print ""
+            print section_content
+            print ""
+            print "</details>"
+            print ""
+          } else {
+            # Output header-only sections without collapsible wrapper
+            print section_header
+            print ""
+          }
         }
         section_header = $0
         section_content = ""
@@ -108,13 +114,18 @@ add_collapsible_sections() {
         }
       }
       END {
-        if (in_section && section_content != "") {
-          print "<details>"
-          print "<summary>" section_header "</summary>"
-          print ""
-          print section_content
-          print ""
-          print "</details>"
+        if (in_section) {
+          if (section_content != "") {
+            print "<details>"
+            print "<summary>" section_header "</summary>"
+            print ""
+            print section_content
+            print ""
+            print "</details>"
+          } else {
+            # Output header-only sections without collapsible wrapper
+            print section_header
+          }
         }
       }
     '
