@@ -308,6 +308,7 @@ run_strata() {
         log "DEBUG: File read attempt" "Read result: $read_result, Content length: ${#MARKDOWN_CONTENT}"
         if [ $read_result -eq 0 ] && [ -n "$MARKDOWN_CONTENT" ]; then
           log "Successfully generated markdown content" "Size: $file_size bytes"
+          log "DEBUG: Markdown file contents" "$MARKDOWN_CONTENT"
         else
           # Handle read failure - use stdout as fallback
           log "File read failed, using stdout content" "Path: $markdown_file"
