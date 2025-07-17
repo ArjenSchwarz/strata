@@ -329,9 +329,9 @@ An unknown file operation error occurred.
   esac
 }
 
-# Enhanced function to run Strata with dual output (renamed to run_strata for debugging)
-run_strata() {
-  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata called (this is actually the dual output function!)"
+# Enhanced function to run Strata with dual output
+run_strata_dual_output() {
+  echo "##[warning]DEBUG: IMMEDIATE FUNCTION ENTRY - run_strata_dual_output called"
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
@@ -364,30 +364,14 @@ run_strata() {
   local temp_file_result=$?
   
   if [ $temp_file_result -ne 0 ]; then
-    # Fallback to single output mode with proper error handling
-    local fallback_output
-    fallback_output=$(run_strata_ORIGINAL "$stdout_format" "$plan_file" "$show_details")
-    local fallback_exit_code=$?
-    
-    # Use file operation error handler
-    handle_file_operation_error "create_temp_file" "N/A" "mktemp failed" "$fallback_output"
-    
-    log "Fallback to single output completed" "Format: $stdout_format, Exit code: $fallback_exit_code"
-    echo "$fallback_output"
-    return $fallback_exit_code
+    error "Failed to create temporary file for dual output"
+    return 1
   fi
   
   # Validate temporary file path
   if ! validate_file_path "$temp_markdown_file" "temp_file"; then
-    local error_msg="Invalid temporary file path: $temp_markdown_file"
-    warning "$error_msg"
-    handle_file_operation_error "validate_temp_file" "$temp_markdown_file" "$error_msg" ""
-    
-    # Fallback to single output
-    local fallback_output
-    fallback_output=$(run_strata_ORIGINAL "$stdout_format" "$plan_file" "$show_details")
-    echo "$fallback_output"
-    return $?
+    error "Invalid temporary file path: $temp_markdown_file"
+    return 1
   fi
   
   # DEBUGGING: Confirm we reach command building phase

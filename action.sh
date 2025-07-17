@@ -23,13 +23,13 @@ if [ -f "$SCRIPT_DIR/lib/action/strata.sh" ]; then
 fi
 
 # DEBUGGING: Verify function is loaded correctly
-echo "##[warning]DEBUG: Checking if run_strata function is available:"
-if declare -f run_strata > /dev/null; then
-    echo "##[warning]DEBUG: run_strata function is defined"
+echo "##[warning]DEBUG: Checking if run_strata_dual_output function is available:"
+if declare -f run_strata_dual_output > /dev/null; then
+    echo "##[warning]DEBUG: run_strata_dual_output function is defined"
     echo "##[warning]DEBUG: First few lines of function:"
-    declare -f run_strata | head -10
+    declare -f run_strata_dual_output | head -10
 else
-    echo "##[warning]DEBUG: run_strata function NOT FOUND!"
+    echo "##[warning]DEBUG: run_strata_dual_output function NOT FOUND!"
 fi
 
 source "$SCRIPT_DIR/lib/action/github.sh"
