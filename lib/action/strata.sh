@@ -197,7 +197,7 @@ run_strata() {
   fi
   
   # DEBUGGING: Confirm we reach command building phase
-  echo "##[warning]DEBUG: Starting command building phase in run_strata"
+  log "DEBUG: Starting command building phase" "in run_strata function"
   
   # Start building command with binary name
   local cmd="$TEMP_DIR/$BINARY_NAME"
@@ -212,12 +212,15 @@ run_strata() {
   fi
   
   # Check if dual output is supported by testing the --file flag
+  log "DEBUG: Testing for --file flag support" "Checking Strata binary capabilities"
   if "$TEMP_DIR/$BINARY_NAME" --help 2>&1 | grep -q -- "--file"; then
     log "Dual output supported" "Using --file flag for markdown output"
     # Add global file output flags
     cmd="$cmd --file $temp_markdown_file --file-format markdown"
+    log "DEBUG: Added file output flags" "--file $temp_markdown_file --file-format markdown"
   else
     log "Dual output not supported" "Falling back to single output mode"
+    log "DEBUG: Help output check" "$(\"$TEMP_DIR/$BINARY_NAME\" --help 2>&1 | head -10)"
   fi
   
   # Add the subcommand
@@ -238,9 +241,10 @@ run_strata() {
   cmd="$cmd $plan_file"
   
   log "Executing Strata with dual output" "Command: $cmd"
+  log "DEBUG: Final command breakdown" "Binary: $TEMP_DIR/$BINARY_NAME, Temp file: $temp_markdown_file"
   
   # DEBUGGING: Add marker before command execution
-  echo "##[warning]DEBUG: About to execute command in run_strata"
+  log "DEBUG: About to execute command" "in run_strata function"
   
   # Display the full command for debugging
   echo "::group::Strata Command"
@@ -251,7 +255,7 @@ run_strata() {
   log "Executing Strata command" "Starting dual output execution"
   
   # DEBUGGING: Add marker before real-time output
-  echo "##[warning]DEBUG: Starting real-time output capture"
+  log "DEBUG: Starting real-time output capture" "about to execute Strata command"
   
   # Execute command and capture output with error handling
   echo "::group::Strata Real-time Output"
@@ -262,8 +266,10 @@ run_strata() {
   # Show the actual output immediately
   if [ -n "$stdout_output" ]; then
     echo "$stdout_output"
+    log "DEBUG: Strata produced output" "Size: ${#stdout_output} chars"
   else
     echo "No output produced by command"
+    log "DEBUG: No output from Strata" "Command may have failed silently"
   fi
   echo "::endgroup::"
   
@@ -284,7 +290,9 @@ run_strata() {
   fi
   
   # Handle file operations with comprehensive error checking
+  log "DEBUG: Checking for markdown file" "Path: $temp_markdown_file"
   if [ -f "$temp_markdown_file" ]; then
+    log "DEBUG: Markdown file exists" "Checking file contents"
     # Check if file is readable
     if [ -r "$temp_markdown_file" ]; then
       # Read markdown content with size validation and error handling
@@ -292,11 +300,13 @@ run_strata() {
       file_size=$(wc -c < "$temp_markdown_file" 2>/dev/null)
       local size_check_result=$?
       
+      log "DEBUG: File size check" "Size: $file_size bytes, Check result: $size_check_result"
       if [ $size_check_result -eq 0 ] && [ "$file_size" -gt 0 ]; then
         # Attempt to read file content
         MARKDOWN_CONTENT=$(cat "$temp_markdown_file" 2>/dev/null)
         local read_result=$?
         
+        log "DEBUG: File read attempt" "Read result: $read_result, Content length: ${#MARKDOWN_CONTENT}"
         if [ $read_result -eq 0 ] && [ -n "$MARKDOWN_CONTENT" ]; then
           log "Successfully generated markdown content" "Size: $file_size bytes"
         else
@@ -316,6 +326,7 @@ run_strata() {
     fi
   else
     # Handle missing file - this is expected when dual output is not supported
+    log "DEBUG: Markdown file missing" "File does not exist: $temp_markdown_file"
     log "Format conversion status" "SINGLE OUTPUT MODE - using stdout content for markdown"
     
     # Convert stdout output to markdown format if needed
