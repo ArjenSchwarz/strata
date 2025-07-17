@@ -67,6 +67,7 @@ optimize_content_for_context() {
       ;;
     "pr-comment")
       # Limit content size for PR comments
+      log "DEBUG content"" $content"
       echo "$content" | limit_content_size 65000
       ;;
     *)
@@ -138,7 +139,9 @@ add_collapsible_sections() {
 limit_content_size() {
   local max_size=$1
   local content
+  log "Before cat" "$content"
   content=$(cat)
+  log "In limit" "$content"
   
   if [ ${#content} -gt "$max_size" ]; then
     # Calculate truncation point (try to break at a reasonable place)
