@@ -140,7 +140,9 @@ execute_strata_analysis() {
   # DEBUGGING: Add marker before calling run_strata
   echo "##[warning]DEBUG: About to call run_strata from action.sh"
   
-  STRATA_OUTPUT=$(run_strata "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS")
+  # Call run_strata directly to allow real-time output display
+  # The function will set STRATA_OUTPUT and STRATA_EXIT_CODE as global variables
+  run_strata "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS"
   STRATA_EXIT_CODE=$?
 
   # Log the results of dual output execution
@@ -181,8 +183,9 @@ Please check the action logs for more details."
 
   # Always get JSON output for parsing, regardless of primary output format
   log "Generating JSON output for statistics parsing" "Format: json, Purpose: statistics extraction"
-  JSON_OUTPUT=$(run_strata "json" "$INPUT_PLAN_FILE" "false")
+  run_strata "json" "$INPUT_PLAN_FILE" "false"
   JSON_EXIT_CODE=$?
+  JSON_OUTPUT="$STRATA_OUTPUT"
 
   if [ $JSON_EXIT_CODE -ne 0 ]; then
     warning "Failed to get JSON output for parsing, some features may not work correctly"

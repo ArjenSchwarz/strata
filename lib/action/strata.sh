@@ -283,10 +283,8 @@ run_strata() {
     warning "Error output: $stdout_output"
     log "Dual output execution failed" "Both stdout and file output affected"
     
-    warning "Strata execution failed with exit code $exit_code"
-    warning "Error output: $stdout_output"
-    
-    echo "$stdout_output"
+    # Set global variable even on error
+    STRATA_OUTPUT="$stdout_output"
     return $exit_code
   fi
   
@@ -359,6 +357,9 @@ $stdout_output
     rm -f "$markdown_file" 2>/dev/null || true
   fi
   
-  echo "$stdout_output"
+  # Set global variable instead of echoing to avoid command substitution capture
+  STRATA_OUTPUT="$stdout_output"
+  log "DEBUG: Set STRATA_OUTPUT global variable" "Size: ${#STRATA_OUTPUT} chars"
+  
   return $exit_code
 }
