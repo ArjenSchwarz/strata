@@ -256,20 +256,22 @@ run_strata() {
   # DEBUGGING: Add marker before real-time output
   log "DEBUG: Starting real-time output capture" "about to execute Strata command"
   
-  # Execute command and capture output with error handling
+  # Execute command with real-time output display and capture
   echo "::group::Strata Real-time Output"
-  local stdout_output
-  stdout_output=$(eval "$cmd" 2>&1)
-  local exit_code=$?
   
-  # Show the actual output immediately
-  if [ -n "$stdout_output" ]; then
-    echo "$stdout_output"
-    log "DEBUG: Strata produced output" "Size: ${#stdout_output} chars"
-  else
-    echo "No output produced by command"
-    log "DEBUG: No output from Strata" "Command may have failed silently"
+  # Use tee to show output in real-time while capturing it
+  local temp_output_file="/tmp/strata_output_$$"
+  eval "$cmd" 2>&1 | tee "$temp_output_file"
+  local exit_code=${PIPESTATUS[0]}
+  
+  # Read the captured output
+  local stdout_output=""
+  if [ -f "$temp_output_file" ]; then
+    stdout_output=$(cat "$temp_output_file")
+    rm -f "$temp_output_file"
   fi
+  
+  log "DEBUG: Strata execution result" "Exit code: $exit_code, Output size: ${#stdout_output} chars"
   echo "::endgroup::"
   
   # Log execution results
