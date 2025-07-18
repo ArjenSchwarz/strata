@@ -162,64 +162,6 @@ Please check the action logs for more details."
     fi
   fi
 
-  # Parse statistics from the table output
-  log "Parsing statistics from table output" "Source: table format"
-  
-  # Extract statistics from table output using simple parsing
-  # Set reasonable defaults
-  HAS_CHANGES="false"
-  HAS_DANGERS="false"
-  CHANGE_COUNT="0"
-  DANGER_COUNT="0"
-  ADD_COUNT="0"
-  CHANGE_COUNT_DETAIL="0"
-  DESTROY_COUNT="0"
-  REPLACE_COUNT="0"
-  
-  # Parse from table output if available
-  if [ -n "$STRATA_OUTPUT" ]; then
-    # Look for the summary table in the output
-    if echo "$STRATA_OUTPUT" | grep -q "TOTAL.*ADDED.*REMOVED"; then
-      # Extract the data row from the table
-      local table_data
-      table_data=$(echo "$STRATA_OUTPUT" | grep -A1 "TOTAL.*ADDED.*REMOVED" | tail -1)
-      
-      if [ -n "$table_data" ]; then
-        # Split the table data into fields
-        local total added removed modified replacements conditionals high_risk
-        read -r total added removed modified replacements conditionals high_risk <<< "$table_data"
-        
-        # Clean up the values (remove any non-numeric characters)
-        total=$(echo "$total" | tr -d '[:alpha:][:space:]')
-        added=$(echo "$added" | tr -d '[:alpha:][:space:]')
-        removed=$(echo "$removed" | tr -d '[:alpha:][:space:]')
-        modified=$(echo "$modified" | tr -d '[:alpha:][:space:]')
-        replacements=$(echo "$replacements" | tr -d '[:alpha:][:space:]')
-        high_risk=$(echo "$high_risk" | tr -d '[:alpha:][:space:]')
-        
-        # Set the parsed values
-        ADD_COUNT="${added:-0}"
-        DESTROY_COUNT="${removed:-0}"
-        CHANGE_COUNT_DETAIL="${modified:-0}"
-        REPLACE_COUNT="${replacements:-0}"
-        DANGER_COUNT="${high_risk:-0}"
-        
-        # Calculate total changes
-        CHANGE_COUNT=$((ADD_COUNT + DESTROY_COUNT + CHANGE_COUNT_DETAIL + REPLACE_COUNT))
-        
-        # Determine if there are changes or dangers
-        if [ "$CHANGE_COUNT" -gt 0 ]; then
-          HAS_CHANGES="true"
-        fi
-        
-        if [ "$DANGER_COUNT" -gt 0 ]; then
-          HAS_DANGERS="true"
-        fi
-        
-        log "Statistics parsed successfully" "Changes: $CHANGE_COUNT, Dangers: $DANGER_COUNT"
-      fi
-    fi
-  fi
 
   # Distribute outputs to GitHub contexts
   log "Initiating output distribution phase" "Distributing content to GitHub contexts"
@@ -232,8 +174,6 @@ Please check the action logs for more details."
 
 # Export variables that are used by modules but defined here
 export TEMP_DIR COMMENT_ON_PR UPDATE_COMMENT COMMENT_HEADER
-export HAS_CHANGES HAS_DANGERS CHANGE_COUNT DANGER_COUNT
-export ADD_COUNT CHANGE_COUNT_DETAIL DESTROY_COUNT REPLACE_COUNT
 
 # Export functions that might be needed by modules
 export -f log warning error set_output write_summary

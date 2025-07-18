@@ -340,38 +340,12 @@ distribute_output() {
   # Prepare base content with statistics for both contexts
   local base_content=""
   
-  # Add plan status indicators
-  if [ "$HAS_CHANGES" = "true" ]; then
-    if [ "$HAS_DANGERS" = "true" ]; then
-      base_content="⚠️ **Plan contains changes with potential risks**
-
-"
-    else
-      base_content="✅ **Plan contains changes**
-
-"
-    fi
-  else
-    base_content="ℹ️ **Plan contains no changes**
-
-"
-  fi
-  
-  # Add statistics summary table for step summary
-  local step_summary_stats="## Statistics Summary
-| TO ADD | TO CHANGE | TO DESTROY | REPLACEMENTS | HIGH RISK |
-|--------|-----------|------------|--------------|----------|
-| $ADD_COUNT | $CHANGE_COUNT_DETAIL | $DESTROY_COUNT | $REPLACE_COUNT | $DANGER_COUNT |
+  # Add simple header
+  base_content="📋 **Terraform Plan Summary**
 
 "
   
-  # Add PR comment statistics (more compact format)
-  local pr_comment_stats="**Statistics:**
-- 📝 **Changes**: $CHANGE_COUNT
-- ⚠️ **Dangerous**: $DANGER_COUNT
-- 🔄 **Replacements**: $REPLACE_COUNT
-
-"
+  
   
   # Prepare main content section
   local main_content_section="## Resource Changes
@@ -414,7 +388,7 @@ distribute_output() {
     log "Processing content for GitHub Step Summary" "Target: $GITHUB_STEP_SUMMARY"
     
     # Prepare step summary content
-    local step_summary_content="${base_content}${step_summary_stats}${main_content_section}${details_section}"
+    local step_summary_content="${base_content}${main_content_section}${details_section}"
     
     # Process content for step summary context
     local processed_step_summary
@@ -442,8 +416,8 @@ distribute_output() {
     pr_number=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH" 2>/dev/null)
     
     if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
-      # Prepare PR comment content (more compact than step summary)
-      local pr_comment_content="${base_content}${pr_comment_stats}**Plan Summary:**
+      # Prepare PR comment content
+      local pr_comment_content="${base_content}**Plan Summary:**
 "
       
       # Use markdown content if available, otherwise use stdout
@@ -484,23 +458,11 @@ ${details_section}"
   # Set action outputs with appropriate content for each output type
   log "Setting GitHub Action outputs" "Preparing outputs for workflow consumption"
   
-  # Create a simple one-line summary instead of the full table
-  local summary_line="Changes: $CHANGE_COUNT, Added: $ADD_COUNT, Removed: $DESTROY_COUNT, Modified: $CHANGE_COUNT_DETAIL, Replacements: $REPLACE_COUNT, High Risk: $DANGER_COUNT"
+  # Create a simple one-line summary from table output
+  local summary_line="Terraform Plan Analysis Complete"
   set_output "summary" "$summary_line"
   log "Action output set" "summary: $summary_line"
   
-  set_output "has-changes" "$HAS_CHANGES"
-  log "Action output set" "has-changes: $HAS_CHANGES"
-  
-  set_output "has-dangers" "$HAS_DANGERS"
-  log "Action output set" "has-dangers: $HAS_DANGERS"
-  
-  
-  set_output "change-count" "$CHANGE_COUNT"
-  log "Action output set" "change-count: $CHANGE_COUNT"
-  
-  set_output "danger-count" "$DANGER_COUNT"
-  log "Action output set" "danger-count: $DANGER_COUNT"
   
   # Set markdown content as additional output for GitHub features
   if [ -n "$MARKDOWN_CONTENT" ]; then
