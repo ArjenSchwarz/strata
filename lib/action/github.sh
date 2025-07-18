@@ -359,29 +359,8 @@ distribute_output() {
 
 "
   
-  # Add detailed information in collapsible section if available
+  # No separate details section needed - details are included in main output when show_details=true
   local details_section=""
-  if [ "$SHOW_DETAILS" = "true" ]; then
-    # Get detailed output using dual output for consistent formatting
-    local detailed_stdout
-    detailed_stdout=$(run_strata_dual_output "table" "$INPUT_PLAN_FILE" "true")
-    
-    details_section="<details>
-<summary>📋 Detailed Changes</summary>
-
-"
-    # Use markdown content if available, otherwise use stdout
-    if [ -n "$MARKDOWN_CONTENT" ]; then
-      details_section="${details_section}${MARKDOWN_CONTENT}"
-    else
-      details_section="${details_section}${detailed_stdout}"
-    fi
-    details_section="${details_section}
-
-</details>
-
-"
-  fi
   
   # Write to GitHub Step Summary using processed markdown content
   if [ -n "$GITHUB_STEP_SUMMARY" ]; then
