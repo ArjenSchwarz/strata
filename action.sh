@@ -14,23 +14,6 @@ source "$SCRIPT_DIR/lib/action/files.sh"
 source "$SCRIPT_DIR/lib/action/binary.sh"
 source "$SCRIPT_DIR/lib/action/strata.sh"
 
-# DEBUGGING: Show what strata.sh file we loaded
-echo "##[warning]DEBUG: Sourced strata.sh from: $SCRIPT_DIR/lib/action/strata.sh"
-if [ -f "$SCRIPT_DIR/lib/action/strata.sh" ]; then
-    echo "##[warning]DEBUG: strata.sh file exists, checking for debug markers:"
-    grep -n "NEW_DEBUG" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No NEW_DEBUG marker found"
-    grep -n "DEBUG.*command building" "$SCRIPT_DIR/lib/action/strata.sh" || echo "No command building debug marker found"
-fi
-
-# DEBUGGING: Verify function is loaded correctly
-echo "##[warning]DEBUG: Checking if run_strata function is available:"
-if declare -f run_strata > /dev/null; then
-    echo "##[warning]DEBUG: run_strata function is defined"
-    echo "##[warning]DEBUG: First few lines of function:"
-    declare -f run_strata | head -10
-else
-    echo "##[warning]DEBUG: run_strata function NOT FOUND!"
-fi
 
 source "$SCRIPT_DIR/lib/action/github.sh"
 
@@ -137,8 +120,6 @@ execute_strata_analysis() {
   # Execute with comprehensive error handling
   log "Executing main Strata analysis" "Plan file: $INPUT_PLAN_FILE, Show details: $SHOW_DETAILS"
   
-  # DEBUGGING: Add marker before calling run_strata
-  echo "##[warning]DEBUG: About to call run_strata from action.sh"
   
   # Call run_strata directly to allow real-time output display
   # The function will set STRATA_OUTPUT and STRATA_EXIT_CODE as global variables

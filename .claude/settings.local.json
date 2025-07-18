@@ -25,7 +25,9 @@
       "Bash(echo \"Exit code: $?\")",
       "Bash(timeout 30 bash test/test_comprehensive_unit.sh)",
       "Bash(source:*)",
-      "Bash(validate_file_path \"/tmp/test.txt\" \"temp_file\")"
+      "Bash(validate_file_path \"/tmp/test.txt\" \"temp_file\")",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

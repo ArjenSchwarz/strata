@@ -244,78 +244,54 @@ sanitize_github_content() {
   local content="$1"
   
   log "Sanitizing content for GitHub output" "Size: ${#content} chars"
-  log "DEBUG: Content before sanitization" "$content"
   
   # Remove potential script tags and other dangerous content
   local sanitized_content
   sanitized_content="$content"
   
-  log "DEBUG: Starting HTML tag removal" "Initial size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<script[^>]*>.*<\/script>//gi')
-  log "DEBUG: After removing script tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<iframe[^>]*>.*<\/iframe>//gi')
-  log "DEBUG: After removing iframe tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<object[^>]*>.*<\/object>//gi')
-  log "DEBUG: After removing object tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<embed[^>]*>.*<\/embed>//gi')
-  log "DEBUG: After removing embed tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<applet[^>]*>.*<\/applet>//gi')
-  log "DEBUG: After removing applet tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<form[^>]*>.*<\/form>//gi')
-  log "DEBUG: After removing form tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<input[^>]*>//gi')
-  log "DEBUG: After removing input tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<button[^>]*>.*<\/button>//gi')
-  log "DEBUG: After removing button tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/javascript:[^"'\'']*//gi')
-  log "DEBUG: After removing javascript URLs" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/vbscript:[^"'\'']*//gi')
-  log "DEBUG: After removing vbscript URLs" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/data:[^"'\'']*//gi')
-  log "DEBUG: After removing data URLs" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/on[a-zA-Z]*=[^"'\'']*//gi')
-  log "DEBUG: After removing event handlers" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<link[^>]*>//gi')
-  log "DEBUG: After removing link tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<meta[^>]*>//gi')
-  log "DEBUG: After removing meta tags" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/<style[^>]*>.*<\/style>//gi')
-  log "DEBUG: After removing style tags" "Size: ${#sanitized_content} chars"
   
   # Remove potential HTML entities that could be used for injection
-  log "DEBUG: Starting HTML entity processing" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/&lt;script/\&amp;lt;script/gi')
-  log "DEBUG: After escaping lt script entities" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/&gt;/\&amp;gt;/g')
-  log "DEBUG: After escaping gt entities" "Size: ${#sanitized_content} chars"
   
   sanitized_content=$(echo "$sanitized_content" | sed 's/&quot;/\&amp;quot;/g')
-  log "DEBUG: After escaping quot entities" "Size: ${#sanitized_content} chars"
   
   # Remove null bytes and control characters
-  log "DEBUG: Before removing control characters" "Size: ${#sanitized_content} chars"
   sanitized_content=$(echo "$sanitized_content" | tr -d '\000-\010\013\014\016-\037')
-  log "DEBUG: After removing control characters" "Size: ${#sanitized_content} chars"
   
   log "Content sanitization completed" "Original: ${#content} chars, Sanitized: ${#sanitized_content} chars"
-  log "DEBUG: Content after sanitization" "$sanitized_content"
   
   echo "$sanitized_content"
 }
