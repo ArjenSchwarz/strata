@@ -494,8 +494,10 @@ ${details_section}"
   # Set action outputs with appropriate content for each output type
   log "Setting GitHub Action outputs" "Preparing outputs for workflow consumption"
   
-  set_output "summary" "$stdout_output"
-  log "Action output set" "summary: ${#stdout_output} chars (table format)"
+  # Create a simple one-line summary instead of the full table
+  local summary_line="Changes: $CHANGE_COUNT, Added: $ADD_COUNT, Removed: $DESTROY_COUNT, Modified: $CHANGE_COUNT_DETAIL, Replacements: $REPLACE_COUNT, High Risk: $DANGER_COUNT"
+  set_output "summary" "$summary_line"
+  log "Action output set" "summary: $summary_line"
   
   set_output "has-changes" "$HAS_CHANGES"
   log "Action output set" "has-changes: $HAS_CHANGES"

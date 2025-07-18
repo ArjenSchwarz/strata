@@ -36,7 +36,22 @@ warning() {
 
 # Function to set GitHub Actions outputs
 set_output() {
-  echo "$1=$2" >> "$GITHUB_OUTPUT"
+  local key="$1"
+  local value="$2"
+  
+  # For multi-line content, use the proper GitHub Actions format
+  if [[ "$value" == *$'\n'* ]]; then
+    # Use delimiter format for multi-line content
+    local delimiter="ghadelimiter_${RANDOM}"
+    {
+      echo "$key<<$delimiter"
+      echo "$value"
+      echo "$delimiter"
+    } >> "$GITHUB_OUTPUT"
+  else
+    # Use simple format for single-line content
+    echo "$key=$value" >> "$GITHUB_OUTPUT"
+  fi
 }
 
 # Function to write to GitHub Step Summary
