@@ -347,17 +347,13 @@ distribute_output() {
   
   
   
-  # Prepare main content section
-  local main_content_section="## Resource Changes
-"
+  # Use the complete Strata output directly without additional headers
+  local main_content_section=""
   if [ -n "$markdown_content" ]; then
-    main_content_section="${main_content_section}${markdown_content}"
+    main_content_section="$markdown_content"
   else
-    main_content_section="${main_content_section}${stdout_output}"
+    main_content_section="$stdout_output"
   fi
-  main_content_section="${main_content_section}
-
-"
   
   # No separate details section needed - details are included in main output when show_details=true
   local details_section=""
