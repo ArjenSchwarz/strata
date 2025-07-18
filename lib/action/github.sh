@@ -394,11 +394,9 @@ distribute_output() {
     local processed_step_summary
     processed_step_summary=$(process_markdown_for_context "step-summary" "$step_summary_content")
     
-    # Optimize and sanitize content
-    local optimized_step_summary
-    optimized_step_summary=$(echo "$processed_step_summary" | optimize_content_for_context "step-summary")
+    # Skip optimization for step summary to preserve table formatting
     local sanitized_step_summary
-    sanitized_step_summary=$(sanitize_github_content "$optimized_step_summary")
+    sanitized_step_summary=$(sanitize_github_content "$processed_step_summary")
     
     # Write to step summary
     echo "$sanitized_step_summary" >> "$GITHUB_STEP_SUMMARY"
