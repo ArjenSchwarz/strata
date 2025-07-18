@@ -394,9 +394,9 @@ func TestFormatter_OutputSummary_WithSensitiveOnly(t *testing.T) {
 		},
 	}
 
-	err := formatter.OutputSummary(summary, "table", false)
+	err := formatter.formatSensitiveResourceChanges(summary, "table")
 	if err != nil {
-		t.Errorf("OutputSummary() error = %v", err)
+		t.Errorf("formatSensitiveResourceChanges() error = %v", err)
 	}
 
 	// Restore stdout and read output

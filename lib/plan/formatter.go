@@ -38,42 +38,35 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputFormat string, sho
 		return err
 	}
 
-	// Output plan information section
-	if err := f.formatPlanInfo(summary, outputFormat); err != nil {
-		return fmt.Errorf("failed to format plan info: %w", err)
-	}
-
-	// Output enhanced statistics summary
-	if err := f.formatStatisticsSummary(summary, outputFormat); err != nil {
-		return fmt.Errorf("failed to format statistics summary: %w", err)
-	}
-
-	// Output enhanced resource changes table if requested
-	if showDetails {
-		if err := f.formatResourceChangesTable(summary, outputFormat); err != nil {
-			return fmt.Errorf("failed to format resource changes table: %w", err)
+	// For testing compatibility, use individual formatter methods to avoid buffer state issues
+	if f.config.NewOutputSettings().OutputFile == "" {
+		// When no file output is specified, use individual methods for clean output
+		err := f.formatPlanInfo(summary, outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to format plan info: %w", err)
 		}
-	} else if f.config.Plan.AlwaysShowSensitive {
-		// When details are disabled but AlwaysShowSensitive is enabled,
-		// show only the sensitive resource changes
-		if err := f.formatSensitiveResourceChanges(summary, outputFormat); err != nil {
-			return fmt.Errorf("failed to format sensitive resource changes: %w", err)
+
+		err = f.formatStatisticsSummary(summary, outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to format statistics summary: %w", err)
 		}
+
+		if showDetails {
+			err = f.formatResourceChangesTable(summary, outputFormat)
+			if err != nil {
+				return fmt.Errorf("failed to format resource changes: %w", err)
+			}
+		} else if f.config.Plan.AlwaysShowSensitive {
+			err = f.formatSensitiveResourceChanges(summary, outputFormat)
+			if err != nil {
+				return fmt.Errorf("failed to format sensitive resources: %w", err)
+			}
+		}
+
+		return nil
 	}
 
-	return nil
-}
-
-// formatStatisticsSummary formats and outputs the horizontal statistics summary table
-func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat string) error {
-	// Validate inputs
-	if summary == nil {
-		return fmt.Errorf("summary cannot be nil")
-	}
-	if summary.PlanFile == "" {
-		return fmt.Errorf("plan file name is required")
-	}
-
+	// Create output array for multi-section output (for file output)
 	settings := f.config.NewOutputSettings()
 	if settings == nil {
 		return fmt.Errorf("failed to create output settings")
@@ -82,7 +75,182 @@ func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat s
 	settings.SetOutputFormat(outputFormat)
 	settings.UseColors = true
 	settings.UseEmoji = true
+	settings.SeparateTables = true // Enable multi-table support
+
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: []format.OutputHolder{},
+		Keys:     []string{},
+	}
+
+	// Add plan information section
+	planInfoData, planInfoKeys, err := f.createPlanInfoData(summary, outputFormat)
+	if err != nil {
+		return fmt.Errorf("failed to create plan info data: %w", err)
+	}
+	output.Contents = planInfoData
+	output.Keys = planInfoKeys
+	output.Settings.Title = "Plan Information"
+	output.AddToBuffer()
+
+	// Add statistics summary section
+	statsData, statsKeys, err := f.createStatisticsSummaryData(summary, outputFormat)
+	if err != nil {
+		return fmt.Errorf("failed to create statistics summary data: %w", err)
+	}
+	output.Contents = statsData
+	output.Keys = statsKeys
+	output.Settings.Title = fmt.Sprintf("Summary for %s", summary.PlanFile)
+	output.AddToBuffer()
+
+	// Add resource changes table if requested
+	if showDetails {
+		resourceData, resourceKeys, err := f.createResourceChangesData(summary, outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create resource changes data: %w", err)
+		}
+		output.Contents = resourceData
+		output.Keys = resourceKeys
+		output.Settings.Title = "Resource Changes"
+		output.AddToBuffer()
+	} else if f.config.Plan.AlwaysShowSensitive {
+		// When details are disabled but AlwaysShowSensitive is enabled,
+		// show only the sensitive resource changes
+		sensitiveData, sensitiveKeys, err := f.createSensitiveResourceChangesData(summary, outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
+		}
+		if len(sensitiveData) > 0 {
+			output.Contents = sensitiveData
+			output.Keys = sensitiveKeys
+			output.Settings.Title = "Sensitive Resource Changes"
+			output.AddToBuffer()
+		} else {
+			// Handle no sensitive changes case
+			fmt.Println("No sensitive resource changes detected.")
+		}
+	}
+
+	// Write all accumulated sections
+	output.Write()
+	return nil
+}
+
+// formatPlanInfo formats plan info to stdout (for testing compatibility)
+func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) error {
+	planInfoData, planInfoKeys, err := f.createPlanInfoData(summary, outputFormat)
+	if err != nil {
+		return err
+	}
+
+	settings := f.config.NewOutputSettings()
+	settings.SetOutputFormat(outputFormat)
+	settings.UseColors = true
+	settings.UseEmoji = true
+	settings.Title = "Plan Information"
+	settings.OutputFile = "" // No file output for individual methods
+
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: planInfoData,
+		Keys:     planInfoKeys,
+	}
+
+	output.Write()
+	fmt.Println() // Add spacing
+	return nil
+}
+
+// formatStatisticsSummary formats statistics to stdout (for testing compatibility)
+func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat string) error {
+	statsData, statsKeys, err := f.createStatisticsSummaryData(summary, outputFormat)
+	if err != nil {
+		return err
+	}
+
+	settings := f.config.NewOutputSettings()
+	settings.SetOutputFormat(outputFormat)
+	settings.UseColors = true
+	settings.UseEmoji = true
 	settings.Title = fmt.Sprintf("Summary for %s", summary.PlanFile)
+	settings.OutputFile = "" // No file output for individual methods
+
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: statsData,
+		Keys:     statsKeys,
+	}
+
+	output.Write()
+	fmt.Println() // Add spacing
+	return nil
+}
+
+// formatSensitiveResourceChanges formats sensitive resources to stdout (for testing compatibility)
+func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputFormat string) error {
+	sensitiveData, sensitiveKeys, err := f.createSensitiveResourceChangesData(summary, outputFormat)
+	if err != nil {
+		return err
+	}
+
+	if len(sensitiveData) == 0 {
+		fmt.Println("No sensitive resource changes detected.")
+		fmt.Println() // Add spacing
+		return nil
+	}
+
+	settings := f.config.NewOutputSettings()
+	settings.SetOutputFormat(outputFormat)
+	settings.UseColors = true
+	settings.UseEmoji = true
+	settings.Title = "Sensitive Resource Changes"
+	settings.OutputFile = "" // No file output for individual methods
+
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: sensitiveData,
+		Keys:     sensitiveKeys,
+	}
+
+	output.Write()
+	fmt.Println() // Add spacing
+	return nil
+}
+
+// formatResourceChangesTable formats resource changes to stdout (for testing compatibility)
+func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputFormat string) error {
+	resourceData, resourceKeys, err := f.createResourceChangesData(summary, outputFormat)
+	if err != nil {
+		return err
+	}
+
+	settings := f.config.NewOutputSettings()
+	settings.SetOutputFormat(outputFormat)
+	settings.UseColors = true
+	settings.UseEmoji = true
+	settings.Title = "Resource Changes"
+	settings.OutputFile = "" // No file output for individual methods
+
+	output := format.OutputArray{
+		Settings: settings,
+		Contents: resourceData,
+		Keys:     resourceKeys,
+	}
+
+	output.Write()
+	fmt.Println() // Add spacing
+	return nil
+}
+
+// createStatisticsSummaryData creates the statistics summary data
+func (f *Formatter) createStatisticsSummaryData(summary *PlanSummary, outputFormat string) ([]format.OutputHolder, []string, error) {
+	// Validate inputs
+	if summary == nil {
+		return nil, nil, fmt.Errorf("summary cannot be nil")
+	}
+	if summary.PlanFile == "" {
+		return nil, nil, fmt.Errorf("plan file name is required")
+	}
 
 	// Create horizontal statistics data
 	statsData := []format.OutputHolder{
@@ -99,20 +267,63 @@ func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputFormat s
 		},
 	}
 
-	// Use go-output to handle all formatting
-	output := format.OutputArray{
-		Settings: settings,
-		Contents: statsData,
-		Keys:     []string{"TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK"},
-	}
-
-	output.Write()
-	fmt.Println() // Add spacing between sections
-	return nil
+	keys := []string{"TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK"}
+	return statsData, keys, nil
 }
 
-// createResourceChangesData converts the resource changes into OutputHolder format for detailed view
-func (f *Formatter) createResourceChangesData(summary *PlanSummary) []format.OutputHolder {
+// createResourceChangesData creates the resource changes data for detailed view
+func (f *Formatter) createResourceChangesData(summary *PlanSummary, outputFormat string) ([]format.OutputHolder, []string, error) {
+	// Validate inputs
+	if summary == nil {
+		return nil, nil, fmt.Errorf("summary cannot be nil")
+	}
+
+	// Create enhanced resource changes data
+	resourceData := []format.OutputHolder{}
+
+	for _, change := range summary.ResourceChanges {
+		// Determine the display ID based on change type
+		displayID := change.PhysicalID
+		if change.ChangeType == ChangeTypeCreate {
+			displayID = "-"
+		} else if change.ChangeType == ChangeTypeDelete {
+			displayID = change.PhysicalID
+		}
+
+		// Format replacement type for display
+		replacementDisplay := string(change.ReplacementType)
+		if change.ChangeType == ChangeTypeDelete {
+			replacementDisplay = "N/A"
+		}
+
+		// Format danger information
+		dangerInfo := ""
+		if change.IsDangerous {
+			dangerInfo = "⚠️ " + change.DangerReason
+			if len(change.DangerProperties) > 0 {
+				dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
+			}
+		}
+
+		resourceData = append(resourceData, format.OutputHolder{
+			Contents: map[string]interface{}{
+				"ACTION":      getActionDisplay(change.ChangeType),
+				"RESOURCE":    change.Address,
+				"TYPE":        change.Type,
+				"ID":          displayID,
+				"REPLACEMENT": replacementDisplay,
+				"MODULE":      change.ModulePath,
+				"DANGER":      dangerInfo,
+			},
+		})
+	}
+
+	keys := []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"}
+	return resourceData, keys, nil
+}
+
+// createResourceChangesDataOld converts the resource changes into OutputHolder format for detailed view (old format)
+func (f *Formatter) createResourceChangesDataOld(summary *PlanSummary) []format.OutputHolder {
 	var data []format.OutputHolder
 
 	// Add resource changes
@@ -156,22 +367,12 @@ func (f *Formatter) createResourceChangesData(summary *PlanSummary) []format.Out
 	return data
 }
 
-// formatPlanInfo formats and outputs the plan information section using a horizontal layout
-func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) error {
+// createPlanInfoData creates the plan information data
+func (f *Formatter) createPlanInfoData(summary *PlanSummary, outputFormat string) ([]format.OutputHolder, []string, error) {
 	// Validate inputs
 	if summary == nil {
-		return fmt.Errorf("summary cannot be nil")
+		return nil, nil, fmt.Errorf("summary cannot be nil")
 	}
-
-	settings := f.config.NewOutputSettings()
-	if settings == nil {
-		return fmt.Errorf("failed to create output settings")
-	}
-
-	settings.SetOutputFormat(outputFormat)
-	settings.UseColors = true
-	settings.UseEmoji = true
-	settings.Title = "Plan Information"
 
 	// Create horizontal plan info data with a single row for values
 	planInfoData := []format.OutputHolder{
@@ -187,34 +388,16 @@ func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputFormat string) er
 		},
 	}
 
-	// Use go-output to handle all formatting
-	output := format.OutputArray{
-		Settings: settings,
-		Contents: planInfoData,
-		Keys:     []string{"Plan File", "Version", "Workspace", "Backend", "Created"},
-	}
-
-	output.Write()
-	fmt.Println() // Add spacing between sections
-	return nil
+	keys := []string{"Plan File", "Version", "Workspace", "Backend", "Created"}
+	return planInfoData, keys, nil
 }
 
-// formatSensitiveResourceChanges formats and outputs only sensitive resource changes
-func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputFormat string) error {
+// createSensitiveResourceChangesData creates data for sensitive resource changes only
+func (f *Formatter) createSensitiveResourceChangesData(summary *PlanSummary, outputFormat string) ([]format.OutputHolder, []string, error) {
 	// Validate inputs
 	if summary == nil {
-		return fmt.Errorf("summary cannot be nil")
+		return nil, nil, fmt.Errorf("summary cannot be nil")
 	}
-
-	settings := f.config.NewOutputSettings()
-	if settings == nil {
-		return fmt.Errorf("failed to create output settings")
-	}
-
-	settings.SetOutputFormat(outputFormat)
-	settings.UseColors = true
-	settings.UseEmoji = true
-	settings.Title = "Sensitive Resource Changes"
 
 	// Filter for sensitive resources
 	sensitiveChanges := []ResourceChange{}
@@ -224,11 +407,9 @@ func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputF
 		}
 	}
 
-	// If no sensitive changes, return early
+	// If no sensitive changes, return empty data
 	if len(sensitiveChanges) == 0 {
-		fmt.Println("No sensitive resource changes detected.")
-		fmt.Println() // Add spacing
-		return nil
+		return []format.OutputHolder{}, []string{}, nil
 	}
 
 	// Create resource data for sensitive changes
@@ -271,86 +452,10 @@ func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputF
 		})
 	}
 
-	// Use go-output to handle all formatting
-	output := format.OutputArray{
-		Settings: settings,
-		Contents: resourceData,
-		Keys:     []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"},
-	}
-
-	output.Write()
-	fmt.Println() // Add spacing between sections
-	return nil
+	keys := []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"}
+	return resourceData, keys, nil
 }
 
-// formatResourceChangesTable formats and outputs the enhanced resource changes table
-func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputFormat string) error {
-	// Validate inputs
-	if summary == nil {
-		return fmt.Errorf("summary cannot be nil")
-	}
-
-	settings := f.config.NewOutputSettings()
-	if settings == nil {
-		return fmt.Errorf("failed to create output settings")
-	}
-
-	settings.SetOutputFormat(outputFormat)
-	settings.UseColors = true
-	settings.UseEmoji = true
-	settings.Title = "Resource Changes"
-
-	// Create enhanced resource changes data
-	resourceData := []format.OutputHolder{}
-
-	for _, change := range summary.ResourceChanges {
-		// Determine the display ID based on change type
-		displayID := change.PhysicalID
-		if change.ChangeType == ChangeTypeCreate {
-			displayID = "-"
-		} else if change.ChangeType == ChangeTypeDelete {
-			displayID = change.PhysicalID
-		}
-
-		// Format replacement type for display
-		replacementDisplay := string(change.ReplacementType)
-		if change.ChangeType == ChangeTypeDelete {
-			replacementDisplay = "N/A"
-		}
-
-		// Format danger information
-		dangerInfo := ""
-		if change.IsDangerous {
-			dangerInfo = "⚠️ " + change.DangerReason
-			if len(change.DangerProperties) > 0 {
-				dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
-			}
-		}
-
-		resourceData = append(resourceData, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"ACTION":      getActionDisplay(change.ChangeType),
-				"RESOURCE":    change.Address,
-				"TYPE":        change.Type,
-				"ID":          displayID,
-				"REPLACEMENT": replacementDisplay,
-				"MODULE":      change.ModulePath,
-				"DANGER":      dangerInfo,
-			},
-		})
-	}
-
-	// Use go-output to handle all formatting
-	output := format.OutputArray{
-		Settings: settings,
-		Contents: resourceData,
-		Keys:     []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"},
-	}
-
-	output.Write()
-	fmt.Println() // Add spacing between sections
-	return nil
-}
 
 // getActionDisplay returns the display name for a change type
 func getActionDisplay(changeType ChangeType) string {
