@@ -79,12 +79,15 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.strata.yaml)")
 
-	// File output flags
+	// Output format flags
+	rootCmd.PersistentFlags().StringP("output", "o", "table", "Output format (table, json, html, markdown)")
 	rootCmd.PersistentFlags().String("file", "", "Optional file to save the output to, in addition to stdout")
 	rootCmd.PersistentFlags().String("file-format", "", "Optional format for the file, defaults to the same as output")
 
-	// Bind file output flags to Viper
-	err := viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
+	// Bind output flags to Viper
+	err := viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
+	cobra.CheckErr(err)
+	err = viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
 	cobra.CheckErr(err)
 	err = viper.BindPFlag("output-file-format", rootCmd.PersistentFlags().Lookup("file-format"))
 	cobra.CheckErr(err)

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Formatter Output System Refactoring**
+  - Refactored `plan.Formatter.OutputSummary()` method to accept `*format.OutputSettings` instead of string `outputFormat` parameter
+  - Updated all formatter methods (`formatPlanInfo`, `formatStatisticsSummary`, `formatResourceChangesTable`, `formatSensitiveResourceChanges`) to use `OutputSettings` for consistent configuration
+  - Removed local `outputFormat` variable from `plan_summary.go` command, now using centralized output configuration from viper
+  - Added proper output settings validation before formatter execution
+  - Moved output format flag from command-specific to global persistent flag in root command
+  - Updated go-output dependency from v1.5.0 to v1.5.1 for enhanced output handling
+  - Fixed test suite to use new `OutputSettings` struct instead of string format parameters
+  - Enhanced file output handling with proper temporary setting management in formatter methods
+  - Added Claude development settings to allow additional bash echo commands
+
+### Changed
 - GitHub Action Modularization
   - Refactored monolithic action.sh into modular architecture with separate library modules
   - Created lib/action/ directory structure with specialized modules:

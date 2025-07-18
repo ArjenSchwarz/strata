@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	goformat "github.com/ArjenSchwarz/go-output"
 	"github.com/ArjenSchwarz/strata/config"
 )
 
@@ -32,7 +33,11 @@ func TestFormatter_formatPlanInfo(t *testing.T) {
 		IsDryRun:  false,
 	}
 
-	err := formatter.formatPlanInfo(summary, "table")
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.formatPlanInfo(summary, outputSettings)
 	if err != nil {
 		t.Errorf("formatPlanInfo() error = %v", err)
 	}
@@ -101,7 +106,11 @@ func TestFormatter_formatPlanInfo_HorizontalLayout(t *testing.T) {
 		IsDryRun:  false,
 	}
 
-	err := formatter.formatPlanInfo(summary, "table")
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.formatPlanInfo(summary, outputSettings)
 	if err != nil {
 		t.Errorf("formatPlanInfo() error = %v", err)
 	}
@@ -166,7 +175,11 @@ func TestFormatter_formatStatisticsSummary(t *testing.T) {
 		},
 	}
 
-	err := formatter.formatStatisticsSummary(summary, "table")
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.formatStatisticsSummary(summary, outputSettings)
 	if err != nil {
 		t.Errorf("formatStatisticsSummary() error = %v", err)
 	}
@@ -236,7 +249,11 @@ func TestFormatter_OutputSummary(t *testing.T) {
 		},
 	}
 
-	err := formatter.OutputSummary(summary, "table", false)
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.OutputSummary(summary, outputSettings, false)
 	if err != nil {
 		t.Errorf("OutputSummary() error = %v", err)
 	}
@@ -308,7 +325,11 @@ func TestFormatter_OutputSummary_WithDetails(t *testing.T) {
 		},
 	}
 
-	err := formatter.OutputSummary(summary, "table", true)
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.OutputSummary(summary, outputSettings, true)
 	if err != nil {
 		t.Errorf("OutputSummary() error = %v", err)
 	}
@@ -394,12 +415,14 @@ func TestFormatter_OutputSummary_WithSensitiveOnly(t *testing.T) {
 		},
 	}
 
-	err := formatter.formatSensitiveResourceChanges(summary, "table")
-	if err != nil {
-		t.Errorf("formatSensitiveResourceChanges() error = %v", err)
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
 	}
 
-	// Restore stdout and read output
+	err := formatter.formatSensitiveResourceChanges(summary, outputSettings)
+	if err != nil {
+		t.Errorf("formatSensitiveResourceChanges() error = %v", err)
+	} // Restore stdout and read output
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -468,12 +491,14 @@ func TestFormatter_formatSensitiveResourceChanges(t *testing.T) {
 		},
 	}
 
-	err := formatter.formatSensitiveResourceChanges(summary, "table")
-	if err != nil {
-		t.Errorf("formatSensitiveResourceChanges() error = %v", err)
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
 	}
 
-	// Restore stdout and read output
+	err := formatter.formatSensitiveResourceChanges(summary, outputSettings)
+	if err != nil {
+		t.Errorf("formatSensitiveResourceChanges() error = %v", err)
+	} // Restore stdout and read output
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -616,9 +641,11 @@ func TestFormatter_StatisticsSummary_VariousChangeCombinations(t *testing.T) {
 				Statistics: tc.statistics,
 			}
 
-			err := formatter.formatStatisticsSummary(summary, "table")
+			outputSettings := &goformat.OutputSettings{
+				OutputFormat: "table",
+			}
 
-			// Restore stdout and read output
+			err := formatter.formatStatisticsSummary(summary, outputSettings) // Restore stdout and read output
 			w.Close()
 			os.Stdout = oldStdout
 
@@ -705,9 +732,11 @@ func TestFormatter_OutputFormat_Compatibility(t *testing.T) {
 				},
 			}
 
-			err := formatter.OutputSummary(summary, format, true)
+			outputSettings := &goformat.OutputSettings{
+				OutputFormat: format,
+			}
 
-			// Restore stdout and read output
+			err := formatter.OutputSummary(summary, outputSettings, true) // Restore stdout and read output
 			w.Close()
 			os.Stdout = oldStdout
 
@@ -814,7 +843,11 @@ func TestFormatter_ResourceChangesTable_WithDifferentResourceTypes(t *testing.T)
 		},
 	}
 
-	err := formatter.formatResourceChangesTable(summary, "table")
+	outputSettings := &goformat.OutputSettings{
+		OutputFormat: "table",
+	}
+
+	err := formatter.formatResourceChangesTable(summary, outputSettings)
 	if err != nil {
 		t.Errorf("formatResourceChangesTable() error = %v", err)
 	}
@@ -1005,18 +1038,19 @@ func TestFormatter_ErrorHandling(t *testing.T) {
 			os.Stdout = w
 
 			var err error
+			outputSettings := &goformat.OutputSettings{
+				OutputFormat: tc.outputFormat,
+			}
 			switch tc.methodName {
 			case "formatStatisticsSummary":
-				err = formatter.formatStatisticsSummary(tc.summary, tc.outputFormat)
+				err = formatter.formatStatisticsSummary(tc.summary, outputSettings)
 			case "formatPlanInfo":
-				err = formatter.formatPlanInfo(tc.summary, tc.outputFormat)
+				err = formatter.formatPlanInfo(tc.summary, outputSettings)
 			case "formatSensitiveResourceChanges":
-				err = formatter.formatSensitiveResourceChanges(tc.summary, tc.outputFormat)
+				err = formatter.formatSensitiveResourceChanges(tc.summary, outputSettings)
 			case "formatResourceChangesTable":
-				err = formatter.formatResourceChangesTable(tc.summary, tc.outputFormat)
-			}
-
-			// Restore stdout
+				err = formatter.formatResourceChangesTable(tc.summary, outputSettings)
+			} // Restore stdout
 			w.Close()
 			os.Stdout = oldStdout
 
@@ -1123,12 +1157,14 @@ func TestFormatter_FileOutput_DualOutput(t *testing.T) {
 				},
 			}
 
-			err := formatter.OutputSummary(summary, tt.outputFormat, false)
-			if err != nil {
-				t.Errorf("OutputSummary() error = %v", err)
+			outputSettings := &goformat.OutputSettings{
+				OutputFormat: tt.outputFormat,
 			}
 
-			// Restore stdout and read output
+			err := formatter.OutputSummary(summary, outputSettings, false)
+			if err != nil {
+				t.Errorf("OutputSummary() error = %v", err)
+			} // Restore stdout and read output
 			w.Close()
 			os.Stdout = oldStdout
 

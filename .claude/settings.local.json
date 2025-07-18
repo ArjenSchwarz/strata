@@ -27,7 +27,8 @@
       "Bash(source:*)",
       "Bash(validate_file_path \"/tmp/test.txt\" \"temp_file\")",
       "WebFetch(domain:github.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(echo:*)"
     ],
     "deny": []
   }

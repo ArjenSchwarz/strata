@@ -74,7 +74,6 @@ Examples:
 }
 
 var (
-	outputFormat            string
 	dangerThreshold         int
 	showDetails             bool
 	highlightDangers        bool
@@ -135,8 +134,10 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	// Create formatter and output summary
 	formatter := plan.NewFormatter(cfg)
 
-	// Validate file output settings before executing formatter
+	// Create output settings - format is already set from viper configuration
 	outputSettings := cfg.NewOutputSettings()
+
+	// Validate file output settings before executing formatter
 	if outputSettings.OutputFile != "" {
 		validator := config.NewFileValidator(cfg)
 		if err := validator.ValidateFileOutput(outputSettings); err != nil {
@@ -144,16 +145,11 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return formatter.OutputSummary(summary, outputFormat, showDetails)
+	return formatter.OutputSummary(summary, outputSettings, showDetails)
 }
 
 func init() {
 	planCmd.AddCommand(planSummaryCmd)
-
-	// Output format flag
-	planSummaryCmd.Flags().StringVarP(&outputFormat, "output", "o", "table",
-		"Output format (table, json, html, markdown)")
-	viper.BindPFlag("output", planSummaryCmd.Flags().Lookup("output"))
 
 	// Danger threshold flag
 	planSummaryCmd.Flags().IntVar(&dangerThreshold, "danger-threshold", 3,
