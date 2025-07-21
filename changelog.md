@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Go-Output v2 Migration**
+  - Migrated from go-output v1 to v2 for improved thread safety and performance
+  - Replaced OutputSettings with OutputConfiguration struct for cleaner configuration management
+  - Updated import paths from `github.com/ArjenSchwarz/go-output` to `github.com/ArjenSchwarz/go-output/v2`
+  - Refactored OutputSummary method to use v2 builder pattern with immutable Document creation
+  - Implemented separate rendering for stdout and file outputs to fix format mixing issues
+  - Replaced format.OutputArray with output.New() builder pattern for document construction
+  - Updated all formatter methods to use v2-compatible data structures ([]map[string]any)
+  - Added context support for all rendering operations with proper error handling
+  - Enabled emoji and color transformers using v2 transformer system
+  - Updated test suites to work with new v2 API patterns
+  - Fixed file validation to use OutputConfiguration instead of OutputSettings
+  - Maintained full backward compatibility for existing functionality and configuration
+
+### Changed
 - **Formatter Output System Refactoring**
   - Refactored `plan.Formatter.OutputSummary()` method to accept `*format.OutputSettings` instead of string `outputFormat` parameter
   - Updated all formatter methods (`formatPlanInfo`, `formatStatisticsSummary`, `formatResourceChangesTable`, `formatSensitiveResourceChanges`) to use `OutputSettings` for consistent configuration

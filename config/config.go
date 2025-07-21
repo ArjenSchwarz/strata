@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	format "github.com/ArjenSchwarz/go-output"
 	"github.com/spf13/viper"
 )
 
@@ -109,35 +108,48 @@ func (config *Config) GetTimezoneLocation() *time.Location {
 	return location
 }
 
-func (config *Config) NewOutputSettings() *format.OutputSettings {
-	settings := format.NewOutputSettings()
-	settings.UseEmoji = true
-	settings.UseColors = true
-	settings.SetOutputFormat(config.GetLCString("output"))
-	settings.OutputFile = config.GetLCString("output-file")
-	settings.OutputFileFormat = config.GetLCString("output-file-format")
-	// settings.ShouldAppend = config.GetBool("output.append")
-	settings.TableStyle = format.TableStyles[config.GetString("table.style")]
-	settings.TableMaxColumnWidth = config.GetInt("table.max-column-width")
+// OutputConfiguration holds the v2 output configuration settings
+type OutputConfiguration struct {
+	Format           string
+	OutputFile       string
+	OutputFileFormat string
+	UseEmoji         bool
+	UseColors        bool
+	TableStyle       string
+	MaxColumnWidth   int
+}
 
-	// Configure markdown settings if needed
-	if config.GetLCString("output") == "markdown" {
-		// Ensure markdown tables are properly formatted
-		settings.UseColors = false
-		settings.UseEmoji = true
-	}
+// NewOutputConfiguration creates a new output configuration from the global config
+func (config *Config) NewOutputConfiguration() *OutputConfiguration {
+	format := config.GetLCString("output")
+	outputFile := config.GetLCString("output-file")
+	outputFileFormat := config.GetLCString("output-file-format")
 
 	// Apply placeholder resolution to file path if specified
-	if settings.OutputFile != "" {
-		settings.OutputFile = config.resolvePlaceholders(settings.OutputFile)
+	if outputFile != "" {
+		outputFile = config.resolvePlaceholders(outputFile)
 	}
 
 	// Default file format to stdout format if not specified
-	if settings.OutputFileFormat == "" {
-		settings.OutputFileFormat = settings.OutputFormat
+	if outputFileFormat == "" {
+		outputFileFormat = format
 	}
 
-	return settings
+	// Configure colors based on output format
+	useColors := true
+	if format == "markdown" {
+		useColors = false
+	}
+
+	return &OutputConfiguration{
+		Format:           format,
+		OutputFile:       outputFile,
+		OutputFileFormat: outputFileFormat,
+		UseEmoji:         true,
+		UseColors:        useColors,
+		TableStyle:       config.GetString("table.style"),
+		MaxColumnWidth:   config.GetInt("table.max-column-width"),
+	}
 }
 
 // resolvePlaceholders replaces placeholder values in the given string with actual values

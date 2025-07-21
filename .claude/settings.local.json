@@ -28,7 +28,8 @@
       "Bash(validate_file_path \"/tmp/test.txt\" \"temp_file\")",
       "WebFetch(domain:github.com)",
       "Bash(find:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	format "github.com/ArjenSchwarz/go-output"
 )
 
 func TestFileValidator_ValidatePathSafety(t *testing.T) {
@@ -201,19 +199,19 @@ func TestFileValidator_ValidateFileOutput(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		settings *format.OutputSettings
+		settings *OutputConfiguration
 		wantErr  bool
 	}{
 		{
 			name: "no file output",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile: "",
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid file output",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       filepath.Join(tempDir, "output.json"),
 				OutputFileFormat: "json",
 			},
@@ -221,7 +219,7 @@ func TestFileValidator_ValidateFileOutput(t *testing.T) {
 		},
 		{
 			name: "path traversal attempt",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       "../../../etc/passwd",
 				OutputFileFormat: "json",
 			},
@@ -229,7 +227,7 @@ func TestFileValidator_ValidateFileOutput(t *testing.T) {
 		},
 		{
 			name: "unsupported format",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       filepath.Join(tempDir, "output.xml"),
 				OutputFileFormat: "xml",
 			},
@@ -237,7 +235,7 @@ func TestFileValidator_ValidateFileOutput(t *testing.T) {
 		},
 		{
 			name: "nonexistent directory",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       "/nonexistent/directory/output.json",
 				OutputFileFormat: "json",
 			},
@@ -752,7 +750,7 @@ func TestSecurity_SensitivePathBlocking(t *testing.T) {
 	for _, tt := range sensitivePaths {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test direct path access
-			settings := &format.OutputSettings{
+			settings := &OutputConfiguration{
 				OutputFile:       tt.path,
 				OutputFileFormat: "json",
 			}
@@ -849,14 +847,14 @@ func TestSecurity_ComprehensiveValidation(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		settings    *format.OutputSettings
+		settings    *OutputConfiguration
 		expectError bool
 		errorType   string
 		description string
 	}{
 		{
 			name: "valid_configuration",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       filepath.Join(tempDir, "valid_output.json"),
 				OutputFileFormat: "json",
 			},
@@ -865,7 +863,7 @@ func TestSecurity_ComprehensiveValidation(t *testing.T) {
 		},
 		{
 			name: "path_traversal_attack",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       "../../../etc/passwd",
 				OutputFileFormat: "json",
 			},
@@ -875,7 +873,7 @@ func TestSecurity_ComprehensiveValidation(t *testing.T) {
 		},
 		{
 			name: "unsupported_format",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       filepath.Join(tempDir, "output.xml"),
 				OutputFileFormat: "xml",
 			},
@@ -885,7 +883,7 @@ func TestSecurity_ComprehensiveValidation(t *testing.T) {
 		},
 		{
 			name: "nonexistent_directory",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       "/nonexistent/directory/output.json",
 				OutputFileFormat: "json",
 			},
@@ -895,7 +893,7 @@ func TestSecurity_ComprehensiveValidation(t *testing.T) {
 		},
 		{
 			name: "empty_file_path",
-			settings: &format.OutputSettings{
+			settings: &OutputConfiguration{
 				OutputFile:       "",
 				OutputFileFormat: "json",
 			},

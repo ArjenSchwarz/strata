@@ -1,10 +1,11 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	format "github.com/ArjenSchwarz/go-output"
+	output "github.com/ArjenSchwarz/go-output/v2"
 	"github.com/ArjenSchwarz/strata/config"
 )
 
@@ -31,222 +32,185 @@ func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
 	return fmt.Errorf("unsupported output format '%s'. Supported formats: %s", outputFormat, strings.Join(supportedFormats, ", "))
 }
 
-// OutputSummary outputs the plan summary using go-output library
-func (f *Formatter) OutputSummary(summary *PlanSummary, outputSettings *format.OutputSettings, showDetails bool) error {
+// OutputSummary outputs the plan summary using go-output v2 library
+func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.OutputConfiguration, showDetails bool) error {
+	ctx := context.Background()
+
 	// Validate output format first
-	if err := f.ValidateOutputFormat(outputSettings.OutputFormat); err != nil {
+	if err := f.ValidateOutputFormat(outputConfig.Format); err != nil {
 		return err
 	}
 
-	// Use the provided output settings directly
-	settings := outputSettings
-	settings.UseColors = true
-	settings.UseEmoji = true
-	settings.SeparateTables = true // Enable multi-table support
-
-	output := format.OutputArray{
-		Settings: settings,
-		Contents: []format.OutputHolder{},
-		Keys:     []string{},
-	}
+	// Build the document using v2 builder pattern
+	builder := output.New()
 
 	// Add plan information section
-	planInfoData, planInfoKeys, err := f.createPlanInfoData(summary, settings)
+	planInfoData, err := f.createPlanInfoDataV2(summary)
 	if err != nil {
 		return fmt.Errorf("failed to create plan info data: %w", err)
 	}
-	output.Contents = planInfoData
-	output.Keys = planInfoKeys
-	output.Settings.Title = "Plan Information"
-	output.AddToBuffer()
+	builder = builder.Table("Plan Information", planInfoData,
+		output.WithKeys("Plan File", "Version", "Workspace", "Backend", "Created"))
 
 	// Add statistics summary section
-	statsData, statsKeys, err := f.createStatisticsSummaryData(summary, settings)
+	statsData, err := f.createStatisticsSummaryDataV2(summary)
 	if err != nil {
 		return fmt.Errorf("failed to create statistics summary data: %w", err)
 	}
-	output.Contents = statsData
-	output.Keys = statsKeys
-	output.Settings.Title = fmt.Sprintf("Summary for %s", summary.PlanFile)
-	output.AddToBuffer()
+	builder = builder.Table(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
+		output.WithKeys("TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK"))
 
 	// Add resource changes table if requested
 	if showDetails {
-		resourceData, resourceKeys, err := f.createResourceChangesData(summary, settings)
+		resourceData, err := f.createResourceChangesDataV2(summary)
 		if err != nil {
 			return fmt.Errorf("failed to create resource changes data: %w", err)
 		}
-		output.Contents = resourceData
-		output.Keys = resourceKeys
-		output.Settings.Title = "Resource Changes"
-		output.AddToBuffer()
+		builder = builder.Table("Resource Changes", resourceData,
+			output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
 	} else if f.config.Plan.AlwaysShowSensitive {
 		// When details are disabled but AlwaysShowSensitive is enabled,
 		// show only the sensitive resource changes
-		sensitiveData, sensitiveKeys, err := f.createSensitiveResourceChangesData(summary, settings)
+		sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
 		if err != nil {
 			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
 		}
 		if len(sensitiveData) > 0 {
-			output.Contents = sensitiveData
-			output.Keys = sensitiveKeys
-			output.Settings.Title = "Sensitive Resource Changes"
-			output.AddToBuffer()
+			builder = builder.Table("Sensitive Resource Changes", sensitiveData,
+				output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
 		} else {
 			// Handle no sensitive changes case - but only for stdout-only mode
-			if settings.OutputFile == "" {
+			if outputConfig.OutputFile == "" {
 				fmt.Println("No sensitive resource changes detected.")
 			}
 		}
 	}
 
-	// Write all accumulated sections
-	output.Write()
+	// Build the document
+	doc := builder.Build()
+
+	// Render to stdout first
+	stdoutFormat := f.getFormatFromConfig(outputConfig.Format)
+	if outputConfig.TableStyle != "" && outputConfig.Format == "table" {
+		stdoutFormat = output.TableWithStyle(outputConfig.TableStyle)
+	}
+
+	stdoutOptions := []output.OutputOption{
+		output.WithFormat(stdoutFormat),
+		output.WithWriter(output.NewStdoutWriter()),
+	}
+
+	// Add transformers to stdout based on configuration
+	if outputConfig.UseEmoji {
+		stdoutOptions = append(stdoutOptions, output.WithTransformer(&output.EmojiTransformer{}))
+	}
+	if outputConfig.UseColors {
+		stdoutOptions = append(stdoutOptions, output.WithTransformer(output.NewColorTransformer()))
+	}
+
+	stdoutOut := output.NewOutput(stdoutOptions...)
+	if err := stdoutOut.Render(ctx, doc); err != nil {
+		return fmt.Errorf("failed to render to stdout: %w", err)
+	}
+
+	// Render to file if configured
+	if outputConfig.OutputFile != "" {
+		fileWriter, err := output.NewFileWriter(".", outputConfig.OutputFile)
+		if err != nil {
+			return fmt.Errorf("failed to create file writer: %w", err)
+		}
+
+		fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
+		fileOptions := []output.OutputOption{
+			output.WithFormat(fileFormat),
+			output.WithWriter(fileWriter),
+		}
+
+		// Add transformers to file output based on configuration
+		if outputConfig.UseEmoji {
+			fileOptions = append(fileOptions, output.WithTransformer(&output.EmojiTransformer{}))
+		}
+		if outputConfig.UseColors {
+			fileOptions = append(fileOptions, output.WithTransformer(output.NewColorTransformer()))
+		}
+
+		fileOut := output.NewOutput(fileOptions...)
+		if err := fileOut.Render(ctx, doc); err != nil {
+			return fmt.Errorf("failed to render to file: %w", err)
+		}
+	}
+
 	return nil
 }
 
-// formatPlanInfo formats plan info to stdout (for testing compatibility)
-func (f *Formatter) formatPlanInfo(summary *PlanSummary, outputSettings *format.OutputSettings) error {
-	planInfoData, planInfoKeys, err := f.createPlanInfoData(summary, outputSettings)
-	if err != nil {
-		return err
+// getFormatFromConfig converts string format to v2 Format
+func (f *Formatter) getFormatFromConfig(format string) output.Format {
+	switch strings.ToLower(format) {
+	case "json":
+		return output.JSON
+	case "csv":
+		return output.CSV
+	case "html":
+		return output.HTML
+	case "markdown":
+		return output.Markdown
+	case "table":
+		return output.Table
+	default:
+		return output.Table
 	}
-
-	outputSettings.Title = "Plan Information"
-
-	output := format.OutputArray{
-		Settings: outputSettings,
-		Contents: planInfoData,
-		Keys:     planInfoKeys,
-	}
-
-	output.Write()
-	fmt.Println() // Add spacing
-	return nil
 }
 
-// formatStatisticsSummary formats statistics to stdout (for testing compatibility)
-func (f *Formatter) formatStatisticsSummary(summary *PlanSummary, outputSettings *format.OutputSettings) error {
-	statsData, statsKeys, err := f.createStatisticsSummaryData(summary, outputSettings)
-	if err != nil {
-		return err
-	}
-
-	// Use the same settings but temporarily disable file output
-	originalFile := outputSettings.OutputFile
-	outputSettings.OutputFile = ""
-	outputSettings.Title = fmt.Sprintf("Summary for %s", summary.PlanFile)
-
-	output := format.OutputArray{
-		Settings: outputSettings,
-		Contents: statsData,
-		Keys:     statsKeys,
-	}
-
-	output.Write()
-
-	// Restore original file setting
-	outputSettings.OutputFile = originalFile
-	fmt.Println() // Add spacing
-	return nil
-}
-
-// formatSensitiveResourceChanges formats sensitive resources to stdout (for testing compatibility)
-func (f *Formatter) formatSensitiveResourceChanges(summary *PlanSummary, outputSettings *format.OutputSettings) error {
-	sensitiveData, sensitiveKeys, err := f.createSensitiveResourceChangesData(summary, outputSettings)
-	if err != nil {
-		return err
-	}
-
-	if len(sensitiveData) == 0 {
-		fmt.Println("No sensitive resource changes detected.")
-		fmt.Println() // Add spacing
-		return nil
-	}
-
-	// Use the same settings but temporarily disable file output
-	originalFile := outputSettings.OutputFile
-	outputSettings.OutputFile = ""
-	outputSettings.Title = "Sensitive Resource Changes"
-
-	output := format.OutputArray{
-		Settings: outputSettings,
-		Contents: sensitiveData,
-		Keys:     sensitiveKeys,
-	}
-
-	output.Write()
-
-	// Restore original file setting
-	outputSettings.OutputFile = originalFile
-	fmt.Println() // Add spacing
-	return nil
-}
-
-// formatResourceChangesTable formats resource changes to stdout (for testing compatibility)
-func (f *Formatter) formatResourceChangesTable(summary *PlanSummary, outputSettings *format.OutputSettings) error {
-	resourceData, resourceKeys, err := f.createResourceChangesData(summary, outputSettings)
-	if err != nil {
-		return err
-	}
-
-	// Use the same settings but temporarily disable file output
-	originalFile := outputSettings.OutputFile
-	outputSettings.OutputFile = ""
-	outputSettings.Title = "Resource Changes"
-
-	output := format.OutputArray{
-		Settings: outputSettings,
-		Contents: resourceData,
-		Keys:     resourceKeys,
-	}
-
-	output.Write()
-
-	// Restore original file setting
-	outputSettings.OutputFile = originalFile
-	fmt.Println() // Add spacing
-	return nil
-}
-
-// createStatisticsSummaryData creates the statistics summary data
-func (f *Formatter) createStatisticsSummaryData(summary *PlanSummary, settings *format.OutputSettings) ([]format.OutputHolder, []string, error) {
-	// Validate inputs
+// createPlanInfoDataV2 creates the plan information data for v2 API
+func (f *Formatter) createPlanInfoDataV2(summary *PlanSummary) ([]map[string]any, error) {
 	if summary == nil {
-		return nil, nil, fmt.Errorf("summary cannot be nil")
-	}
-	if summary.PlanFile == "" {
-		return nil, nil, fmt.Errorf("plan file name is required")
+		return nil, fmt.Errorf("summary cannot be nil")
 	}
 
-	// Create horizontal statistics data
-	statsData := []format.OutputHolder{
+	data := []map[string]any{
 		{
-			Contents: map[string]interface{}{
-				"TOTAL":        summary.Statistics.Total,
-				"ADDED":        summary.Statistics.ToAdd,
-				"REMOVED":      summary.Statistics.ToDestroy,
-				"MODIFIED":     summary.Statistics.ToChange,
-				"REPLACEMENTS": summary.Statistics.Replacements,
-				"CONDITIONALS": summary.Statistics.Conditionals,
-				"HIGH RISK":    summary.Statistics.HighRisk,
-			},
+			"Plan File": summary.PlanFile,
+			"Version":   summary.TerraformVersion,
+			"Workspace": summary.Workspace,
+			"Backend":   fmt.Sprintf("%s (%s)", summary.Backend.Type, summary.Backend.Location),
+			"Created":   summary.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 
-	keys := []string{"TOTAL", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK"}
-	return statsData, keys, nil
+	return data, nil
 }
 
-// createResourceChangesData creates the resource changes data for detailed view
-func (f *Formatter) createResourceChangesData(summary *PlanSummary, settings *format.OutputSettings) ([]format.OutputHolder, []string, error) {
-	// Validate inputs
+// createStatisticsSummaryDataV2 creates the statistics summary data for v2 API
+func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[string]any, error) {
 	if summary == nil {
-		return nil, nil, fmt.Errorf("summary cannot be nil")
+		return nil, fmt.Errorf("summary cannot be nil")
+	}
+	if summary.PlanFile == "" {
+		return nil, fmt.Errorf("plan file name is required")
 	}
 
-	// Create enhanced resource changes data
-	resourceData := []format.OutputHolder{}
+	data := []map[string]any{
+		{
+			"TOTAL":        summary.Statistics.Total,
+			"ADDED":        summary.Statistics.ToAdd,
+			"REMOVED":      summary.Statistics.ToDestroy,
+			"MODIFIED":     summary.Statistics.ToChange,
+			"REPLACEMENTS": summary.Statistics.Replacements,
+			"CONDITIONALS": summary.Statistics.Conditionals,
+			"HIGH RISK":    summary.Statistics.HighRisk,
+		},
+	}
+
+	return data, nil
+}
+
+// createResourceChangesDataV2 creates the resource changes data for v2 API
+func (f *Formatter) createResourceChangesDataV2(summary *PlanSummary) ([]map[string]any, error) {
+	if summary == nil {
+		return nil, fmt.Errorf("summary cannot be nil")
+	}
+
+	var data []map[string]any
 
 	for _, change := range summary.ResourceChanges {
 		// Determine the display ID based on change type
@@ -272,117 +236,34 @@ func (f *Formatter) createResourceChangesData(summary *PlanSummary, settings *fo
 			}
 		}
 
-		resourceData = append(resourceData, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"ACTION":      getActionDisplay(change.ChangeType),
-				"RESOURCE":    change.Address,
-				"TYPE":        change.Type,
-				"ID":          displayID,
-				"REPLACEMENT": replacementDisplay,
-				"MODULE":      change.ModulePath,
-				"DANGER":      dangerInfo,
-			},
+		data = append(data, map[string]any{
+			"ACTION":      getActionDisplay(change.ChangeType),
+			"RESOURCE":    change.Address,
+			"TYPE":        change.Type,
+			"ID":          displayID,
+			"REPLACEMENT": replacementDisplay,
+			"MODULE":      change.ModulePath,
+			"DANGER":      dangerInfo,
 		})
 	}
 
-	keys := []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"}
-	return resourceData, keys, nil
+	return data, nil
 }
 
-// createResourceChangesDataOld converts the resource changes into OutputHolder format for detailed view (old format)
-func (f *Formatter) createResourceChangesDataOld(summary *PlanSummary) []format.OutputHolder {
-	var data []format.OutputHolder
-
-	// Add resource changes
-	for _, change := range summary.ResourceChanges {
-		warning := ""
-		if change.IsDestructive {
-			warning = "⚠️ DESTRUCTIVE"
-		}
-
-		data = append(data, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"Type":    "Resource Change",
-				"Key":     change.Address,
-				"Value":   string(change.ChangeType),
-				"Details": change.Type,
-				"Warning": warning,
-				"Icon":    getChangeIcon(change.ChangeType),
-			},
-		})
-	}
-
-	// Add output changes
-	for _, change := range summary.OutputChanges {
-		sensitive := ""
-		if change.Sensitive {
-			sensitive = "🔒 SENSITIVE"
-		}
-
-		data = append(data, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"Type":    "Output Change",
-				"Key":     change.Name,
-				"Value":   string(change.ChangeType),
-				"Details": sensitive,
-				"Warning": "",
-				"Icon":    getChangeIcon(change.ChangeType),
-			},
-		})
-	}
-
-	return data
-}
-
-// createPlanInfoData creates the plan information data
-func (f *Formatter) createPlanInfoData(summary *PlanSummary, settings *format.OutputSettings) ([]format.OutputHolder, []string, error) {
-	// Validate inputs
+// createSensitiveResourceChangesDataV2 creates data for sensitive resource changes only for v2 API
+func (f *Formatter) createSensitiveResourceChangesDataV2(summary *PlanSummary) ([]map[string]any, error) {
 	if summary == nil {
-		return nil, nil, fmt.Errorf("summary cannot be nil")
-	}
-
-	// Create horizontal plan info data with a single row for values
-	planInfoData := []format.OutputHolder{
-		{
-			// Values row
-			Contents: map[string]interface{}{
-				"Plan File": summary.PlanFile,
-				"Version":   summary.TerraformVersion,
-				"Workspace": summary.Workspace,
-				"Backend":   fmt.Sprintf("%s (%s)", summary.Backend.Type, summary.Backend.Location),
-				"Created":   summary.CreatedAt.Format("2006-01-02 15:04:05"),
-			},
-		},
-	}
-
-	keys := []string{"Plan File", "Version", "Workspace", "Backend", "Created"}
-	return planInfoData, keys, nil
-}
-
-// createSensitiveResourceChangesData creates data for sensitive resource changes only
-func (f *Formatter) createSensitiveResourceChangesData(summary *PlanSummary, settings *format.OutputSettings) ([]format.OutputHolder, []string, error) {
-	// Validate inputs
-	if summary == nil {
-		return nil, nil, fmt.Errorf("summary cannot be nil")
+		return nil, fmt.Errorf("summary cannot be nil")
 	}
 
 	// Filter for sensitive resources
-	sensitiveChanges := []ResourceChange{}
+	var data []map[string]any
+
 	for _, change := range summary.ResourceChanges {
-		if change.IsDangerous {
-			sensitiveChanges = append(sensitiveChanges, change)
+		if !change.IsDangerous {
+			continue
 		}
-	}
 
-	// If no sensitive changes, return empty data
-	if len(sensitiveChanges) == 0 {
-		return []format.OutputHolder{}, []string{}, nil
-	}
-
-	// Create resource data for sensitive changes
-	resourceData := []format.OutputHolder{}
-
-	for _, change := range sensitiveChanges {
 		// Determine the display ID based on change type
 		displayID := change.PhysicalID
 		if change.ChangeType == ChangeTypeCreate {
@@ -406,21 +287,18 @@ func (f *Formatter) createSensitiveResourceChangesData(summary *PlanSummary, set
 			}
 		}
 
-		resourceData = append(resourceData, format.OutputHolder{
-			Contents: map[string]interface{}{
-				"ACTION":      getActionDisplay(change.ChangeType),
-				"RESOURCE":    change.Address,
-				"TYPE":        change.Type,
-				"ID":          displayID,
-				"REPLACEMENT": replacementDisplay,
-				"MODULE":      change.ModulePath,
-				"DANGER":      dangerInfo,
-			},
+		data = append(data, map[string]any{
+			"ACTION":      getActionDisplay(change.ChangeType),
+			"RESOURCE":    change.Address,
+			"TYPE":        change.Type,
+			"ID":          displayID,
+			"REPLACEMENT": replacementDisplay,
+			"MODULE":      change.ModulePath,
+			"DANGER":      dangerInfo,
 		})
 	}
 
-	keys := []string{"ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"}
-	return resourceData, keys, nil
+	return data, nil
 }
 
 // getActionDisplay returns the display name for a change type

@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-
-	format "github.com/ArjenSchwarz/go-output"
 )
 
 // FileValidator provides validation functionality for file output settings
@@ -21,23 +19,23 @@ func NewFileValidator(config *Config) *FileValidator {
 }
 
 // ValidateFileOutput performs comprehensive validation of file output settings
-func (fv *FileValidator) ValidateFileOutput(settings *format.OutputSettings) error {
-	if settings.OutputFile == "" {
+func (fv *FileValidator) ValidateFileOutput(config *OutputConfiguration) error {
+	if config.OutputFile == "" {
 		return nil // No file output, nothing to validate
 	}
 
 	// Validate file path safety
-	if err := fv.validatePathSafety(settings.OutputFile); err != nil {
+	if err := fv.validatePathSafety(config.OutputFile); err != nil {
 		return fmt.Errorf("file path validation failed: %w", err)
 	}
 
 	// Validate directory permissions
-	if err := fv.validateDirectoryPermissions(settings.OutputFile); err != nil {
+	if err := fv.validateDirectoryPermissions(config.OutputFile); err != nil {
 		return fmt.Errorf("directory permission validation failed: %w", err)
 	}
 
 	// Validate format support
-	if err := fv.validateFormatSupport(settings.OutputFileFormat); err != nil {
+	if err := fv.validateFormatSupport(config.OutputFileFormat); err != nil {
 		return fmt.Errorf("format validation failed: %w", err)
 	}
 
@@ -194,30 +192,30 @@ func (fv *FileValidator) checkFileOverwrite(filePath string, result *ValidationR
 }
 
 // ValidateAll performs comprehensive validation and returns detailed results
-func (fv *FileValidator) ValidateAll(settings *format.OutputSettings) *ValidationResult {
+func (fv *FileValidator) ValidateAll(config *OutputConfiguration) *ValidationResult {
 	result := &ValidationResult{Valid: true}
 
-	if settings.OutputFile == "" {
+	if config.OutputFile == "" {
 		return result // No file output, nothing to validate
 	}
 
 	// Validate path safety
-	if err := fv.validatePathSafety(settings.OutputFile); err != nil {
+	if err := fv.validatePathSafety(config.OutputFile); err != nil {
 		result.AddError(err)
 	}
 
 	// Validate directory permissions
-	if err := fv.validateDirectoryPermissions(settings.OutputFile); err != nil {
+	if err := fv.validateDirectoryPermissions(config.OutputFile); err != nil {
 		result.AddError(err)
 	}
 
 	// Validate format support
-	if err := fv.validateFormatSupport(settings.OutputFileFormat); err != nil {
+	if err := fv.validateFormatSupport(config.OutputFileFormat); err != nil {
 		result.AddError(err)
 	}
 
 	// Check for file overwrite scenarios
-	fv.checkFileOverwrite(settings.OutputFile, result)
+	fv.checkFileOverwrite(config.OutputFile, result)
 
 	return result
 }

@@ -134,18 +134,18 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	// Create formatter and output summary
 	formatter := plan.NewFormatter(cfg)
 
-	// Create output settings - format is already set from viper configuration
-	outputSettings := cfg.NewOutputSettings()
+	// Create output configuration for v2 API
+	outputConfig := cfg.NewOutputConfiguration()
 
 	// Validate file output settings before executing formatter
-	if outputSettings.OutputFile != "" {
+	if outputConfig.OutputFile != "" {
 		validator := config.NewFileValidator(cfg)
-		if err := validator.ValidateFileOutput(outputSettings); err != nil {
+		if err := validator.ValidateFileOutput(outputConfig); err != nil {
 			return fmt.Errorf("file output validation failed: %w", err)
 		}
 	}
 
-	return formatter.OutputSummary(summary, outputSettings, showDetails)
+	return formatter.OutputSummary(summary, outputConfig, showDetails)
 }
 
 func init() {

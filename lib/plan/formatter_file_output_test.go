@@ -12,20 +12,20 @@ func TestFormatter_FileOutput_ConfigIntegration(t *testing.T) {
 	// Test that the config system can create output settings without errors
 	cfg := &config.Config{}
 
-	settings := cfg.NewOutputSettings()
-	if settings == nil {
-		t.Errorf("NewOutputSettings should not return nil")
+	outputConfig := cfg.NewOutputConfiguration()
+	if outputConfig == nil {
+		t.Errorf("NewOutputConfiguration should not return nil")
 	}
 
 	// Test that we can set file output properties
-	settings.OutputFile = "test-output.json"
-	settings.OutputFileFormat = "json"
+	outputConfig.OutputFile = "test-output.json"
+	outputConfig.OutputFileFormat = "json"
 
-	if settings.OutputFile != "test-output.json" {
+	if outputConfig.OutputFile != "test-output.json" {
 		t.Errorf("OutputFile should be set correctly")
 	}
 
-	if settings.OutputFileFormat != "json" {
+	if outputConfig.OutputFileFormat != "json" {
 		t.Errorf("OutputFileFormat should be set correctly")
 	}
 }
@@ -40,11 +40,11 @@ func TestFormatter_FileOutput_ValidationIntegration(t *testing.T) {
 	}
 
 	// Test with valid settings
-	settings := cfg.NewOutputSettings()
-	settings.OutputFile = "" // No file output
-	settings.OutputFileFormat = "json"
+	outputConfig := cfg.NewOutputConfiguration()
+	outputConfig.OutputFile = "" // No file output
+	outputConfig.OutputFileFormat = "json"
 
-	err := validator.ValidateFileOutput(settings)
+	err := validator.ValidateFileOutput(outputConfig)
 	if err != nil {
 		t.Errorf("Validation should pass for no file output: %v", err)
 	}
