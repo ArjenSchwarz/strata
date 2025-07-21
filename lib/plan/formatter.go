@@ -123,7 +123,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
 		fileOptions := []output.OutputOption{
 			output.WithFormat(fileFormat),
-			output.WithWriter(fileWriter).WithAbsolutePath(),
+			output.WithWriter(fileWriter),
 		}
 
 		// Add transformers to file output based on configuration
