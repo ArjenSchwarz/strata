@@ -5,7 +5,7 @@ go 1.24.3
 toolchain go1.24.5
 
 require (
-	github.com/ArjenSchwarz/go-output/v2 v2.0.0
+	github.com/ArjenSchwarz/go-output/v2 v2.0.1
 	github.com/hashicorp/terraform-json v0.25.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.9.1
