@@ -115,13 +115,10 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 
 	// Render to file if configured
 	if outputConfig.OutputFile != "" {
-		fileWriter, err := output.NewFileWriter(".", outputConfig.OutputFile)
+		fileWriter, err := output.NewFileWriterWithOptions(".", outputConfig.OutputFile, output.WithAbsolutePaths())
 		if err != nil {
 			return fmt.Errorf("failed to create file writer: %w", err)
 		}
-		
-		// Enable absolute path support
-		fileWriter = fileWriter.WithAbsolutePath()
 
 		fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
 		fileOptions := []output.OutputOption{
