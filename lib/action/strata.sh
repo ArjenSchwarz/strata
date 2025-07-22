@@ -219,9 +219,6 @@ run_strata() {
   # Add subcommand-specific arguments
   cmd="$cmd --output $stdout_format"
   
-  if [ -n "$INPUT_DANGER_THRESHOLD" ]; then
-    cmd="$cmd --danger-threshold $INPUT_DANGER_THRESHOLD"
-  fi
   
   if [ "$show_details" = "true" ]; then
     cmd="$cmd --details"

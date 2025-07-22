@@ -155,7 +155,6 @@ jobs:
 #         cat > test-terraform/.strata.yaml << 'EOF'
 #         output: markdown
 #         plan:
-#           danger-threshold: 3
 #           show-details: true
 #           highlight-dangers: true
         
@@ -207,7 +206,6 @@ jobs:
 #       uses: ./
 #       with:
 #         plan-file: test-terraform/terraform.tfplan
-#         danger-threshold: 2
         
 #     - name: Test Action - No PR Comments
 #       id: test-no-comments
@@ -284,7 +282,7 @@ jobs:
 #             ;;
             
 #           "with-dangers")
-#             # Should trigger danger threshold with 5 resources
+#             # Should handle multiple resource changes
 #             change_count="${{ steps.test-threshold.outputs.change-count }}"
 #             if [ "$change_count" -lt "5" ]; then
 #               echo "ERROR: Expected at least 5 changes, got $change_count"
@@ -379,7 +377,6 @@ jobs:
 #       uses: ./
 #       with:
 #         plan-file: terraform.tfplan
-#         danger-threshold: not-a-number
         
 #     - name: Test Nonexistent Config File
 #       id: test-invalid-config
@@ -403,7 +400,6 @@ jobs:
 #         fi
         
 #         if [ "${{ steps.test-invalid-threshold.outcome }}" != "success" ]; then
-#           echo "ERROR: Action should handle invalid danger threshold gracefully"
 #           exit 1
 #         fi
         

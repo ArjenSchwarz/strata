@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **GitHub Action Danger Threshold Cleanup**
+  - Removed danger-threshold input parameter from GitHub Action (action.yml)
+  - Removed danger threshold validation and processing from GitHub Action scripts  
+  - Removed INPUT_DANGER_THRESHOLD environment variable from action execution
+  - Updated workflow test configurations to use highlight-dangers instead of danger-threshold
+  - Cleaned up commented danger threshold references in test workflows
+
 ### Changed
 - **GitHub Action Output Improvements**
   - Removed redundant "📋 Terraform Plan Summary" header from GitHub Action output

@@ -81,14 +81,6 @@ validate_and_sanitize_inputs() {
   COMMENT_ON_PR=$(sanitize_input_parameter "comment-on-pr" "${INPUT_COMMENT_ON_PR:-true}" "boolean")
   UPDATE_COMMENT=$(sanitize_input_parameter "update-comment" "${INPUT_UPDATE_COMMENT:-true}" "boolean")
 
-  # Sanitize and validate danger threshold if provided
-  if [ -n "$INPUT_DANGER_THRESHOLD" ]; then
-    INPUT_DANGER_THRESHOLD=$(sanitize_input_parameter "danger-threshold" "$INPUT_DANGER_THRESHOLD" "integer")
-    if [ -z "$INPUT_DANGER_THRESHOLD" ] || [ "$INPUT_DANGER_THRESHOLD" = "0" ]; then
-      log "Danger threshold validation" "Using default value (empty)"
-      INPUT_DANGER_THRESHOLD=""
-    fi
-  fi
 
   # Sanitize and validate config file if provided
   if [ -n "$INPUT_CONFIG_FILE" ]; then
