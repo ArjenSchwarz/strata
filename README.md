@@ -61,7 +61,7 @@ File paths support placeholders for dynamic naming:
 Examples:
   strata plan summary terraform.tfplan
   strata plan summary --output json terraform.tfplan
-  strata plan summary --danger-threshold 5 terraform.tfplan
+  strata plan summary --show-details terraform.tfplan
   strata plan summary --file output.json --file-format json terraform.tfplan
   strata plan summary --file "report-$TIMESTAMP-$AWS_REGION.md" --file-format markdown terraform.tfplan
 
@@ -69,11 +69,9 @@ Usage:
   strata plan summary [flags] PLAN_FILE
 
 Flags:
-      --danger-threshold int   Threshold for highlighting dangerous changes (default 3)
   -h, --help                   help for summary
-      --output string          Output format: table, json, html, markdown (default "table")
-      --show-details           Show detailed resource changes (default true)
       --highlight-dangers      Highlight potentially dangerous changes (default true)
+      --show-details           Show detailed resource changes (default true)
       --show-statistics        Show statistics summary table (default true)
       --stats-format string    Statistics summary format (horizontal, vertical) (default "horizontal")
 
@@ -118,8 +116,8 @@ $ strata plan summary --output html --file report.html terraform.tfplan
 # Generate markdown output for documentation
 $ strata plan summary --output markdown terraform.tfplan
 
-# Generate table output with custom danger threshold
-$ strata plan summary --danger-threshold 5 terraform.tfplan
+# Generate table output with danger highlighting
+$ strata plan summary --highlight-dangers terraform.tfplan
 ```
 
 ### File Output
@@ -189,12 +187,13 @@ $ strata plan summary --file "reports/$AWS_REGION/plan-$TIMESTAMP.json" --file-f
 
 ### Danger Highlights
 
-Strata can identify and highlight potentially dangerous changes in your Terraform plans:
+Strata automatically identifies and highlights potentially dangerous changes in your Terraform plans:
 
 1. **Destructive Changes** - Resources being deleted or replaced
 2. **Sensitive Resource Replacements** - Replacement of critical infrastructure components
 3. **Sensitive Property Changes** - Modifications to properties that might cause service disruptions
 4. **High-Risk Changes** - Sensitive resources with danger flags are counted separately in the statistics summary
+5. **Action Sorting** - Dangerous changes are automatically sorted to appear first (Remove > Replace > Modify > Add)
 
 You can configure which resources and properties are considered sensitive in your `strata.yaml` configuration file:
 
@@ -207,7 +206,7 @@ sensitive_properties:
     property: user_data
 ```
 
-When a sensitive resource is being replaced or a sensitive property is being modified, Strata will highlight it with a warning indicator (⚠️) and provide details about why the change is considered dangerous.
+When a sensitive resource is being replaced or a sensitive property is being modified, Strata will highlight it with a warning indicator (⚠️) and provide details about why the change is considered dangerous. The warning system now shows warnings for any destructive changes without requiring threshold configuration.
 
 ## Configuration
 
@@ -220,7 +219,6 @@ output: table
 table:
   style: ColoredBlackOnMagentaWhite
 plan:
-  danger-threshold: 3
   show-details: true
   highlight-dangers: true
   always-show-sensitive: true  # Always show sensitive resources even when details are disabled
@@ -259,7 +257,7 @@ Strata is available as a GitHub Action that can be easily integrated into your C
   with:
     plan-file: terraform.tfplan
     output-format: markdown
-    danger-threshold: 5
+    show-details: true
     show-details: true
     config-file: .strata.yaml
     comment-on-pr: true
@@ -320,7 +318,7 @@ jobs:
 | `plan-file` | Path to Terraform plan file | Yes | |
 | `output-format` | Output format (table, json, markdown) | No | `markdown` |
 | `config-file` | Path to custom Strata config file | No | |
-| `danger-threshold` | Danger threshold for highlighting risks | No | |
+| `highlight-dangers` | Highlight potentially dangerous changes | No | `true` |
 | `show-details` | Show detailed change information | No | `false` |
 | `github-token` | GitHub token for PR comments | No | `${{ github.token }}` |
 | `comment-on-pr` | Whether to comment on PR | No | `true` |
@@ -343,7 +341,7 @@ jobs:
 - **Step Summary Integration**: Automatically adds rich Markdown summaries to GitHub step summaries
 - **Pull Request Comments**: Posts or updates comments on pull requests with plan analysis
 - **Multiple Output Formats**: Supports table, JSON, and Markdown output formats
-- **Danger Detection**: Highlights potentially risky changes based on configurable thresholds
+- **Danger Detection**: Highlights potentially risky changes with sensitive resource and property detection
 - **Caching**: Automatically caches Strata binaries for faster execution
 - **Error Handling**: Graceful error handling with clear messaging
 
@@ -439,22 +437,29 @@ make run-sample
 make run-sample-details
 ```
 
-## Recent Changes
+## What's New in v1.0
 
-Recent additions to Strata include:
+Strata v1.0 represents a major milestone with comprehensive Terraform plan analysis capabilities:
 
-- UI Improvements:
-  - Horizontal plan information layout for better readability
-  - High-risk column in statistics summary to highlight sensitive dangerous changes
-  - Always show sensitive resource changes option even when details are disabled
-  - Markdown output format support for documentation and pull requests
-- Danger Highlights feature for identifying sensitive resource replacements and property changes
-- Enhanced plan information display with Terraform version, workspace, and backend details
-- Improved resource changes table with physical IDs, replacement indicators, and module information
-- Horizontal statistics summary table with clear counts of different change types
-- Makefile with standard development targets for building, testing, and running samples
+### Core Features
+- **Complete Plan Analysis**: Full parsing and analysis of Terraform plans with change categorization
+- **Multiple Output Formats**: Support for table, JSON, HTML, and Markdown formats
+- **Danger Detection**: Automatic identification of potentially risky changes without manual thresholds
+- **Action Sorting**: Prioritized display of changes by risk level (Remove > Replace > Modify > Add)
 
-For a complete list of changes, see the [changelog](changelog.md).
+### Advanced Capabilities  
+- **File Output System**: Dual output support with dynamic file naming using placeholders
+- **GitHub Action Integration**: Seamless CI/CD integration with PR comments and step summaries
+- **Sensitive Resource Detection**: Configurable highlighting of critical infrastructure changes
+- **Enhanced Statistics**: Horizontal statistics layout with comprehensive change tracking
+
+### Technical Improvements
+- **Go-Output v2**: Improved performance and thread safety with the latest output library
+- **Cross-Platform Binaries**: Automated releases for Linux, Windows, and macOS (amd64/arm64)
+- **Version Management**: Built-in version information with build-time injection
+- **Modular Architecture**: Clean separation of concerns for better maintainability
+
+For a complete list of changes, see the [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributions
 

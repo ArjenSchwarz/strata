@@ -143,7 +143,6 @@ output: table
 table:
   style: ColoredBlackOnMagentaWhite
 plan:
-  danger-threshold: 3
   show-details: true
   highlight-dangers: true
 sensitive_resources:
