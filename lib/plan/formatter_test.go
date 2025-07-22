@@ -36,7 +36,6 @@ func TestFormatter_ValidateOutputFormat(t *testing.T) {
 func TestFormatter_OutputSummary_V2(t *testing.T) {
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
-			DangerThreshold:     3,
 			ShowDetails:         true,
 			HighlightDangers:    true,
 			AlwaysShowSensitive: false,

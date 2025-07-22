@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Danger Threshold Configuration**
+  - Removed --danger-threshold flag from plan summary command
+  - Removed danger-threshold configuration option from config files
+  - Removed DangerThreshold field from PlanConfig struct
+  - Updated danger warning logic to display warnings for any destructive changes (no threshold)
+  - Simplified warning message to show count of destructive changes without threshold comparison
+  - Updated test fixtures to remove danger-threshold references
+  - Maintained all danger highlighting functionality while simplifying the warning trigger mechanism
+
 ### Added
 - **Action Sorting for Table Outputs**
   - Added custom ActionSortTransformer to prioritize dangerous actions in table outputs

@@ -55,9 +55,6 @@ Examples:
   # Generate summary with JSON output
   strata plan summary --output json terraform.tfplan
 
-  # Generate summary with custom danger threshold
-  strata plan summary --danger-threshold 5 terraform.tfplan
-
   # Save output to file while displaying table on stdout
   strata plan summary --file output.json --file-format json terraform.tfplan
 
@@ -74,7 +71,6 @@ Examples:
 }
 
 var (
-	dangerThreshold         int
 	showDetails             bool
 	highlightDangers        bool
 	showStatisticsSummary   bool
@@ -99,7 +95,6 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	// Create config for analyzer
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
-			DangerThreshold:         dangerThreshold,
 			ShowDetails:             showDetails,
 			HighlightDangers:        highlightDangers,
 			ShowStatisticsSummary:   showStatisticsSummary,
@@ -125,10 +120,10 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	analyzer := plan.NewAnalyzer(tfPlan, cfg)
 	summary := analyzer.GenerateSummary(planFile)
 
-	// Check for dangerous changes if threshold is set
-	if highlightDangers && analyzer.GetDestructiveChangeCount(summary.ResourceChanges) >= dangerThreshold {
-		fmt.Printf("⚠️  WARNING: %d destructive changes detected (threshold: %d)\n\n",
-			analyzer.GetDestructiveChangeCount(summary.ResourceChanges), dangerThreshold)
+	// Check for dangerous changes
+	if highlightDangers && analyzer.GetDestructiveChangeCount(summary.ResourceChanges) > 0 {
+		fmt.Printf("⚠️  WARNING: %d destructive changes detected\n\n",
+			analyzer.GetDestructiveChangeCount(summary.ResourceChanges))
 	}
 
 	// Create formatter and output summary
@@ -151,13 +146,8 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 func init() {
 	planCmd.AddCommand(planSummaryCmd)
 
-	// Danger threshold flag
-	planSummaryCmd.Flags().IntVar(&dangerThreshold, "danger-threshold", 3,
-		"Number of destructive changes to trigger danger warning")
-	viper.BindPFlag("plan.danger-threshold", planSummaryCmd.Flags().Lookup("danger-threshold"))
-
 	// Show details flag
-	planSummaryCmd.Flags().BoolVar(&showDetails, "details", false,
+	planSummaryCmd.Flags().BoolVar(&showDetails, "details", true,
 		"Show detailed change information")
 	viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details"))
 
