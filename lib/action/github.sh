@@ -340,8 +340,14 @@ distribute_output() {
   # Prepare base content with statistics for both contexts
   local base_content=""
   
-  # Add simple header
-  base_content="📋 **Terraform Plan Summary**
+  # Add dynamic header with job and workflow information
+  local workflow_job_info=""
+  if [ -n "$GITHUB_WORKFLOW" ] && [ -n "$GITHUB_JOB" ]; then
+    workflow_job_info="📋 **Terraform Plan Summary** - $GITHUB_WORKFLOW / $GITHUB_JOB"
+  else
+    workflow_job_info="📋 **Terraform Plan Summary**"
+  fi
+  base_content="$workflow_job_info
 
 "
   
@@ -390,8 +396,7 @@ distribute_output() {
     
     if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
       # Prepare PR comment content
-      local pr_comment_content="${base_content}**Plan Summary:**
-"
+      local pr_comment_content="${base_content}"
       
       # Use markdown content if available, otherwise use stdout
       if [ -n "$markdown_content" ]; then

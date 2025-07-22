@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **GitHub Action Output Improvements**
+  - Removed redundant "📋 Terraform Plan Summary" header from GitHub Action output
+  - Enhanced GitHub Action header to include workflow and job context information 
+  - Removed duplicate "Plan Summary:" line from PR comment generation
+  - GitHub Action outputs now show single contextual header: "📋 **Terraform Plan Summary** - {workflow_name} / {job_name}"
+
 ### Removed
 - **Danger Threshold Configuration**
   - Removed --danger-threshold flag from plan summary command
