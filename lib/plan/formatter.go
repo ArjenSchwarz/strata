@@ -3,6 +3,8 @@ package plan
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
 
 	output "github.com/ArjenSchwarz/go-output/v2"
@@ -12,6 +14,141 @@ import (
 // Formatter handles different output formats for plan summaries
 type Formatter struct {
 	config *config.Config
+}
+
+// ActionSortTransformer sorts table data based on Terraform action priority
+type ActionSortTransformer struct{}
+
+// Name implements the output.Transformer interface
+func (t *ActionSortTransformer) Name() string {
+	return "ActionSort"
+}
+
+// Priority implements the output.Transformer interface
+func (t *ActionSortTransformer) Priority() int {
+	return 100
+}
+
+// CanTransform implements the output.Transformer interface
+func (t *ActionSortTransformer) CanTransform(format string) bool {
+	return format == output.FormatTable || format == output.FormatMarkdown || format == output.FormatHTML || format == output.FormatCSV
+}
+
+// Transform implements the output.Transformer interface
+func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+	content := string(input)
+
+	// Check if this is a Resource Changes table by looking for the table headers
+	if !strings.Contains(content, "Resource Changes") && !strings.Contains(content, "Sensitive Resource Changes") {
+		return input, nil
+	}
+
+	// Find table rows using regex to match ACTION column patterns
+	lines := strings.Split(content, "\n")
+	var tableStart, tableEnd int
+	var dataRows []string
+	var headerSeparatorIndex int
+
+	for i, line := range lines {
+		if strings.Contains(line, "Resource Changes") {
+			tableStart = i
+		}
+		if strings.Contains(line, "ACTION") && strings.Contains(line, "RESOURCE") {
+			headerSeparatorIndex = i + 1 // Skip the header separator line
+			continue
+		}
+		// Look for data rows (contain action verbs)
+		if tableStart > 0 && i > headerSeparatorIndex &&
+			(strings.Contains(line, "Add") || strings.Contains(line, "Remove") ||
+				strings.Contains(line, "Replace") || strings.Contains(line, "Modify")) {
+			dataRows = append(dataRows, line)
+		}
+		// Find end of table (empty line or next section)
+		if tableStart > 0 && i > headerSeparatorIndex && strings.TrimSpace(line) == "" && len(dataRows) > 0 {
+			tableEnd = i
+			break
+		}
+	}
+
+	if len(dataRows) == 0 {
+		return input, nil
+	}
+
+	// Sort the data rows by danger status first, then action priority
+	sort.Slice(dataRows, func(i, j int) bool {
+		dangerI := isDangerousRow(dataRows[i])
+		dangerJ := isDangerousRow(dataRows[j])
+
+		// If one is dangerous and the other isn't, dangerous comes first
+		if dangerI != dangerJ {
+			return dangerI
+		}
+
+		// If both have same danger status, sort by action priority
+		actionI := extractActionFromTableRow(dataRows[i])
+		actionJ := extractActionFromTableRow(dataRows[j])
+
+		priorityI := getActionSortPriority(actionI)
+		priorityJ := getActionSortPriority(actionJ)
+
+		return priorityI < priorityJ
+	})
+
+	// Reconstruct the content with sorted rows
+	var result []string
+	result = append(result, lines[:headerSeparatorIndex+1]...)
+	result = append(result, dataRows...)
+	if tableEnd > 0 {
+		result = append(result, lines[tableEnd:]...)
+	}
+
+	return []byte(strings.Join(result, "\n")), nil
+}
+
+// extractActionFromTableRow extracts the action from a table row
+func extractActionFromTableRow(row string) string {
+	// Use regex to find action words at the beginning of table cells
+	re := regexp.MustCompile(`^\s*\|\s*(Add|Remove|Replace|Modify)\s*\|`)
+	matches := re.FindStringSubmatch(row)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	// Fallback: look for action words anywhere in the row
+	actions := []string{"Remove", "Replace", "Modify", "Add"}
+	for _, action := range actions {
+		if strings.Contains(row, action) {
+			return action
+		}
+	}
+	return "Unknown"
+}
+
+// isDangerousRow checks if a table row represents a dangerous/sensitive resource
+func isDangerousRow(row string) bool {
+	// Look for danger indicators in the DANGER column (last column typically)
+	// Check for warning emoji or danger-related text
+	return strings.Contains(row, "⚠️") ||
+		strings.Contains(row, "Sensitive") ||
+		strings.Contains(row, "Dangerous") ||
+		strings.Contains(row, "High Risk") ||
+		// Look for non-empty DANGER column (anything after the last | that's not just whitespace)
+		regexp.MustCompile(`\|\s*[^|\s]+\s*$`).MatchString(strings.TrimSpace(row))
+}
+
+// getActionSortPriority returns priority for sorting (lower = higher priority)
+func getActionSortPriority(action string) int {
+	switch action {
+	case "Remove":
+		return 1
+	case "Replace":
+		return 2
+	case "Modify":
+		return 3
+	case "Add":
+		return 4
+	default:
+		return 5
+	}
 }
 
 // NewFormatter creates a new formatter instance
@@ -107,6 +244,8 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	if outputConfig.UseColors {
 		stdoutOptions = append(stdoutOptions, output.WithTransformer(output.NewColorTransformer()))
 	}
+	// Add action sorting transformer for supported formats
+	stdoutOptions = append(stdoutOptions, output.WithTransformer(&ActionSortTransformer{}))
 
 	stdoutOut := output.NewOutput(stdoutOptions...)
 	if err := stdoutOut.Render(ctx, doc); err != nil {
@@ -133,6 +272,8 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		if outputConfig.UseColors {
 			fileOptions = append(fileOptions, output.WithTransformer(output.NewColorTransformer()))
 		}
+		// Add action sorting transformer for supported formats
+		fileOptions = append(fileOptions, output.WithTransformer(&ActionSortTransformer{}))
 
 		fileOut := output.NewOutput(fileOptions...)
 		if err := fileOut.Render(ctx, doc); err != nil {
@@ -215,9 +356,10 @@ func (f *Formatter) createResourceChangesDataV2(summary *PlanSummary) ([]map[str
 	for _, change := range summary.ResourceChanges {
 		// Determine the display ID based on change type
 		displayID := change.PhysicalID
-		if change.ChangeType == ChangeTypeCreate {
+		switch change.ChangeType {
+		case ChangeTypeCreate:
 			displayID = "-"
-		} else if change.ChangeType == ChangeTypeDelete {
+		case ChangeTypeDelete:
 			displayID = change.PhysicalID
 		}
 
@@ -266,9 +408,10 @@ func (f *Formatter) createSensitiveResourceChangesDataV2(summary *PlanSummary) (
 
 		// Determine the display ID based on change type
 		displayID := change.PhysicalID
-		if change.ChangeType == ChangeTypeCreate {
+		switch change.ChangeType {
+		case ChangeTypeCreate:
 			displayID = "-"
-		} else if change.ChangeType == ChangeTypeDelete {
+		case ChangeTypeDelete:
 			displayID = change.PhysicalID
 		}
 

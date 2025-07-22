@@ -29,7 +29,8 @@
       "WebFetch(domain:github.com)",
       "Bash(find:*)",
       "Bash(echo:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   }

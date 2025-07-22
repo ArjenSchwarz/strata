@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Action Sorting for Table Outputs**
+  - Added custom ActionSortTransformer to prioritize dangerous actions in table outputs
+  - Implemented sorting logic that displays resources in order of risk: Remove > Replace > Modify > Add
+  - Dangerous/sensitive resources are now displayed first within each action category
+  - Transformer supports table, markdown, HTML, and CSV output formats
+  - Applied transformer to both stdout and file outputs for consistent formatting
+  - Enhanced table row parsing with regex-based action extraction
+  - Added danger detection logic to identify sensitive resources with warning indicators
+
 ### Changed
 - **Go-Output v2 Migration**
   - Migrated from go-output v1 to v2 for improved thread safety and performance
