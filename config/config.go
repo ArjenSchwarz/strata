@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	markdownFormat = "markdown"
+)
+
 // SensitiveResource defines a resource type that should be flagged as sensitive
 type SensitiveResource struct {
 	ResourceType string `mapstructure:"resource_type"`
@@ -38,6 +42,7 @@ type PlanConfig struct {
 	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
 }
 
+// GetLCString returns a lowercase string value for the given setting
 func (config *Config) GetLCString(setting string) string {
 	if viper.IsSet(setting) {
 		return strings.ToLower(viper.GetString(setting))
@@ -45,6 +50,7 @@ func (config *Config) GetLCString(setting string) string {
 	return ""
 }
 
+// GetString returns a string value for the given setting
 func (config *Config) GetString(setting string) string {
 	if viper.IsSet(setting) {
 		return viper.GetString(setting)
@@ -52,59 +58,12 @@ func (config *Config) GetString(setting string) string {
 	return ""
 }
 
-func (config *Config) GetStringSlice(setting string) []string {
-	if viper.IsSet(setting) {
-		return viper.GetStringSlice(setting)
-	}
-	return []string{}
-}
-
-func (config *Config) GetBool(setting string) bool {
-	return viper.GetBool(setting)
-}
-
+// GetInt returns an integer value for the given setting
 func (config *Config) GetInt(setting string) int {
 	if viper.IsSet(setting) {
 		return viper.GetInt(setting)
 	}
 	return 0
-}
-
-func (config *Config) GetSeparator() string {
-	switch config.GetLCString("output") {
-	case "table":
-		return "\r\n"
-	case "markdown":
-		return "\n"
-	case "dot":
-		return ","
-	default:
-		return ", "
-	}
-}
-
-func (config *Config) GetFieldOrEmptyValue(value string) string {
-	if value != "" {
-		return value
-	}
-	switch config.GetLCString("output") {
-	case "json":
-		return ""
-	case "markdown":
-		return "-"
-	default:
-		return "-"
-	}
-}
-
-// GetTimezoneLocation gets the location object you can use in a time object
-// based on the timezone specified in your settings.
-func (config *Config) GetTimezoneLocation() *time.Location {
-	location, err := time.LoadLocation(config.GetString("timezone"))
-	if err != nil {
-		panic(err)
-	}
-	return location
 }
 
 // OutputConfiguration holds the v2 output configuration settings
@@ -135,10 +94,7 @@ func (config *Config) NewOutputConfiguration() *OutputConfiguration {
 	}
 
 	// Configure colors based on output format
-	useColors := true
-	if format == "markdown" {
-		useColors = false
-	}
+	useColors := format != markdownFormat
 
 	return &OutputConfiguration{
 		Format:           format,

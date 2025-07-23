@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ArjenSchwarz/strata/config"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -33,7 +32,6 @@ import (
 )
 
 var cfgFile string
-var settings = new(config.Config)
 
 // Version information - set via ldflags during build
 var (

@@ -31,7 +31,6 @@ func (a *Analyzer) GenerateSummary(planFile string) *PlanSummary {
 		PlanFile:         planFile,
 		Workspace:        parser.extractWorkspaceInfo(a.plan),
 		Backend:          parser.extractBackendInfo(a.plan),
-		IsDryRun:         false, // TODO: Detect dry run mode
 		ResourceChanges:  a.analyzeResourceChanges(),
 		OutputChanges:    a.analyzeOutputChanges(),
 	}
@@ -111,7 +110,7 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 	// Check if this is a replacement (delete + create)
 	if changeType == ChangeTypeReplace {
 		// Parse ReplacePaths field from Terraform plan
-		if change.Change.ReplacePaths != nil && len(change.Change.ReplacePaths) > 0 {
+		if len(change.Change.ReplacePaths) > 0 {
 			// Analyze the ReplacePaths to determine if replacement is conditional
 			// If any path indicates a computed/unknown value, it's conditional
 			for _, path := range change.Change.ReplacePaths {
@@ -133,31 +132,26 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 	return ReplacementNever
 }
 
-// isConditionalReplacement checks if a resource change is a conditional replacement
-func (a *Analyzer) isConditionalReplacement(change *tfjson.ResourceChange) bool {
-	return a.analyzeReplacementNecessity(change) == ReplacementConditional
-}
-
 // isConditionalReplacementPath analyzes a ReplacePaths element to determine if it's conditional
-func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, path interface{}) bool {
+func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, path any) bool {
 	// If there's no after state, assume it's definite
 	if change.Change.After == nil {
 		return false
 	}
 
 	// Convert path to slice if it's a single path element
-	var pathSlice []interface{}
-	if pathArray, ok := path.([]interface{}); ok {
+	var pathSlice []any
+	if pathArray, ok := path.([]any); ok {
 		pathSlice = pathArray
 	} else {
-		pathSlice = []interface{}{path}
+		pathSlice = []any{path}
 	}
 
 	// Navigate through the path in the after state to check for computed/unknown values
 	current := change.Change.After
 	for i := 0; i < len(pathSlice); i++ {
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			key, ok := pathSlice[i].(string)
 			if !ok {
 				return false
@@ -167,7 +161,7 @@ func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, p
 			} else {
 				return false
 			}
-		case []interface{}:
+		case []any:
 			index, ok := pathSlice[i].(float64)
 			if !ok {
 				return false
@@ -189,7 +183,7 @@ func (a *Analyzer) isConditionalReplacementPath(change *tfjson.ResourceChange, p
 }
 
 // isComputedOrUnknown checks if a value represents a computed or unknown attribute
-func (a *Analyzer) isComputedOrUnknown(value interface{}) bool {
+func (a *Analyzer) isComputedOrUnknown(value any) bool {
 	// In Terraform JSON plans, computed values are often represented as:
 	// - null values where we expect a value
 	// - special markers (though these vary by version)
@@ -327,7 +321,7 @@ func (a *Analyzer) extractPhysicalID(change *tfjson.ResourceChange) string {
 	}
 
 	// Try to extract ID from the before state
-	if beforeMap, ok := change.Change.Before.(map[string]interface{}); ok {
+	if beforeMap, ok := change.Change.Before.(map[string]any); ok {
 		if id, exists := beforeMap["id"]; exists && id != nil {
 			if idStr, ok := id.(string); ok && idStr != "" {
 				return idStr
@@ -346,7 +340,7 @@ func (a *Analyzer) extractPlannedID(change *tfjson.ResourceChange) string {
 	}
 
 	// Try to extract ID from the after state
-	if afterMap, ok := change.Change.After.(map[string]interface{}); ok {
+	if afterMap, ok := change.Change.After.(map[string]any); ok {
 		if id, exists := afterMap["id"]; exists && id != nil {
 			if idStr, ok := id.(string); ok && idStr != "" {
 				return idStr
@@ -444,8 +438,8 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 	}
 
 	// Extract before and after as maps
-	beforeMap, beforeOk := change.Change.Before.(map[string]interface{})
-	afterMap, afterOk := change.Change.After.(map[string]interface{})
+	beforeMap, beforeOk := change.Change.Before.(map[string]any)
+	afterMap, afterOk := change.Change.After.(map[string]any)
 
 	if !beforeOk || !afterOk {
 		return sensitiveProps
@@ -471,7 +465,7 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 }
 
 // equals is a helper to compare two values, handling maps and slices specially
-func equals(a, b interface{}) bool {
+func equals(a, b any) bool {
 	// Handle nil cases
 	if a == nil && b == nil {
 		return true
@@ -482,8 +476,8 @@ func equals(a, b interface{}) bool {
 
 	// Handle maps specially since they're not directly comparable
 	// Check if both are maps
-	aMap, aIsMap := a.(map[string]interface{})
-	bMap, bIsMap := b.(map[string]interface{})
+	aMap, aIsMap := a.(map[string]any)
+	bMap, bIsMap := b.(map[string]any)
 
 	if aIsMap && bIsMap {
 		// If maps have different lengths, they're not equal
@@ -507,8 +501,8 @@ func equals(a, b interface{}) bool {
 	}
 
 	// Handle slices specially since they're not directly comparable
-	aSlice, aIsSlice := a.([]interface{})
-	bSlice, bIsSlice := b.([]interface{})
+	aSlice, aIsSlice := a.([]any)
+	bSlice, bIsSlice := b.([]any)
 
 	if aIsSlice && bIsSlice {
 		// If slices have different lengths, they're not equal

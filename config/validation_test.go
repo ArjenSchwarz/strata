@@ -312,26 +312,44 @@ func TestConfig_ResolvePlaceholders(t *testing.T) {
 	originalStackName := os.Getenv("STACK_NAME")
 
 	// Set test environment variables
-	os.Setenv("AWS_REGION", "us-east-1")
-	os.Setenv("AWS_ACCOUNT_ID", "123456789012")
-	os.Setenv("STACK_NAME", "test-stack")
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Fatalf("Failed to set AWS_REGION: %v", err)
+	}
+	if err := os.Setenv("AWS_ACCOUNT_ID", "123456789012"); err != nil {
+		t.Fatalf("Failed to set AWS_ACCOUNT_ID: %v", err)
+	}
+	if err := os.Setenv("STACK_NAME", "test-stack"); err != nil {
+		t.Fatalf("Failed to set STACK_NAME: %v", err)
+	}
 
 	// Restore original environment variables after test
 	defer func() {
 		if originalRegion != "" {
-			os.Setenv("AWS_REGION", originalRegion)
+			if err := os.Setenv("AWS_REGION", originalRegion); err != nil {
+				t.Logf("Failed to restore AWS_REGION: %v", err)
+			}
 		} else {
-			os.Unsetenv("AWS_REGION")
+			if err := os.Unsetenv("AWS_REGION"); err != nil {
+				t.Logf("Failed to unset AWS_REGION: %v", err)
+			}
 		}
 		if originalAccountID != "" {
-			os.Setenv("AWS_ACCOUNT_ID", originalAccountID)
+			if err := os.Setenv("AWS_ACCOUNT_ID", originalAccountID); err != nil {
+				t.Logf("Failed to restore AWS_ACCOUNT_ID: %v", err)
+			}
 		} else {
-			os.Unsetenv("AWS_ACCOUNT_ID")
+			if err := os.Unsetenv("AWS_ACCOUNT_ID"); err != nil {
+				t.Logf("Failed to unset AWS_ACCOUNT_ID: %v", err)
+			}
 		}
 		if originalStackName != "" {
-			os.Setenv("STACK_NAME", originalStackName)
+			if err := os.Setenv("STACK_NAME", originalStackName); err != nil {
+				t.Logf("Failed to restore STACK_NAME: %v", err)
+			}
 		} else {
-			os.Unsetenv("STACK_NAME")
+			if err := os.Unsetenv("STACK_NAME"); err != nil {
+				t.Logf("Failed to unset STACK_NAME: %v", err)
+			}
 		}
 	}()
 
@@ -635,8 +653,12 @@ func TestSecurity_FileOverwriteScenarios(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	file.WriteString(`{"test": "data"}`)
-	file.Close()
+	if _, err := file.WriteString(`{"test": "data"}`); err != nil {
+		t.Fatalf("Failed to write to test file: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Failed to close test file: %v", err)
+	}
 
 	tests := []struct {
 		name        string

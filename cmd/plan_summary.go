@@ -149,20 +149,28 @@ func init() {
 	// Show details flag
 	planSummaryCmd.Flags().BoolVar(&showDetails, "details", true,
 		"Show detailed change information")
-	viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details"))
+	if err := viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details")); err != nil {
+		panic(err)
+	}
 
 	// Highlight dangers flag
 	planSummaryCmd.Flags().BoolVar(&highlightDangers, "highlight-dangers", true,
 		"Highlight potentially destructive changes")
-	viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers"))
+	if err := viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers")); err != nil {
+		panic(err)
+	}
 
 	// Show statistics summary flag
 	planSummaryCmd.Flags().BoolVar(&showStatisticsSummary, "show-statistics", true,
 		"Show statistics summary table")
-	viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics"))
+	if err := viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics")); err != nil {
+		panic(err)
+	}
 
 	// Statistics summary format flag
 	planSummaryCmd.Flags().StringVar(&statisticsSummaryFormat, "stats-format", "horizontal",
 		"Statistics summary format (horizontal, vertical)")
-	viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format"))
+	if err := viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format")); err != nil {
+		panic(err)
+	}
 }

@@ -98,23 +98,139 @@ func (p *Parser) ValidateStructure(plan *tfjson.Plan) error {
 }
 
 // extractWorkspaceInfo extracts workspace information from the plan
-func (p *Parser) extractWorkspaceInfo(plan *tfjson.Plan) string {
-	// Try to get workspace from plan metadata
-	// For now, return "default" as a fallback
-	// TODO: Extract actual workspace from plan when available
+func (p *Parser) extractWorkspaceInfo(_ *tfjson.Plan) string {
+	// Method 1: Check TF_WORKSPACE environment variable
+	if workspace := os.Getenv("TF_WORKSPACE"); workspace != "" {
+		return workspace
+	}
+
+	// Method 2: Try to execute terraform workspace show in the plan file's directory
+	if workspace := p.getWorkspaceFromCLI(); workspace != "" {
+		return workspace
+	}
+
+	// Method 3: Fallback to "default"
 	return "default"
 }
 
+// getWorkspaceFromCLI attempts to get workspace information from terraform CLI
+func (p *Parser) getWorkspaceFromCLI() string {
+	// Get the directory containing the plan file
+	planDir := filepath.Dir(p.planFile)
+
+	// Execute terraform workspace show
+	cmd := exec.Command("terraform", "workspace", "show")
+	cmd.Dir = planDir
+
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	// Trim whitespace and return the workspace name
+	workspace := strings.TrimSpace(string(output))
+	if workspace == "" {
+		return ""
+	}
+
+	return workspace
+}
+
 // extractBackendInfo extracts backend configuration from the plan
-func (p *Parser) extractBackendInfo(plan *tfjson.Plan) BackendInfo {
-	// Try to extract backend info from plan
-	// For now, return local backend as fallback
-	// TODO: Extract actual backend info from plan when available
+func (p *Parser) extractBackendInfo(_ *tfjson.Plan) BackendInfo {
+	// Method 1: Try to read .terraform/terraform.tfstate
+	if backend := p.getBackendFromTerraformDir(); backend.Type != "" {
+		return backend
+	}
+
+	// Method 2: Fallback to local backend
 	return BackendInfo{
 		Type:     "local",
 		Location: "terraform.tfstate",
-		Config:   make(map[string]interface{}),
+		Config:   make(map[string]any),
 	}
+}
+
+// getBackendFromTerraformDir attempts to read backend info from .terraform/terraform.tfstate
+func (p *Parser) getBackendFromTerraformDir() BackendInfo {
+	// Get the directory containing the plan file
+	planDir := filepath.Dir(p.planFile)
+	tfStateFile := filepath.Join(planDir, ".terraform", "terraform.tfstate")
+
+	// Check if .terraform/terraform.tfstate exists
+	if _, err := os.Stat(tfStateFile); os.IsNotExist(err) {
+		return BackendInfo{}
+	}
+
+	// Read the file
+	data, err := os.ReadFile(tfStateFile)
+	if err != nil {
+		return BackendInfo{}
+	}
+
+	// Parse the JSON
+	var config struct {
+		Backend struct {
+			Type   string         `json:"type"`
+			Config map[string]any `json:"config"`
+		} `json:"backend"`
+	}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return BackendInfo{}
+	}
+
+	// Extract location based on backend type
+	location := p.extractBackendLocation(config.Backend.Type, config.Backend.Config)
+
+	return BackendInfo{
+		Type:     config.Backend.Type,
+		Location: location,
+		Config:   config.Backend.Config,
+	}
+}
+
+// extractBackendLocation formats the backend location based on type and config
+func (p *Parser) extractBackendLocation(backendType string, config map[string]any) string {
+	switch backendType {
+	case "s3":
+		bucket, _ := config["bucket"].(string)
+		key, _ := config["key"].(string)
+		if bucket != "" && key != "" {
+			return fmt.Sprintf("s3://%s/%s", bucket, key)
+		}
+	case "azurerm":
+		account, _ := config["storage_account_name"].(string)
+		container, _ := config["container_name"].(string)
+		key, _ := config["key"].(string)
+		if account != "" && container != "" && key != "" {
+			return fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", account, container, key)
+		}
+	case "gcs":
+		bucket, _ := config["bucket"].(string)
+		prefix, _ := config["prefix"].(string)
+		if bucket != "" {
+			if prefix != "" {
+				return fmt.Sprintf("gs://%s/%s", bucket, prefix)
+			}
+			return fmt.Sprintf("gs://%s/default.tfstate", bucket)
+		}
+	case "remote":
+		org, _ := config["organization"].(string)
+		if workspaces, ok := config["workspaces"].(map[string]any); ok {
+			if name, ok := workspaces["name"].(string); ok && org != "" {
+				return fmt.Sprintf("app.terraform.io/%s/%s", org, name)
+			}
+		}
+	case "local":
+		if path, ok := config["path"].(string); ok && path != "" {
+			return path
+		}
+		return "terraform.tfstate"
+	}
+
+	// Fallback for unknown or incomplete configurations
+	return "terraform.tfstate"
 }
 
 // getPlanFileInfo gets file information including creation time

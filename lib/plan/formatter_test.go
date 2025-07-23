@@ -52,7 +52,6 @@ func TestFormatter_OutputSummary_V2(t *testing.T) {
 			Location: "my-bucket",
 		},
 		CreatedAt: time.Date(2025, 5, 25, 23, 25, 28, 0, time.UTC),
-		IsDryRun:  false,
 		Statistics: ChangeStatistics{
 			Total:        5,
 			ToAdd:        2,

@@ -15,6 +15,7 @@ func TestFormatter_FileOutput_ConfigIntegration(t *testing.T) {
 	outputConfig := cfg.NewOutputConfiguration()
 	if outputConfig == nil {
 		t.Errorf("NewOutputConfiguration should not return nil")
+		return
 	}
 
 	// Test that we can set file output properties

@@ -30,7 +30,9 @@
       "Bash(find:*)",
       "Bash(echo:*)",
       "Bash(git add:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(cat:*)",
+      "WebFetch(domain:pkg.go.dev)"
     ],
     "deny": []
   }

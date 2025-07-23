@@ -11,6 +11,10 @@ import (
 	"github.com/ArjenSchwarz/strata/config"
 )
 
+const (
+	notApplicable = "N/A"
+)
+
 // Formatter handles different output formats for plan summaries
 type Formatter struct {
 	config *config.Config
@@ -215,11 +219,9 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		if len(sensitiveData) > 0 {
 			builder = builder.Table("Sensitive Resource Changes", sensitiveData,
 				output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
-		} else {
+		} else if outputConfig.OutputFile == "" {
 			// Handle no sensitive changes case - but only for stdout-only mode
-			if outputConfig.OutputFile == "" {
-				fmt.Println("No sensitive resource changes detected.")
-			}
+			fmt.Println("No sensitive resource changes detected.")
 		}
 	}
 
@@ -366,7 +368,7 @@ func (f *Formatter) createResourceChangesDataV2(summary *PlanSummary) ([]map[str
 		// Format replacement type for display
 		replacementDisplay := string(change.ReplacementType)
 		if change.ChangeType == ChangeTypeDelete {
-			replacementDisplay = "N/A"
+			replacementDisplay = notApplicable
 		}
 
 		// Format danger information
@@ -418,7 +420,7 @@ func (f *Formatter) createSensitiveResourceChangesDataV2(summary *PlanSummary) (
 		// Format replacement type for display
 		replacementDisplay := string(change.ReplacementType)
 		if change.ChangeType == ChangeTypeDelete {
-			replacementDisplay = "N/A"
+			replacementDisplay = notApplicable
 		}
 
 		// Format danger information
@@ -457,21 +459,5 @@ func getActionDisplay(changeType ChangeType) string {
 		return "Replace"
 	default:
 		return "No-op"
-	}
-}
-
-// getChangeIcon returns the appropriate icon for a change type
-func getChangeIcon(changeType ChangeType) string {
-	switch changeType {
-	case ChangeTypeCreate:
-		return "+"
-	case ChangeTypeUpdate:
-		return "~"
-	case ChangeTypeDelete:
-		return "-"
-	case ChangeTypeReplace:
-		return "±"
-	default:
-		return " "
 	}
 }

@@ -9,17 +9,19 @@ import (
 // ChangeType represents the type of change being made to a resource
 type ChangeType string
 
+// ChangeType constants represent different types of Terraform resource changes
 const (
-	ChangeTypeCreate  ChangeType = "create"
-	ChangeTypeUpdate  ChangeType = "update"
-	ChangeTypeDelete  ChangeType = "delete"
-	ChangeTypeReplace ChangeType = "replace"
-	ChangeTypeNoOp    ChangeType = "no-op"
+	ChangeTypeCreate  ChangeType = "create"  // Resource is being created
+	ChangeTypeUpdate  ChangeType = "update"  // Resource is being updated
+	ChangeTypeDelete  ChangeType = "delete"  // Resource is being deleted
+	ChangeTypeReplace ChangeType = "replace" // Resource is being replaced
+	ChangeTypeNoOp    ChangeType = "no-op"   // No operation on resource
 )
 
 // ReplacementType represents the necessity of replacement for a resource
 type ReplacementType string
 
+// ReplacementType constants represent different replacement scenarios for Terraform resources
 const (
 	ReplacementNever       ReplacementType = "Never"       // Resource will not be replaced
 	ReplacementConditional ReplacementType = "Conditional" // Resource may be replaced depending on conditions
@@ -38,8 +40,8 @@ type ResourceChange struct {
 	PlannedID        string          `json:"planned_id"`        // planned physical resource ID
 	ModulePath       string          `json:"module_path"`       // module hierarchy path
 	ChangeAttributes []string        `json:"change_attributes"` // specific attributes changing
-	Before           interface{}     `json:"before,omitempty"`
-	After            interface{}     `json:"after,omitempty"`
+	Before           any             `json:"before,omitempty"`
+	After            any             `json:"after,omitempty"`
 	// New fields for danger highlights
 	IsDangerous      bool     `json:"is_dangerous"`      // Whether this change is flagged as dangerous
 	DangerReason     string   `json:"danger_reason"`     // Reason why this change is dangerous
@@ -54,7 +56,6 @@ type PlanSummary struct {
 	Workspace        string           `json:"workspace"`
 	Backend          BackendInfo      `json:"backend"`
 	CreatedAt        time.Time        `json:"created_at"`
-	IsDryRun         bool             `json:"is_dry_run"`
 	ResourceChanges  []ResourceChange `json:"resource_changes"`
 	OutputChanges    []OutputChange   `json:"output_changes"`
 	Statistics       ChangeStatistics `json:"statistics"`
@@ -62,18 +63,18 @@ type PlanSummary struct {
 
 // OutputChange represents a change to a Terraform output
 type OutputChange struct {
-	Name       string      `json:"name"`
-	ChangeType ChangeType  `json:"change_type"`
-	Sensitive  bool        `json:"sensitive"`
-	Before     interface{} `json:"before,omitempty"`
-	After      interface{} `json:"after,omitempty"`
+	Name       string     `json:"name"`
+	ChangeType ChangeType `json:"change_type"`
+	Sensitive  bool       `json:"sensitive"`
+	Before     any        `json:"before,omitempty"`
+	After      any        `json:"after,omitempty"`
 }
 
 // BackendInfo contains information about the Terraform backend
 type BackendInfo struct {
-	Type     string                 `json:"type"`     // e.g., "s3", "local", "remote"
-	Location string                 `json:"location"` // bucket name, file path, etc.
-	Config   map[string]interface{} `json:"config"`   // additional backend config
+	Type     string         `json:"type"`     // e.g., "s3", "local", "remote"
+	Location string         `json:"location"` // bucket name, file path, etc.
+	Config   map[string]any `json:"config"`   // additional backend config
 }
 
 // ChangeStatistics provides counts of different types of changes for the enhanced statistics summary table

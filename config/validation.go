@@ -109,8 +109,8 @@ func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 			Cause:   err,
 		}
 	}
-	file.Close()
-	os.Remove(testFile)
+	_ = file.Close()
+	_ = os.Remove(testFile)
 
 	return nil
 }
@@ -167,19 +167,23 @@ type ValidationResult struct {
 	Infos    []string
 }
 
+// HasErrors returns true if there are any validation errors
 func (vr *ValidationResult) HasErrors() bool {
 	return len(vr.Errors) > 0
 }
 
+// AddError adds an error to the validation result and marks it as invalid
 func (vr *ValidationResult) AddError(err error) {
 	vr.Errors = append(vr.Errors, err)
 	vr.Valid = false
 }
 
+// AddWarning adds a warning to the validation result
 func (vr *ValidationResult) AddWarning(warning string) {
 	vr.Warnings = append(vr.Warnings, warning)
 }
 
+// AddInfo adds an informational message to the validation result
 func (vr *ValidationResult) AddInfo(info string) {
 	vr.Infos = append(vr.Infos, info)
 }
