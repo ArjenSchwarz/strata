@@ -18,14 +18,13 @@ const (
 	ChangeTypeNoOp    ChangeType = "no-op"   // No operation on resource
 )
 
-// ReplacementType represents the necessity of replacement for a resource
+// ReplacementType represents whether a resource will be replaced
 type ReplacementType string
 
 // ReplacementType constants represent different replacement scenarios for Terraform resources
 const (
-	ReplacementNever       ReplacementType = "Never"       // Resource will not be replaced
-	ReplacementConditional ReplacementType = "Conditional" // Resource may be replaced depending on conditions
-	ReplacementAlways      ReplacementType = "Always"      // Resource will definitely be replaced
+	ReplacementNever  ReplacementType = "Never"  // Resource will not be replaced
+	ReplacementAlways ReplacementType = "Always" // Resource will be replaced
 )
 
 // ResourceChange represents a change to a Terraform resource
@@ -83,7 +82,6 @@ type ChangeStatistics struct {
 	ToChange     int `json:"to_change"`    // MODIFIED: Resources to be updated (existing resources with changes)
 	ToDestroy    int `json:"to_destroy"`   // REMOVED: Resources to be destroyed (deleted resources)
 	Replacements int `json:"replacements"` // REPLACEMENTS: Resources to be replaced (definite replacements)
-	Conditionals int `json:"conditionals"` // CONDITIONALS: Resources with conditional replacements (may be replaced)
 	HighRisk     int `json:"high_risk"`    // HIGH RISK: Sensitive resources with danger flag
 	Unmodified   int `json:"unmodified"`   // UNMODIFIED: Resources with no changes (no-op)
 	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories

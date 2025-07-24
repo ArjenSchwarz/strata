@@ -58,7 +58,6 @@ func TestFormatter_OutputSummary_V2(t *testing.T) {
 			ToChange:     1,
 			ToDestroy:    1,
 			Replacements: 1,
-			Conditionals: 0,
 			HighRisk:     1,
 		},
 		ResourceChanges: []ResourceChange{
@@ -136,7 +135,6 @@ func TestFormatter_createStatisticsSummaryDataV2(t *testing.T) {
 			ToChange:     4,
 			ToDestroy:    2,
 			Replacements: 1,
-			Conditionals: 0,
 			HighRisk:     1,
 		},
 	}

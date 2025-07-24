@@ -199,19 +199,6 @@ func TestAnalyzeReplacementNecessity(t *testing.T) {
 			expected: ReplacementAlways,
 		},
 		{
-			name: "Replace with ReplacePaths and computed values should be conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					Actions:      tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-					ReplacePaths: []interface{}{[]interface{}{"computed_field"}},
-					After: map[string]interface{}{
-						"computed_field": nil, // null value indicates computed
-					},
-				},
-			},
-			expected: ReplacementConditional,
-		},
-		{
 			name: "Replace with ReplacePaths and definite values should be always",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
@@ -229,73 +216,6 @@ func TestAnalyzeReplacementNecessity(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := analyzer.analyzeReplacementNecessity(tc.change)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
-}
-
-func TestIsConditionalReplacementPath(t *testing.T) {
-	analyzer := &Analyzer{}
-
-	testCases := []struct {
-		name     string
-		change   *tfjson.ResourceChange
-		path     interface{}
-		expected bool
-	}{
-		{
-			name: "Path with null value should be conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					After: map[string]interface{}{
-						"field": nil,
-					},
-				},
-			},
-			path:     []interface{}{"field"},
-			expected: true,
-		},
-		{
-			name: "Path with definite value should not be conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					After: map[string]interface{}{
-						"field": "value",
-					},
-				},
-			},
-			path:     []interface{}{"field"},
-			expected: false,
-		},
-		{
-			name: "Path with nested null value should be conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					After: map[string]interface{}{
-						"nested": map[string]interface{}{
-							"field": nil,
-						},
-					},
-				},
-			},
-			path:     []interface{}{"nested", "field"},
-			expected: true,
-		},
-		{
-			name: "No after state should not be conditional",
-			change: &tfjson.ResourceChange{
-				Change: &tfjson.Change{
-					After: nil,
-				},
-			},
-			path:     []interface{}{"field"},
-			expected: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.isConditionalReplacementPath(tc.change, tc.path)
 			assert.Equal(t, tc.expected, result)
 		})
 	}
@@ -328,7 +248,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    0,
 				Replacements: 0,
-				Conditionals: 0,
 				HighRisk:     0,
 				Total:        0,
 			},
@@ -343,7 +262,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    0,
 				Replacements: 0,
-				Conditionals: 0,
 				HighRisk:     0,
 				Total:        1,
 			},
@@ -358,7 +276,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     1,
 				ToDestroy:    0,
 				Replacements: 0,
-				Conditionals: 0,
 				HighRisk:     0,
 				Total:        1,
 			},
@@ -373,7 +290,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    1,
 				Replacements: 0,
-				Conditionals: 0,
 				HighRisk:     0,
 				Total:        1,
 			},
@@ -388,22 +304,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    0,
 				Replacements: 1,
-				Conditionals: 0,
-				HighRisk:     0,
-				Total:        1,
-			},
-		},
-		{
-			name: "Replace with conditional replacement should increment Conditionals and Total",
-			changes: []ResourceChange{
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementConditional},
-			},
-			expected: ChangeStatistics{
-				ToAdd:        0,
-				ToChange:     0,
-				ToDestroy:    0,
-				Replacements: 0,
-				Conditionals: 1,
 				HighRisk:     0,
 				Total:        1,
 			},
@@ -422,7 +322,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    0,
 				Replacements: 1,
-				Conditionals: 0,
 				HighRisk:     1,
 				Total:        1,
 			},
@@ -441,7 +340,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     1,
 				ToDestroy:    0,
 				Replacements: 0,
-				Conditionals: 0,
 				HighRisk:     0,
 				Total:        1,
 			},
@@ -460,7 +358,6 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     0,
 				ToDestroy:    0,
 				Replacements: 1,
-				Conditionals: 0,
 				HighRisk:     1,
 				Total:        1,
 			},
@@ -472,7 +369,6 @@ func TestCalculateStatistics(t *testing.T) {
 				{ChangeType: ChangeTypeUpdate, ReplacementType: ReplacementNever},
 				{ChangeType: ChangeTypeDelete, ReplacementType: ReplacementNever},
 				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
-				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementConditional},
 				{
 					Type:        "aws_rds_instance",
 					ChangeType:  ChangeTypeReplace,
@@ -489,9 +385,8 @@ func TestCalculateStatistics(t *testing.T) {
 				ToChange:     1,
 				ToDestroy:    1,
 				Replacements: 3,
-				Conditionals: 1,
 				HighRisk:     2,
-				Total:        7,
+				Total:        6,
 			},
 		},
 	}
@@ -503,7 +398,6 @@ func TestCalculateStatistics(t *testing.T) {
 			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
 			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
 			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
-			assert.Equal(t, tc.expected.Conditionals, result.Conditionals, "Conditionals mismatch")
 			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
 			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
 		})

@@ -13,6 +13,7 @@ import (
 
 const (
 	notApplicable = "N/A"
+	formatTable   = "table"
 )
 
 // Formatter handles different output formats for plan summaries
@@ -164,7 +165,7 @@ func NewFormatter(cfg *config.Config) *Formatter {
 
 // ValidateOutputFormat validates that the output format is supported
 func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
-	supportedFormats := []string{"table", "json", "html", "markdown"}
+	supportedFormats := []string{formatTable, "json", "html", "markdown"}
 	for _, format := range supportedFormats {
 		if strings.ToLower(outputFormat) == format {
 			return nil
@@ -199,7 +200,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		return fmt.Errorf("failed to create statistics summary data: %w", err)
 	}
 	builder = builder.Table(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "CONDITIONALS", "HIGH RISK", "UNMODIFIED"))
+		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
 
 	// Add resource changes table if requested
 	if showDetails {
@@ -234,7 +235,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 
 	// Render to stdout first
 	stdoutFormat := f.getFormatFromConfig(outputConfig.Format)
-	if outputConfig.TableStyle != "" && outputConfig.Format == "table" {
+	if outputConfig.TableStyle != "" && outputConfig.Format == formatTable {
 		stdoutFormat = output.TableWithStyle(outputConfig.TableStyle)
 	}
 
@@ -266,7 +267,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		}
 
 		fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
-		if outputConfig.TableStyle != "" && outputConfig.OutputFileFormat == "table" {
+		if outputConfig.TableStyle != "" && outputConfig.OutputFileFormat == formatTable {
 			fileFormat = output.TableWithStyle(outputConfig.TableStyle)
 		}
 		fileOptions := []output.OutputOption{
@@ -304,7 +305,7 @@ func (f *Formatter) getFormatFromConfig(format string) output.Format {
 		return output.HTML
 	case "markdown":
 		return output.Markdown
-	case "table":
+	case formatTable:
 		return output.Table
 	default:
 		return output.Table
@@ -346,7 +347,6 @@ func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[s
 			"REMOVED":       summary.Statistics.ToDestroy,
 			"MODIFIED":      summary.Statistics.ToChange,
 			"REPLACEMENTS":  summary.Statistics.Replacements,
-			"CONDITIONALS":  summary.Statistics.Conditionals,
 			"HIGH RISK":     summary.Statistics.HighRisk,
 			"UNMODIFIED":    summary.Statistics.Unmodified,
 		},

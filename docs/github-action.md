@@ -48,7 +48,7 @@ Add the following step to your workflow:
 | `plan-file` | Path to Terraform plan file | ✅ | | `terraform.tfplan` |
 | `output-format` | Output format for analysis | ❌ | `markdown` | `table`, `json`, `markdown` |
 | `config-file` | Path to custom Strata config | ❌ | | `.strata.yaml` |
-| `danger-threshold` | Threshold for danger warnings | ❌ | | `5` |
+| `highlight-dangers` | Highlight potentially dangerous changes | ❌ | `true` | `true`, `false` |
 | `show-details` | Show detailed change info | ❌ | `false` | `true`, `false` |
 | `github-token` | GitHub token for API access | ❌ | `${{ github.token }}` | `${{ secrets.GITHUB_TOKEN }}` |
 | `comment-on-pr` | Enable PR commenting | ❌ | `true` | `true`, `false` |
@@ -110,7 +110,7 @@ jobs:
     plan-file: terraform.tfplan
     output-format: markdown
     config-file: .strata.yaml
-    danger-threshold: 5
+    highlight-dangers: true
     show-details: true
     comment-header: "🚀 Infrastructure Changes"
     update-comment: false  # Always create new comments
@@ -151,7 +151,7 @@ jobs:
       with:
         plan-file: environments/${{ matrix.environment }}/terraform.tfplan
         comment-header: "🏗️ ${{ matrix.environment }} Infrastructure Changes"
-        danger-threshold: 3
+        highlight-dangers: true
         show-details: true
 ```
 
@@ -193,7 +193,6 @@ Create a `.strata.yaml` file in your repository:
 ```yaml
 output: markdown
 plan:
-  danger-threshold: 5
   show-details: true
   highlight-dangers: true
   always-show-sensitive: true
@@ -373,10 +372,10 @@ on:
     paths: ['**.tf', '**.tfvars']
 ```
 
-### 2. Set Appropriate Danger Thresholds
+### 2. Highlight Dangerous Changes
 ```yaml
 with:
-  danger-threshold: 3  # Adjust based on your risk tolerance
+  highlight-dangers: true  # Always highlight potentially dangerous changes
 ```
 
 ### 3. Use Custom Headers for Multi-Environment

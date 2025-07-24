@@ -13,21 +13,21 @@ Strata provides version information through both a global flag and a dedicated c
 ```shell
 # Quick version check
 $ strata --version
-strata version 1.2.3
+strata version 1.0.0
 
 # Detailed version information
 $ strata version
-strata version 1.2.3
-Built: 2025-01-15T10:30:00Z
-Commit: abc123d
+strata version 1.0.0
+Built: 2025-01-24T10:30:00Z
+Commit: f2a261e
 Go: go1.24.1
 
 # JSON output for scripts
 $ strata version --output json
 {
-  "version": "1.2.3",
-  "build_time": "2025-01-15T10:30:00Z",
-  "git_commit": "abc123d",
+  "version": "1.0.0",
+  "build_time": "2025-01-24T10:30:00Z",
+  "git_commit": "f2a261e",
   "go_version": "go1.24.1"
 }
 ```
@@ -258,7 +258,7 @@ Strata is available as a GitHub Action that can be easily integrated into your C
     plan-file: terraform.tfplan
     output-format: markdown
     show-details: true
-    show-details: true
+    highlight-dangers: true
     config-file: .strata.yaml
     comment-on-pr: true
     update-comment: true
@@ -368,17 +368,17 @@ permissions:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/strata.git
+git clone https://github.com/ArjenSchwarz/strata.git
 cd strata
 
 # Build the project (includes version information)
 make build
 
 # Build with specific version
-make build VERSION=1.2.3
+make build VERSION=1.0.0
 
 # Build release version (requires VERSION parameter)
-make build-release VERSION=1.2.3
+make build-release VERSION=1.0.0
 
 # Install locally
 go install
@@ -390,7 +390,7 @@ If you prefer to build manually with version information:
 
 ```bash
 # Build with version injection
-go build -ldflags "-X github.com/ArjenSchwarz/strata/cmd.Version=1.2.3 \
+go build -ldflags "-X github.com/ArjenSchwarz/strata/cmd.Version=1.0.0 \
                    -X github.com/ArjenSchwarz/strata/cmd.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
                    -X github.com/ArjenSchwarz/strata/cmd.GitCommit=$(git rev-parse --short HEAD)" .
 
@@ -403,7 +403,7 @@ go build -ldflags "-X github.com/ArjenSchwarz/strata/cmd.Version=1.2.3 \
 ### Using Go Install
 
 ```bash
-go install github.com/yourusername/strata@latest
+go install github.com/ArjenSchwarz/strata@latest
 ```
 
 ## Development

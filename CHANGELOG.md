@@ -7,46 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Table style configuration support with `--table-style` flag and `table.style` config option
-- Table max column width configuration with `--table-max-column-width` flag and `table.max-column-width` config option
-- UNMODIFIED column to statistics summary showing no-op resource changes
-- Support for handling plans with no resource changes (displays "All resources are unchanged")
-- Sample file `nochange-sample.json` for testing no-change scenarios
-- Test documentation output file `output.md`
-
-### Changed
-- Upgraded go-output dependency from v2.0.4 to v2.0.5
-- Statistics table header from "TOTAL" to "TOTAL CHANGES" for clarity
-- Improved handling of no-op changes - now tracked separately and excluded from detailed resource lists
-- Enhanced table formatting with file format style support
-- **GitHub Action Improvements**
-  - Modified path handling to use relative paths within GITHUB_WORKSPACE
-  - Enhanced error handling with proper variable exporting
-  - Improved workspace directory navigation for better compatibility
-
-### Removed
-- Redundant destructive changes warning from plan summary command (now handled by formatter)
-- File extension validation for plan and config files in GitHub Action (allows any file type)
-
-### Changed
-- **Code Quality Improvements**
-  - Added golangci-lint configuration for consistent code quality standards
-  - Updated error handling to properly check and handle return values
-  - Improved memory management by properly closing files and removing temporary test files
-  - Enhanced version command output formatting with proper error checking
-  - Added proper documentation comments for exported functions and types
-  - Updated to use modern Go constructs (any instead of interface{})
-  - Improved workspace and backend information extraction from Terraform state
-  - Enhanced conditional replacement analysis for resource changes
-
-### Fixed
-- **Error Handling and Resource Management**
-  - Fixed unchecked return values in file operations and environment variable settings
-  - Improved test cleanup by properly handling file operations and environment restoration
-  - Enhanced viper flag binding with proper error checking
-  - Fixed potential resource leaks in parser backend detection logic
-
 ## [1.0.0] - TBA
 
 ### Added
@@ -72,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced statistics table with horizontal layout and comprehensive change tracking
   - Plan information display showing context, versions, and metadata
   - Always-show-sensitive feature to display critical changes even when details disabled
+  - Table style configuration support with `--table-style` flag and `table.style` config option
+  - Table max column width configuration with `--table-max-column-width` flag and `table.max-column-width` config option
+  - UNMODIFIED column to statistics summary showing no-op resource changes
+  - Support for handling plans with no resource changes (displays "All resources are unchanged")
 
 - **GitHub Action Integration**
   - Composite GitHub Action for CI/CD workflows
@@ -92,21 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Project documentation and development guides
   - Sample Terraform plan files for testing
 
-### Changed
-- **Go-Output v2 Migration**
-  - Migrated to go-output v2 for improved thread safety and performance
-  - Updated all formatter methods to use v2-compatible data structures
-  - Implemented separate rendering for stdout and file outputs
-  - Enhanced error handling with proper context support
-
-- **GitHub Action Improvements**
-  - Modularized action architecture with separate library modules
-  - Enhanced output headers with workflow and job context
-  - Removed redundant headers and improved formatting
-  - Updated test configurations and workflows
-
 ### Dependencies
-- github.com/ArjenSchwarz/go-output v2.0.0 for enhanced output formatting
+- github.com/ArjenSchwarz/go-output v2.0.5 for enhanced output formatting
 - github.com/hashicorp/terraform-json v0.25.0 for Terraform plan parsing
 - github.com/spf13/cobra v1.9.1 for CLI framework
 - github.com/spf13/viper v1.20.1 for configuration management
