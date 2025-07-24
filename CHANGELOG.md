@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Table style configuration support with `--table-style` flag and `table.style` config option
+- Table max column width configuration with `--table-max-column-width` flag and `table.max-column-width` config option
+- UNMODIFIED column to statistics summary showing no-op resource changes
+- Support for handling plans with no resource changes (displays "All resources are unchanged")
+- Sample file `nochange-sample.json` for testing no-change scenarios
+- Test documentation output file `output.md`
+
+### Changed
+- Upgraded go-output dependency from v2.0.4 to v2.0.5
+- Statistics table header from "TOTAL" to "TOTAL CHANGES" for clarity
+- Improved handling of no-op changes - now tracked separately and excluded from detailed resource lists
+- Enhanced table formatting with file format style support
+
+### Removed
+- Redundant destructive changes warning from plan summary command (now handled by formatter)
+
 ### Changed
 - **Code Quality Improvements**
   - Added golangci-lint configuration for consistent code quality standards

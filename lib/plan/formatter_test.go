@@ -151,8 +151,8 @@ func TestFormatter_createStatisticsSummaryDataV2(t *testing.T) {
 	}
 
 	row := data[0]
-	if row["TOTAL"] != 10 {
-		t.Errorf("Expected TOTAL to be 10, got %v", row["TOTAL"])
+	if row["TOTAL CHANGES"] != 10 {
+		t.Errorf("Expected TOTAL CHANGES to be 10, got %v", row["TOTAL CHANGES"])
 	}
 
 	if row["ADDED"] != 3 {

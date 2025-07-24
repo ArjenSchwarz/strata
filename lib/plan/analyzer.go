@@ -241,6 +241,8 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange) ChangeStatistic
 			} else {
 				stats.Replacements++
 			}
+		case ChangeTypeNoOp:
+			stats.Unmodified++
 		}
 
 		// Count high-risk changes (any resource with the dangerous flag set)

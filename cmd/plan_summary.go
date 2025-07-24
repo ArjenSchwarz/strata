@@ -120,12 +120,6 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	analyzer := plan.NewAnalyzer(tfPlan, cfg)
 	summary := analyzer.GenerateSummary(planFile)
 
-	// Check for dangerous changes
-	if highlightDangers && analyzer.GetDestructiveChangeCount(summary.ResourceChanges) > 0 {
-		fmt.Printf("⚠️  WARNING: %d destructive changes detected\n\n",
-			analyzer.GetDestructiveChangeCount(summary.ResourceChanges))
-	}
-
 	// Create formatter and output summary
 	formatter := plan.NewFormatter(cfg)
 

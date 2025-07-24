@@ -85,6 +85,7 @@ type ChangeStatistics struct {
 	Replacements int `json:"replacements"` // REPLACEMENTS: Resources to be replaced (definite replacements)
 	Conditionals int `json:"conditionals"` // CONDITIONALS: Resources with conditional replacements (may be replaced)
 	HighRisk     int `json:"high_risk"`    // HIGH RISK: Sensitive resources with danger flag
+	Unmodified   int `json:"unmodified"`   // UNMODIFIED: Resources with no changes (no-op)
 	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories
 }
 

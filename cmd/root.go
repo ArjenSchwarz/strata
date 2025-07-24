@@ -82,12 +82,22 @@ func init() {
 	rootCmd.PersistentFlags().String("file", "", "Optional file to save the output to, in addition to stdout")
 	rootCmd.PersistentFlags().String("file-format", "", "Optional format for the file, defaults to the same as output")
 
+	// Table format flags
+	rootCmd.PersistentFlags().String("table-style", "", "Table style for table output")
+	rootCmd.PersistentFlags().Int("table-max-column-width", 50, "Maximum column width for table output")
+
 	// Bind output flags to Viper
 	err := viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
 	cobra.CheckErr(err)
 	err = viper.BindPFlag("output-file", rootCmd.PersistentFlags().Lookup("file"))
 	cobra.CheckErr(err)
 	err = viper.BindPFlag("output-file-format", rootCmd.PersistentFlags().Lookup("file-format"))
+	cobra.CheckErr(err)
+
+	// Bind table flags to Viper
+	err = viper.BindPFlag("table.style", rootCmd.PersistentFlags().Lookup("table-style"))
+	cobra.CheckErr(err)
+	err = viper.BindPFlag("table.max-column-width", rootCmd.PersistentFlags().Lookup("table-max-column-width"))
 	cobra.CheckErr(err)
 
 	// Cobra also supports local flags, which will only run

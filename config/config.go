@@ -23,10 +23,19 @@ type SensitiveProperty struct {
 	Property     string `mapstructure:"property"`
 }
 
+// TableConfig holds configuration specific to table output
+type TableConfig struct {
+	Style          string `mapstructure:"style"`
+	MaxColumnWidth int    `mapstructure:"max-column-width"`
+}
+
 // Config holds the global configuration settings
 type Config struct {
 	// Plan-specific configuration
 	Plan PlanConfig `mapstructure:"plan"`
+
+	// Table-specific configuration
+	Table TableConfig `mapstructure:"table"`
 
 	// Sensitive resources and properties configuration
 	SensitiveResources  []SensitiveResource `mapstructure:"sensitive_resources"`
