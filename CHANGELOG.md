@@ -20,9 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics table header from "TOTAL" to "TOTAL CHANGES" for clarity
 - Improved handling of no-op changes - now tracked separately and excluded from detailed resource lists
 - Enhanced table formatting with file format style support
+- **GitHub Action Improvements**
+  - Modified path handling to use relative paths within GITHUB_WORKSPACE
+  - Enhanced error handling with proper variable exporting
+  - Improved workspace directory navigation for better compatibility
 
 ### Removed
 - Redundant destructive changes warning from plan summary command (now handled by formatter)
+- File extension validation for plan and config files in GitHub Action (allows any file type)
 
 ### Changed
 - **Code Quality Improvements**

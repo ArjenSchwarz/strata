@@ -165,23 +165,27 @@ run_strata() {
     return 1
   fi
   
-  # Convert plan file to absolute path if it's relative
-  # Use GITHUB_WORKSPACE as the base directory in GitHub Actions environment
-  if [[ "$plan_file" != /* ]]; then
-    if [ -n "$GITHUB_WORKSPACE" ]; then
-      plan_file="$GITHUB_WORKSPACE/$plan_file"
-    else
+  # Change to GITHUB_WORKSPACE if available to use relative paths
+  if [ -n "$GITHUB_WORKSPACE" ]; then
+    log "Changing to workspace directory" "$GITHUB_WORKSPACE"
+    cd "$GITHUB_WORKSPACE" || {
+      error "Failed to change to workspace directory: $GITHUB_WORKSPACE"
+      return 1
+    }
+    # Keep the plan file as relative if it was provided as relative
+    if [[ "$plan_file" != /* ]]; then
+      log "Using relative plan file path" "$plan_file"
+    fi
+  else
+    # Convert to absolute path only if not in GitHub Actions
+    if [[ "$plan_file" != /* ]]; then
       plan_file="$(pwd)/$plan_file"
     fi
   fi
   
-  # Use a predictable markdown file in the workspace instead of temp file
-  local markdown_file
-  if [ -n "$GITHUB_WORKSPACE" ]; then
-    markdown_file="$GITHUB_WORKSPACE/strata-run-output.md"
-  else
-    markdown_file="$(pwd)/strata-run-output.md"
-  fi
+  # Use a predictable markdown file in the current directory
+  # Since we've already changed to GITHUB_WORKSPACE, use relative path
+  local markdown_file="strata-run-output.md"
   
   log "Using workspace markdown file" "Path: $markdown_file"
   
@@ -260,14 +264,14 @@ run_strata() {
   log "Strata execution completed" "Exit code: $exit_code, Output size: ${#stdout_output} chars"
   
   # Handle execution errors with structured error content
-  if [ $exit_code -ne 0 ]; then
+  if [ "$exit_code" -ne 0 ]; then
     warning "Strata execution failed with exit code $exit_code"
     warning "Error output: $stdout_output"
     log "Dual output execution failed" "Both stdout and file output affected"
     
-    # Set global variable even on error
-    STRATA_OUTPUT="$stdout_output"
-    return $exit_code
+    # Set and export global variable even on error
+    export STRATA_OUTPUT="$stdout_output"
+    return "$exit_code"
   fi
   
   # Handle file operations with comprehensive error checking
@@ -333,8 +337,8 @@ $stdout_output
     rm -f "$markdown_file" 2>/dev/null || true
   fi
   
-  # Set global variable instead of echoing to avoid command substitution capture
-  STRATA_OUTPUT="$stdout_output"
+  # Set and export global variable instead of echoing to avoid command substitution capture
+  export STRATA_OUTPUT="$stdout_output"
   
-  return $exit_code
+  return "$exit_code"
 }

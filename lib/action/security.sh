@@ -119,12 +119,6 @@ validate_file_path() {
       fi
       ;;
     "plan_file")
-      # Ensure plan files have reasonable extensions and are not in system directories
-      if [[ "$file_path" != *.tfplan ]] && [[ "$file_path" != *.json ]] && [[ "$file_path" != *.plan ]]; then
-        warning "Plan file has unexpected extension: $file_path"
-        log "File validation warning" "Unexpected plan file extension"
-      fi
-      
       # Prevent access to system directories
       if [[ "$resolved_path" == /etc/* ]] || [[ "$resolved_path" == /bin/* ]] || [[ "$resolved_path" == /sbin/* ]] || [[ "$resolved_path" == /usr/bin/* ]]; then
         warning "Plan file in system directory: $resolved_path"
@@ -133,12 +127,6 @@ validate_file_path() {
       fi
       ;;
     "config_file")
-      # Ensure config files have reasonable extensions and are not in system directories
-      if [[ "$file_path" != *.yaml ]] && [[ "$file_path" != *.yml ]] && [[ "$file_path" != *.json ]]; then
-        warning "Config file has unexpected extension: $file_path"
-        log "File validation warning" "Unexpected config file extension"
-      fi
-      
       # Prevent access to system directories
       if [[ "$resolved_path" == /etc/* ]] || [[ "$resolved_path" == /bin/* ]] || [[ "$resolved_path" == /sbin/* ]] || [[ "$resolved_path" == /usr/bin/* ]]; then
         warning "Config file in system directory: $resolved_path"
