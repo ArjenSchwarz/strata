@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 
@@ -75,25 +76,14 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			IsDangerous:      false, // Will be updated below
 			DangerReason:     "",
 			DangerProperties: []string{},
+			// Enhanced summary visualization fields
+			Provider:         a.extractProvider(rc.Type),
+			ReplacementHints: a.extractReplacementHints(rc),
+			TopChanges:       a.getTopChangedProperties(rc, 3),
 		}
 
-		// Check if this is a sensitive resource
-		if a.IsSensitiveResource(rc.Type) && changeType == ChangeTypeReplace {
-			change.IsDangerous = true
-			change.DangerReason = "Sensitive resource replacement"
-		}
-
-		// Check for sensitive properties
-		dangerProps := a.checkSensitiveProperties(rc)
-		if len(dangerProps) > 0 {
-			change.IsDangerous = true
-			change.DangerProperties = dangerProps
-			if change.DangerReason == "" {
-				change.DangerReason = "Sensitive property change"
-			} else {
-				change.DangerReason += " and sensitive property change"
-			}
-		}
+		// Enhanced danger reason logic
+		change.IsDangerous, change.DangerReason = a.evaluateResourceDanger(rc, changeType)
 
 		changes = append(changes, change)
 	}
@@ -401,6 +391,188 @@ func (a *Analyzer) extractProvider(resourceType string) string {
 	// Cache the result
 	a.providerCache.Store(resourceType, provider)
 	return provider
+}
+
+// extractReplacementHints extracts human-readable reasons for resource replacements
+func (a *Analyzer) extractReplacementHints(change *tfjson.ResourceChange) []string {
+	hints := make([]string, 0)
+
+	// Only show replacement hints for replacement operations
+	if change.Change == nil || change.Change.ReplacePaths == nil || len(change.Change.ReplacePaths) == 0 {
+		return hints
+	}
+
+	// Convert ReplacePaths to human-readable strings
+	for _, replacePath := range change.Change.ReplacePaths {
+		hint := a.formatReplacePath(replacePath)
+		if hint != "" {
+			hints = append(hints, hint)
+		}
+	}
+
+	return hints
+}
+
+// formatReplacePath converts a replacement path to a human-readable string
+func (a *Analyzer) formatReplacePath(path any) string {
+	switch p := path.(type) {
+	case []any:
+		// Handle nested paths like ["network_interface", 0, "subnet_id"]
+		var parts []string
+		for _, part := range p {
+			switch partValue := part.(type) {
+			case string:
+				parts = append(parts, partValue)
+			case int:
+				parts = append(parts, "["+strconv.Itoa(partValue)+"]")
+			case float64:
+				parts = append(parts, "["+strconv.Itoa(int(partValue))+"]")
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, ".")
+		}
+	case string:
+		// Handle simple string paths
+		return p
+	}
+
+	return ""
+}
+
+// evaluateResourceDanger determines if a resource change is dangerous and provides a descriptive reason
+func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeType ChangeType) (bool, string) {
+	isDangerous := false
+	reasonParts := make([]string, 0)
+
+	// All deletion operations are considered risky by default
+	if changeType == ChangeTypeDelete {
+		isDangerous = true
+		if a.IsSensitiveResource(change.Type) {
+			reasonParts = append(reasonParts, "Sensitive resource deletion")
+		} else {
+			reasonParts = append(reasonParts, "Resource deletion")
+		}
+	}
+
+	// Sensitive resource replacements are higher risk
+	if a.IsSensitiveResource(change.Type) && changeType == ChangeTypeReplace {
+		isDangerous = true
+		reasonParts = append(reasonParts, a.getSensitiveResourceReason(change.Type))
+	}
+
+	// Check for sensitive property changes (only if we have the necessary data)
+	if change.Change != nil {
+		dangerProps := a.checkSensitiveProperties(change)
+		if len(dangerProps) > 0 {
+			isDangerous = true
+			reasonParts = append(reasonParts, a.getSensitivePropertyReason(dangerProps))
+		}
+	}
+
+	// Join all reasons with "and"
+	reason := ""
+	if len(reasonParts) > 0 {
+		reason = strings.Join(reasonParts, " and ")
+	}
+
+	return isDangerous, reason
+}
+
+// getSensitiveResourceReason returns a descriptive reason for sensitive resource changes
+func (a *Analyzer) getSensitiveResourceReason(resourceType string) string {
+	// Provide specific reasons based on common resource types
+	switch {
+	case strings.Contains(resourceType, "rds") || strings.Contains(resourceType, "database"):
+		return "Database replacement"
+	case strings.Contains(resourceType, "instance") || strings.Contains(resourceType, "vm") || strings.Contains(resourceType, "virtual_machine"):
+		return "Compute instance replacement"
+	case strings.Contains(resourceType, "bucket") || strings.Contains(resourceType, "storage"):
+		return "Storage replacement"
+	case strings.Contains(resourceType, "security_group") || strings.Contains(resourceType, "firewall"):
+		return "Security rule replacement"
+	case strings.Contains(resourceType, "network") || strings.Contains(resourceType, "vpc"):
+		return "Network infrastructure replacement"
+	default:
+		return "Sensitive resource replacement"
+	}
+}
+
+// getSensitivePropertyReason returns a descriptive reason for sensitive property changes
+func (a *Analyzer) getSensitivePropertyReason(properties []string) string {
+	if len(properties) == 1 {
+		// Provide specific reasons for common sensitive properties
+		prop := properties[0]
+		switch {
+		case strings.Contains(strings.ToLower(prop), "password") || strings.Contains(strings.ToLower(prop), "secret"):
+			return "Credential change"
+		case strings.Contains(strings.ToLower(prop), "key") || strings.Contains(strings.ToLower(prop), "token"):
+			return "Authentication key change"
+		case strings.Contains(strings.ToLower(prop), "userdata") || strings.Contains(strings.ToLower(prop), "user_data"):
+			return "User data modification"
+		case strings.Contains(strings.ToLower(prop), "security") || strings.Contains(strings.ToLower(prop), "policy"):
+			return "Security configuration change"
+		default:
+			return "Sensitive property change: " + prop
+		}
+	} else {
+		return "Multiple sensitive properties changed"
+	}
+}
+
+// getTopChangedProperties returns the first N properties that are changing for update operations
+func (a *Analyzer) getTopChangedProperties(change *tfjson.ResourceChange, limit int) []string {
+	properties := make([]string, 0)
+
+	// Only show property changes for update operations when ShowContext is enabled
+	if a.config == nil || !a.config.Plan.ShowContext || change.Change == nil ||
+		FromTerraformAction(change.Change.Actions) != ChangeTypeUpdate {
+		return properties
+	}
+
+	// Skip if we don't have both before and after states
+	if change.Change.Before == nil || change.Change.After == nil {
+		return properties
+	}
+
+	// Convert to maps for comparison
+	beforeMap, beforeOk := change.Change.Before.(map[string]any)
+	afterMap, afterOk := change.Change.After.(map[string]any)
+
+	if !beforeOk || !afterOk {
+		return properties
+	}
+
+	// Find changed properties
+	count := 0
+	for propName := range afterMap {
+		if count >= limit {
+			break
+		}
+
+		beforeVal, existsBefore := beforeMap[propName]
+		afterVal := afterMap[propName]
+
+		// If property exists in before and values differ, it's changed
+		if existsBefore && !equals(beforeVal, afterVal) {
+			properties = append(properties, propName)
+			count++
+		}
+	}
+
+	// Also check for properties that were removed (exist in before but not after)
+	for propName := range beforeMap {
+		if count >= limit {
+			break
+		}
+
+		if _, existsAfter := afterMap[propName]; !existsAfter {
+			properties = append(properties, propName+" (removed)")
+			count++
+		}
+	}
+
+	return properties
 }
 
 // equals is a helper to compare two values, handling maps and slices specially

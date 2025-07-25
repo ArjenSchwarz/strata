@@ -49,25 +49,25 @@ This document provides an actionable implementation plan for the Enhanced Summar
 
 ### 3. Enhance Resource Change Analysis
 
-- [ ] 3.1 Implement context extraction for replacement reasons in `lib/plan/analyzer.go`
+- [x] 3.1 Implement context extraction for replacement reasons in `lib/plan/analyzer.go`
   - Enhance existing `analyzeResourceChanges()` to populate `ReplacementHints` field
   - Extract human-readable reasons from Terraform's `ReplacePaths` data
   - Ensure replacement hints are always populated regardless of `ShowContext` setting
   - References requirement: Enhanced change context (1.2) - show all replacement reasons
 
-- [ ] 3.2 Implement property change detection for updates
+- [x] 3.2 Implement property change detection for updates
   - Add `getTopChangedProperties(change *tfjson.ResourceChange, limit int) []string` function
   - Compare before/after states using existing `equals()` function
   - Return first 3 property names that changed (not values for security)
   - Only populate when `ShowContext` is enabled
   - References requirement: Enhanced change context (1.2) - show first 3 properties changing
 
-- [ ] 3.3 Enhance existing danger reason logic
+- [x] 3.3 Enhance existing danger reason logic
   - Improve existing `DangerReason` field with more descriptive explanations
   - Add specific reasons for sensitive resource replacements vs deletions
   - References requirement: Risk highlighting (1.3) - brief explanations for risky changes
 
-- [ ] 3.4 Write unit tests for context extraction
+- [x] 3.4 Write unit tests for context extraction
   - Test replacement reason extraction from various ReplacePaths scenarios
   - Test property change detection with different before/after state combinations
   - Test that replacement hints are always shown but property changes respect ShowContext flag
