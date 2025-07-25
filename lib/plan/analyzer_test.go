@@ -632,3 +632,571 @@ func TestExtractProviderEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractReplacementHints(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		change   *tfjson.ResourceChange
+		expected []string
+	}{
+		{
+			name: "No replacement paths should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: nil,
+				},
+			},
+			expected: []string{},
+		},
+		{
+			name: "Empty replacement paths should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: []interface{}{},
+				},
+			},
+			expected: []string{},
+		},
+		{
+			name: "Simple string path should be formatted",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: []interface{}{"subnet_id"},
+				},
+			},
+			expected: []string{"subnet_id"},
+		},
+		{
+			name: "Nested array path should be formatted with dots and brackets",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: []interface{}{
+						[]interface{}{"network_interface", 0, "subnet_id"},
+					},
+				},
+			},
+			expected: []string{"network_interface.[0].subnet_id"},
+		},
+		{
+			name: "Multiple replacement paths should all be included",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: []interface{}{
+						"subnet_id",
+						[]interface{}{"security_groups", 1},
+						"availability_zone",
+					},
+				},
+			},
+			expected: []string{
+				"subnet_id",
+				"security_groups.[1]",
+				"availability_zone",
+			},
+		},
+		{
+			name: "Float64 indices should be converted to int",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					ReplacePaths: []interface{}{
+						[]interface{}{"network_interface", 0.0, "subnet_id"},
+					},
+				},
+			},
+			expected: []string{"network_interface.[0].subnet_id"},
+		},
+		{
+			name: "Nil change should return empty",
+			change: &tfjson.ResourceChange{
+				Change: nil,
+			},
+			expected: []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.extractReplacementHints(tc.change)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestFormatReplacePath(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		path     interface{}
+		expected string
+	}{
+		{
+			name:     "Simple string should return as-is",
+			path:     "subnet_id",
+			expected: "subnet_id",
+		},
+		{
+			name:     "Array with string should format with dots",
+			path:     []interface{}{"network_interface", "subnet_id"},
+			expected: "network_interface.subnet_id",
+		},
+		{
+			name:     "Array with int should format with brackets",
+			path:     []interface{}{"security_groups", 0},
+			expected: "security_groups.[0]",
+		},
+		{
+			name:     "Array with float64 should format with brackets",
+			path:     []interface{}{"security_groups", 1.0},
+			expected: "security_groups.[1]",
+		},
+		{
+			name:     "Complex nested path should format correctly",
+			path:     []interface{}{"block_device_mappings", 0, "ebs", "volume_size"},
+			expected: "block_device_mappings.[0].ebs.volume_size",
+		},
+		{
+			name:     "Empty array should return empty string",
+			path:     []interface{}{},
+			expected: "",
+		},
+		{
+			name:     "Unsupported type should return empty string",
+			path:     123,
+			expected: "",
+		},
+		{
+			name:     "Nil should return empty string",
+			path:     nil,
+			expected: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.formatReplacePath(tc.path)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestGetTopChangedProperties(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			ShowContext: true,
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name     string
+		change   *tfjson.ResourceChange
+		limit    int
+		expected []string
+	}{
+		{
+			name: "ShowContext disabled should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"instance_type": "t2.micro",
+						"ami":           "ami-123",
+					},
+					After: map[string]interface{}{
+						"instance_type": "t2.small",
+						"ami":           "ami-456",
+					},
+				},
+			},
+			limit:    3,
+			expected: []string{},
+		},
+		{
+			name: "Non-update operation should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionCreate},
+					Before:  nil,
+					After: map[string]interface{}{
+						"instance_type": "t2.micro",
+					},
+				},
+			},
+			limit:    3,
+			expected: []string{},
+		},
+		{
+			name: "Changed properties should be detected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"instance_type":      "t2.micro",
+						"ami":                "ami-123",
+						"security_group_ids": []interface{}{"sg-123"},
+						"unchanged_property": "same",
+					},
+					After: map[string]interface{}{
+						"instance_type":      "t2.small",
+						"ami":                "ami-456",
+						"security_group_ids": []interface{}{"sg-456"},
+						"unchanged_property": "same",
+					},
+				},
+			},
+			limit:    3,
+			expected: []string{"instance_type", "ami", "security_group_ids"},
+		},
+		{
+			name: "Limit should be respected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"prop1": "old1",
+						"prop2": "old2",
+						"prop3": "old3",
+						"prop4": "old4",
+					},
+					After: map[string]interface{}{
+						"prop1": "new1",
+						"prop2": "new2",
+						"prop3": "new3",
+						"prop4": "new4",
+					},
+				},
+			},
+			limit:    2,
+			expected: []string{}, // We'll check length separately since map iteration order is not guaranteed
+		},
+		{
+			name: "Removed properties should be detected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"existing_prop": "value",
+						"removed_prop":  "old_value",
+					},
+					After: map[string]interface{}{
+						"existing_prop": "value",
+					},
+				},
+			},
+			limit:    3,
+			expected: []string{"removed_prop (removed)"},
+		},
+		{
+			name: "No changes should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"instance_type": "t2.micro",
+						"ami":           "ami-123",
+					},
+					After: map[string]interface{}{
+						"instance_type": "t2.micro",
+						"ami":           "ami-123",
+					},
+				},
+			},
+			limit:    3,
+			expected: []string{},
+		},
+		{
+			name: "Nil before/after should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before:  nil,
+					After:   nil,
+				},
+			},
+			limit:    3,
+			expected: []string{},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Only enable ShowContext for tests that expect results
+			if i == 0 {
+				analyzer.config.Plan.ShowContext = false
+			} else {
+				analyzer.config.Plan.ShowContext = true
+			}
+
+			result := analyzer.getTopChangedProperties(tc.change, tc.limit)
+
+			// Special handling for limit test case
+			if tc.name == "Limit should be respected" {
+				assert.Len(t, result, tc.limit, "Should respect the limit")
+				// Check that all returned properties are valid (from the test data)
+				validProps := []string{"prop1", "prop2", "prop3", "prop4"}
+				for _, prop := range result {
+					assert.Contains(t, validProps, prop, "Returned property should be valid")
+				}
+			} else if len(tc.expected) > 0 {
+				// For tests that expect specific properties, check that all expected are present
+				// but allow for different ordering since map iteration order is not guaranteed
+				assert.Len(t, result, len(tc.expected), "Number of properties should match")
+				for _, expected := range tc.expected {
+					assert.Contains(t, result, expected, "Expected property should be present")
+				}
+			} else {
+				assert.Equal(t, tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestEvaluateResourceDanger(t *testing.T) {
+	cfg := &config.Config{
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+			{ResourceType: "aws_ec2_instance"},
+		},
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_ec2_instance", Property: "user_data"},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name           string
+		change         *tfjson.ResourceChange
+		changeType     ChangeType
+		expectedDanger bool
+		expectedReason string
+	}{
+		{
+			name: "Regular deletion should be dangerous",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+			},
+			changeType:     ChangeTypeDelete,
+			expectedDanger: true,
+			expectedReason: "Resource deletion",
+		},
+		{
+			name: "Sensitive resource deletion should be dangerous with specific reason",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+			},
+			changeType:     ChangeTypeDelete,
+			expectedDanger: true,
+			expectedReason: "Sensitive resource deletion",
+		},
+		{
+			name: "Sensitive resource replacement should be dangerous",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+			},
+			changeType:     ChangeTypeReplace,
+			expectedDanger: true,
+			expectedReason: "Database replacement",
+		},
+		{
+			name: "EC2 instance replacement should have specific reason",
+			change: &tfjson.ResourceChange{
+				Type: "aws_ec2_instance",
+			},
+			changeType:     ChangeTypeReplace,
+			expectedDanger: true,
+			expectedReason: "Compute instance replacement",
+		},
+		{
+			name: "Non-sensitive resource update should not be dangerous",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"versioning": false,
+					},
+					After: map[string]interface{}{
+						"versioning": true,
+					},
+				},
+			},
+			changeType:     ChangeTypeUpdate,
+			expectedDanger: false,
+			expectedReason: "",
+		},
+		{
+			name: "Sensitive property change should be dangerous",
+			change: &tfjson.ResourceChange{
+				Type: "aws_ec2_instance",
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"user_data": "old-data",
+					},
+					After: map[string]interface{}{
+						"user_data": "new-data",
+					},
+				},
+			},
+			changeType:     ChangeTypeUpdate,
+			expectedDanger: true,
+			expectedReason: "User data modification",
+		},
+		{
+			name: "Non-sensitive resource creation should not be dangerous",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+			},
+			changeType:     ChangeTypeCreate,
+			expectedDanger: false,
+			expectedReason: "",
+		},
+		{
+			name: "Multiple danger reasons should be combined",
+			change: &tfjson.ResourceChange{
+				Type: "aws_ec2_instance",
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"user_data": "old-data",
+					},
+					After: map[string]interface{}{
+						"user_data": "new-data",
+					},
+				},
+			},
+			changeType:     ChangeTypeDelete,
+			expectedDanger: true,
+			expectedReason: "Sensitive resource deletion and User data modification",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dangerous, reason := analyzer.evaluateResourceDanger(tc.change, tc.changeType)
+			assert.Equal(t, tc.expectedDanger, dangerous, "Danger evaluation mismatch")
+			assert.Equal(t, tc.expectedReason, reason, "Danger reason mismatch")
+		})
+	}
+}
+
+func TestGetSensitiveResourceReason(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name         string
+		resourceType string
+		expected     string
+	}{
+		{
+			name:         "RDS instance should return database replacement",
+			resourceType: "aws_rds_instance",
+			expected:     "Database replacement",
+		},
+		{
+			name:         "Database cluster should return database replacement",
+			resourceType: "aws_rds_cluster",
+			expected:     "Database replacement",
+		},
+		{
+			name:         "EC2 instance should return compute replacement",
+			resourceType: "aws_ec2_instance",
+			expected:     "Compute instance replacement",
+		},
+		{
+			name:         "Azure VM should return compute replacement",
+			resourceType: "azurerm_virtual_machine",
+			expected:     "Compute instance replacement",
+		},
+		{
+			name:         "S3 bucket should return storage replacement",
+			resourceType: "aws_s3_bucket",
+			expected:     "Storage replacement",
+		},
+		{
+			name:         "Security group should return security replacement",
+			resourceType: "aws_security_group",
+			expected:     "Security rule replacement",
+		},
+		{
+			name:         "VPC should return network replacement",
+			resourceType: "aws_vpc",
+			expected:     "Network infrastructure replacement",
+		},
+		{
+			name:         "Unknown resource should return generic replacement",
+			resourceType: "custom_resource",
+			expected:     "Sensitive resource replacement",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.getSensitiveResourceReason(tc.resourceType)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestGetSensitivePropertyReason(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name       string
+		properties []string
+		expected   string
+	}{
+		{
+			name:       "Single password property should return credential change",
+			properties: []string{"password"},
+			expected:   "Credential change",
+		},
+		{
+			name:       "Single secret property should return credential change",
+			properties: []string{"secret_key"},
+			expected:   "Credential change",
+		},
+		{
+			name:       "Single key property should return authentication key change",
+			properties: []string{"api_key"},
+			expected:   "Authentication key change",
+		},
+		{
+			name:       "Single token property should return authentication key change",
+			properties: []string{"access_token"},
+			expected:   "Authentication key change",
+		},
+		{
+			name:       "User data property should return user data modification",
+			properties: []string{"user_data"},
+			expected:   "User data modification",
+		},
+		{
+			name:       "Security policy property should return security configuration change",
+			properties: []string{"security_policy"},
+			expected:   "Security configuration change",
+		},
+		{
+			name:       "Unknown single property should return property-specific reason",
+			properties: []string{"custom_property"},
+			expected:   "Sensitive property change: custom_property",
+		},
+		{
+			name:       "Multiple properties should return generic reason",
+			properties: []string{"password", "api_key"},
+			expected:   "Multiple sensitive properties changed",
+		},
+		{
+			name:       "Empty properties should return multiple reason",
+			properties: []string{},
+			expected:   "Multiple sensitive properties changed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.getSensitivePropertyReason(tc.properties)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}

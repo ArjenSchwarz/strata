@@ -12,11 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration support for enhanced summary visualization (group-by-provider, grouping-threshold, show-context options)  
 - Extended ResourceChange model with Provider, TopChanges, and ReplacementHints fields
 - Provider extraction and caching functionality in plan analyzer
-- Comprehensive test coverage for new configuration options and data models
+- Enhanced context extraction for resource replacement reasons using Terraform ReplacePaths data
+- Property change detection for update operations showing first 3 changed properties
+- Context-aware danger evaluation with descriptive resource-specific and property-specific reasons
+- Comprehensive test coverage for new configuration options and data models (47 new test cases)
 
 ### Changed
 - Enhanced plan analyzer with smart grouping capabilities and context extraction
 - Improved data models to support provider-based resource grouping and change context
+- Replaced basic danger reason logic with enhanced evaluation system providing specific reasons for:
+  - Database replacements (RDS instances, database clusters)
+  - Compute instance replacements (EC2, Azure VMs)
+  - Storage replacements (S3 buckets, storage accounts)
+  - Security rule replacements (security groups, firewalls)
+  - Network infrastructure replacements (VPCs, networks)
+  - Credential changes (passwords, secrets)
+  - Authentication key changes (API keys, tokens)
+  - User data modifications
+  - Security configuration changes
+- All deletion operations are now considered risky by default with appropriate danger messaging
 
 ## [1.0.0] - 2025-07-24
 
