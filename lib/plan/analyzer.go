@@ -2,6 +2,7 @@ package plan
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/ArjenSchwarz/strata/config"
 	tfjson "github.com/hashicorp/terraform-json"
@@ -9,8 +10,9 @@ import (
 
 // Analyzer processes Terraform plan data and generates summaries
 type Analyzer struct {
-	plan   *tfjson.Plan
-	config *config.Config
+	plan          *tfjson.Plan
+	config        *config.Config
+	providerCache sync.Map // Cache for provider extraction results
 }
 
 // NewAnalyzer creates a new plan analyzer
@@ -379,6 +381,26 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 	}
 
 	return sensitiveProps
+}
+
+// extractProvider extracts provider from resource type (e.g., "aws" from "aws_s3_bucket")
+// Uses thread-safe caching for performance
+func (a *Analyzer) extractProvider(resourceType string) string {
+	// Check cache first
+	if cached, ok := a.providerCache.Load(resourceType); ok {
+		return cached.(string)
+	}
+
+	// Extract provider from resource type
+	parts := strings.Split(resourceType, "_")
+	provider := "unknown"
+	if len(parts) > 0 && parts[0] != "" {
+		provider = parts[0]
+	}
+
+	// Cache the result
+	a.providerCache.Store(resourceType, provider)
+	return provider
 }
 
 // equals is a helper to compare two values, handling maps and slices specially
