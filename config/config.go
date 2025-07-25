@@ -49,6 +49,10 @@ type PlanConfig struct {
 	ShowStatisticsSummary   bool   `mapstructure:"show-statistics-summary"`
 	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
 	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
+	// Enhanced summary visualization fields
+	GroupByProvider   bool `mapstructure:"group-by-provider"`  // Enable provider grouping
+	GroupingThreshold int  `mapstructure:"grouping-threshold"` // Minimum resources to trigger grouping
+	ShowContext       bool `mapstructure:"show-context"`       // Show property changes
 }
 
 // GetLCString returns a lowercase string value for the given setting

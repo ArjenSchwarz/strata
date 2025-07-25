@@ -501,3 +501,134 @@ func TestExtractModulePath(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractProvider(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name         string
+		resourceType string
+		expected     string
+	}{
+		{
+			name:         "AWS resource should extract aws",
+			resourceType: "aws_s3_bucket",
+			expected:     "aws",
+		},
+		{
+			name:         "AWS EC2 resource should extract aws",
+			resourceType: "aws_ec2_instance",
+			expected:     "aws",
+		},
+		{
+			name:         "Azure resource should extract azurerm",
+			resourceType: "azurerm_virtual_machine",
+			expected:     "azurerm",
+		},
+		{
+			name:         "Google resource should extract google",
+			resourceType: "google_compute_instance",
+			expected:     "google",
+		},
+		{
+			name:         "Kubernetes resource should extract kubernetes",
+			resourceType: "kubernetes_deployment",
+			expected:     "kubernetes",
+		},
+		{
+			name:         "HashiCorp Vault resource should extract vault",
+			resourceType: "vault_policy",
+			expected:     "vault",
+		},
+		{
+			name:         "Resource without underscore should return as-is",
+			resourceType: "data",
+			expected:     "data",
+		},
+		{
+			name:         "Empty string should return unknown",
+			resourceType: "",
+			expected:     "unknown",
+		},
+		{
+			name:         "Single underscore should extract first part",
+			resourceType: "provider_",
+			expected:     "provider",
+		},
+		{
+			name:         "Complex resource type should extract first part",
+			resourceType: "aws_db_parameter_group",
+			expected:     "aws",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.extractProvider(tc.resourceType)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestExtractProviderCaching(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	// Test that caching works by calling the same resource type multiple times
+	resourceType := "aws_s3_bucket"
+
+	// First call should compute and cache the result
+	result1 := analyzer.extractProvider(resourceType)
+	assert.Equal(t, "aws", result1)
+
+	// Second call should return cached result
+	result2 := analyzer.extractProvider(resourceType)
+	assert.Equal(t, "aws", result2)
+
+	// Verify cache contains the entry
+	cached, ok := analyzer.providerCache.Load(resourceType)
+	assert.True(t, ok, "Cache should contain the entry")
+	assert.Equal(t, "aws", cached.(string))
+}
+
+func TestExtractProviderEdgeCases(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name         string
+		resourceType string
+		expected     string
+	}{
+		{
+			name:         "Resource starting with underscore",
+			resourceType: "_resource_type",
+			expected:     "unknown",
+		},
+		{
+			name:         "Resource with multiple consecutive underscores",
+			resourceType: "aws__s3__bucket",
+			expected:     "aws",
+		},
+		{
+			name:         "Resource ending with underscore",
+			resourceType: "aws_s3_bucket_",
+			expected:     "aws",
+		},
+		{
+			name:         "Single character provider",
+			resourceType: "a_resource",
+			expected:     "a",
+		},
+		{
+			name:         "Numeric provider",
+			resourceType: "123_resource",
+			expected:     "123",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.extractProvider(tc.resourceType)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}

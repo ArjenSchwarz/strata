@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New agent documentation files for enhanced summary visualization feature planning
+- Configuration support for enhanced summary visualization (group-by-provider, grouping-threshold, show-context options)  
+- Extended ResourceChange model with Provider, TopChanges, and ReplacementHints fields
+- Provider extraction and caching functionality in plan analyzer
+- Comprehensive test coverage for new configuration options and data models
+
+### Changed
+- Enhanced plan analyzer with smart grouping capabilities and context extraction
+- Improved data models to support provider-based resource grouping and change context
+
 ## [1.0.0] - 2025-07-24
 
 ### Added
