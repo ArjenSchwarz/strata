@@ -723,7 +723,7 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 		After:     after,
 		Sensitive: false,
 	}
-	
+
 	// Check if this property is sensitive
 	if len(path) > 0 && a.config != nil {
 		// Get root resource type from the context (this would need to be passed in)
@@ -777,7 +777,7 @@ func (a *Analyzer) estimateValueSize(value any) int {
 func (a *Analyzer) assessRiskLevel(change *tfjson.ResourceChange) string {
 	// Simple risk assessment based on change type and resource sensitivity
 	changeType := FromTerraformAction(change.Change.Actions)
-	
+
 	if changeType == ChangeTypeDelete {
 		if a.IsSensitiveResource(change.Type) {
 			return "critical"

@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **go-output v2 Collapsible Content Integration**:
+  - Fixed go-output v2 API usage with correct format constants (`output.Table.Name` instead of `output.FormatTable`)
+  - Implemented `propertyChangesFormatter()` for collapsible property changes with sensitive data auto-expansion
+  - Implemented `dependenciesFormatter()` for collapsible dependency information display
+  - Created `prepareResourceTableData()` function to transform ResourceChange data for v2 table display
+  - Added `formatResourceChangesWithProgressiveDisclosure()` main formatting function using v2 document builder
+  - Comprehensive collapsible API reference documentation for go-output v2 integration
+
+### Fixed
+- Compilation errors in formatter.go due to incorrect go-output v2 format constant usage
+- ActionSortTransformer now uses correct v2 format constants for proper format detection
+
+### Added
 - Core analysis functions for enhanced summary visualization:
   - `analyzePropertyChanges()` function with comprehensive property change extraction (no 3-property limit)
   - `assessRiskLevel()` function with 4-tier risk assessment (critical, high, medium, low)  
