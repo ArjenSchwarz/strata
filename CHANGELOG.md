@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Property change truncation with size limits for performance optimization
 - Implementation status tracking in tasks documentation
 - API clarification notes for go-output v2 implementation
+- Core data models for progressive disclosure with go-output v2 integration:
+  - `ResourceAnalysis` struct for comprehensive resource change analysis
+  - `PropertyChangeAnalysis` struct for detailed property change tracking with truncation support
+  - `PropertyChange` struct for individual property changes with before/after values and sensitive data handling
+  - `DependencyInfo` struct for resource dependency relationships
+- Enhanced configuration structures:
+  - `ExpandableSectionsConfig` for collapsible sections behavior control
+  - `GroupingConfig` for enhanced provider grouping configuration
+  - `PerformanceLimitsConfig` with memory and processing limits (100 properties/resource, 1MB property size, 100MB total memory)
+  - `GetPerformanceLimitsWithDefaults()` helper method for configuration validation
+- Comprehensive unit tests for new data models with JSON serialization, sensitive data handling, and backward compatibility validation
 
 ### Enhanced
 - Simplified design approach for enhanced summary visualization feature

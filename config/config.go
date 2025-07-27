@@ -31,6 +31,9 @@ type TableConfig struct {
 
 // Config holds the global configuration settings
 type Config struct {
+	// Global expand control for collapsible sections
+	ExpandAll bool `mapstructure:"expand_all"`
+
 	// Plan-specific configuration
 	Plan PlanConfig `mapstructure:"plan"`
 
@@ -50,9 +53,12 @@ type PlanConfig struct {
 	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
 	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
 	// Enhanced summary visualization fields
-	GroupByProvider   bool `mapstructure:"group-by-provider"`  // Enable provider grouping
-	GroupingThreshold int  `mapstructure:"grouping-threshold"` // Minimum resources to trigger grouping
-	ShowContext       bool `mapstructure:"show-context"`       // Show property changes
+	GroupByProvider    bool                     `mapstructure:"group-by-provider"`   // Enable provider grouping
+	GroupingThreshold  int                      `mapstructure:"grouping-threshold"`  // Minimum resources to trigger grouping
+	ShowContext        bool                     `mapstructure:"show-context"`        // Show property changes
+	ExpandableSections ExpandableSectionsConfig `mapstructure:"expandable_sections"` // Collapsible sections configuration
+	Grouping           GroupingConfig           `mapstructure:"grouping"`            // Enhanced grouping configuration
+	PerformanceLimits  PerformanceLimitsConfig  `mapstructure:"performance_limits"`  // Performance and memory limits
 }
 
 // GetLCString returns a lowercase string value for the given setting
@@ -163,4 +169,50 @@ func (config *Config) getAWSAccountID() string {
 		return accountID
 	}
 	return "unknown"
+}
+
+// ExpandableSectionsConfig controls collapsible sections behavior
+type ExpandableSectionsConfig struct {
+	Enabled             bool `mapstructure:"enabled"`               // Enable collapsible sections
+	AutoExpandDangerous bool `mapstructure:"auto_expand_dangerous"` // Auto-expand high-risk sections
+	ShowDependencies    bool `mapstructure:"show_dependencies"`     // Show dependency sections
+}
+
+// GroupingConfig controls enhanced grouping behavior
+type GroupingConfig struct {
+	Enabled   bool `mapstructure:"enabled"`   // Enable provider grouping
+	Threshold int  `mapstructure:"threshold"` // Minimum resources to trigger grouping
+}
+
+// PerformanceLimitsConfig defines memory and processing limits for analysis
+type PerformanceLimitsConfig struct {
+	MaxPropertiesPerResource int   `mapstructure:"max_properties_per_resource"` // Default: 100
+	MaxPropertySize          int   `mapstructure:"max_property_size"`           // Default: 1MB (1048576 bytes)
+	MaxTotalMemory           int64 `mapstructure:"max_total_memory"`            // Default: 100MB (104857600 bytes)
+	MaxDependencyDepth       int   `mapstructure:"max_dependency_depth"`        // Default: 10
+	MaxResourcesPerGroup     int   `mapstructure:"max_resources_per_group"`     // Default: 1000
+}
+
+// GetPerformanceLimitsWithDefaults returns performance limits with default values applied
+func (config *Config) GetPerformanceLimitsWithDefaults() PerformanceLimitsConfig {
+	limits := config.Plan.PerformanceLimits
+
+	// Apply defaults for zero values
+	if limits.MaxPropertiesPerResource == 0 {
+		limits.MaxPropertiesPerResource = 100
+	}
+	if limits.MaxPropertySize == 0 {
+		limits.MaxPropertySize = 1048576 // 1MB
+	}
+	if limits.MaxTotalMemory == 0 {
+		limits.MaxTotalMemory = 104857600 // 100MB
+	}
+	if limits.MaxDependencyDepth == 0 {
+		limits.MaxDependencyDepth = 10
+	}
+	if limits.MaxResourcesPerGroup == 0 {
+		limits.MaxResourcesPerGroup = 1000
+	}
+
+	return limits
 }

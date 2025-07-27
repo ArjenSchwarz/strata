@@ -135,3 +135,45 @@ func FromTerraformAction(actions tfjson.Actions) ChangeType {
 		return ChangeTypeNoOp
 	}
 }
+
+// ResourceAnalysis contains comprehensive analysis results for a single resource
+// This is used for progressive disclosure with go-output v2 collapsible sections
+type ResourceAnalysis struct {
+	PropertyChanges    PropertyChangeAnalysis `json:"property_changes"`
+	ReplacementReasons []string               `json:"replacement_reasons"`
+	RiskLevel          string                 `json:"risk_level"` // "low", "medium", "high", "critical"
+	Dependencies       DependencyInfo         `json:"dependencies"`
+}
+
+// PropertyChangeAnalysis focuses on detailed property change information
+type PropertyChangeAnalysis struct {
+	Changes   []PropertyChange `json:"changes"`
+	Count     int              `json:"count"`
+	TotalSize int              `json:"total_size_bytes"`
+	Truncated bool             `json:"truncated"` // True if hit performance limits
+}
+
+// PropertyChange represents a single property that changed between before/after states
+type PropertyChange struct {
+	Name      string   `json:"name"`
+	Path      []string `json:"path"` // For nested properties
+	Before    any      `json:"before"`
+	After     any      `json:"after"`
+	Sensitive bool     `json:"sensitive"`
+	Size      int      `json:"size"` // Size in bytes for memory tracking
+}
+
+// DependencyInfo contains resource dependency relationships
+type DependencyInfo struct {
+	DependsOn []string `json:"depends_on"` // Resources this change depends on
+	UsedBy    []string `json:"used_by"`    // Resources that depend on this change
+}
+
+// PerformanceLimits defines memory and processing limits for analysis
+type PerformanceLimits struct {
+	MaxPropertiesPerResource int   `json:"max_properties_per_resource"` // Default: 100
+	MaxPropertySize          int   `json:"max_property_size"`           // Default: 1MB
+	MaxTotalMemory           int64 `json:"max_total_memory"`            // Default: 100MB
+	MaxDependencyDepth       int   `json:"max_dependency_depth"`        // Default: 10
+	MaxResourcesPerGroup     int   `json:"max_resources_per_group"`     // Default: 1000
+}
