@@ -1200,3 +1200,580 @@ func TestGetSensitivePropertyReason(t *testing.T) {
 		})
 	}
 }
+
+func TestAnalyzePropertyChanges(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			PerformanceLimits: config.PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 2, // Set low for testing
+			},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name           string
+		change         *tfjson.ResourceChange
+		expectedCount  int
+		expectedTrunc  bool
+		expectedError  bool
+	}{
+		{
+			name: "Nil change should return empty",
+			change: &tfjson.ResourceChange{
+				Change: nil,
+			},
+			expectedCount: 0,
+			expectedTrunc: false,
+			expectedError: false,
+		},
+		{
+			name: "Simple property change should be detected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"instance_type": "t2.micro",
+						"ami":           "ami-123",
+					},
+					After: map[string]interface{}{
+						"instance_type": "t2.small",
+						"ami":           "ami-123",
+					},
+				},
+			},
+			expectedCount: 1,
+			expectedTrunc: false,
+			expectedError: false,
+		},
+		{
+			name: "Multiple changes should respect limit",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"instance_type": "t2.micro",
+						"ami":           "ami-123",
+						"subnet_id":     "subnet-123",
+						"key_name":      "old-key",
+					},
+					After: map[string]interface{}{
+						"instance_type": "t2.small",
+						"ami":           "ami-456",
+						"subnet_id":     "subnet-456",
+						"key_name":      "new-key",
+					},
+				},
+			},
+			expectedCount: 4, // All changes detected (limit not reached)
+			expectedTrunc: false,
+			expectedError: false,
+		},
+		{
+			name: "Nested property changes should be detected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"tags": map[string]interface{}{
+							"Environment": "staging",
+							"Owner":       "team-a",
+						},
+					},
+					After: map[string]interface{}{
+						"tags": map[string]interface{}{
+							"Environment": "production",
+							"Owner":       "team-a",
+						},
+					},
+				},
+			},
+			expectedCount: 1, // Only Environment tag changed
+			expectedTrunc: false,
+			expectedError: false,
+		},
+		{
+			name: "Array changes should be detected",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]interface{}{
+						"security_groups": []interface{}{"sg-123"},
+					},
+					After: map[string]interface{}{
+						"security_groups": []interface{}{"sg-456"},
+					},
+				},
+			},
+			expectedCount: 1,
+			expectedTrunc: false,
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := analyzer.analyzePropertyChanges(tc.change, 10)
+			
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedCount, result.Count, "Property count mismatch")
+				assert.Equal(t, tc.expectedTrunc, result.Truncated, "Truncation flag mismatch")
+				assert.Len(t, result.Changes, result.Count, "Changes slice length should match count")
+			}
+		})
+	}
+
+	// Test limit functionality specifically
+	t.Run("Limit functionality", func(t *testing.T) {
+		change := &tfjson.ResourceChange{
+			Change: &tfjson.Change{
+				Before: map[string]interface{}{
+					"prop1": "old1",
+					"prop2": "old2",
+					"prop3": "old3",
+					"prop4": "old4",
+					"prop5": "old5",
+				},
+				After: map[string]interface{}{
+					"prop1": "new1",
+					"prop2": "new2",
+					"prop3": "new3",
+					"prop4": "new4",
+					"prop5": "new5",
+				},
+			},
+		}
+
+		result, err := analyzer.analyzePropertyChanges(change, 2) // Limit to 2 properties
+		assert.NoError(t, err)
+		assert.Equal(t, 2, result.Count, "Should respect property limit")
+		assert.True(t, result.Truncated, "Should be truncated when limit is hit")
+		assert.Len(t, result.Changes, 2, "Changes slice should contain exactly 2 items")
+	})
+}
+
+func TestAssessRiskLevel(t *testing.T) {
+	cfg := &config.Config{
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name         string
+		change       *tfjson.ResourceChange
+		expectedRisk string
+	}{
+		{
+			name: "Regular resource deletion should be high risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionDelete},
+				},
+			},
+			expectedRisk: "high",
+		},
+		{
+			name: "Sensitive resource deletion should be critical risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionDelete},
+				},
+			},
+			expectedRisk: "critical",
+		},
+		{
+			name: "Regular resource replacement should be medium risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
+				},
+			},
+			expectedRisk: "medium",
+		},
+		{
+			name: "Sensitive resource replacement should be high risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
+				},
+			},
+			expectedRisk: "high",
+		},
+		{
+			name: "Sensitive resource update should be medium risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+				},
+			},
+			expectedRisk: "medium",
+		},
+		{
+			name: "Regular resource update should be low risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+				},
+			},
+			expectedRisk: "low",
+		},
+		{
+			name: "Resource creation should be low risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionCreate},
+				},
+			},
+			expectedRisk: "low",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.assessRiskLevel(tc.change)
+			assert.Equal(t, tc.expectedRisk, result)
+		})
+	}
+}
+
+func TestExtractDependenciesWithLimit(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name              string
+		change            *tfjson.ResourceChange
+		expectedDependsOn int
+		expectedUsedBy    int
+		expectedError     bool
+	}{
+		{
+			name: "No dependencies should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					After: map[string]interface{}{
+						"instance_type": "t2.micro",
+					},
+				},
+			},
+			expectedDependsOn: 0,
+			expectedUsedBy:    0,
+			expectedError:     false,
+		},
+		{
+			name: "Explicit depends_on should be extracted",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					After: map[string]interface{}{
+						"depends_on": []interface{}{
+							"aws_vpc.main",
+							"aws_security_group.web",
+						},
+					},
+				},
+			},
+			expectedDependsOn: 2,
+			expectedUsedBy:    0,
+			expectedError:     false,
+		},
+		{
+			name: "Non-array depends_on should be ignored",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					After: map[string]interface{}{
+						"depends_on": "aws_vpc.main",
+					},
+				},
+			},
+			expectedDependsOn: 0,
+			expectedUsedBy:    0,
+			expectedError:     false,
+		},
+		{
+			name: "Nil change should return empty",
+			change: &tfjson.ResourceChange{
+				Change: nil,
+			},
+			expectedDependsOn: 0,
+			expectedUsedBy:    0,
+			expectedError:     false,
+		},
+		{
+			name: "Nil after state should return empty",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					After: nil,
+				},
+			},
+			expectedDependsOn: 0,
+			expectedUsedBy:    0,
+			expectedError:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := analyzer.extractDependenciesWithLimit(tc.change, 10)
+			
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Len(t, result.DependsOn, tc.expectedDependsOn, "DependsOn length mismatch")
+				assert.Len(t, result.UsedBy, tc.expectedUsedBy, "UsedBy length mismatch")
+			}
+		})
+	}
+}
+
+func TestAnalyzeResource(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			PerformanceLimits: config.PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 100,
+				MaxPropertySize:          1048576,
+				MaxTotalMemory:           104857600,
+			},
+		},
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name           string
+		change         *tfjson.ResourceChange
+		expectedError  bool
+		expectedRisk   string
+		hasReplacements bool
+	}{
+		{
+			name: "Simple resource change should be analyzed",
+			change: &tfjson.ResourceChange{
+				Type: "aws_s3_bucket",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionUpdate},
+					Before: map[string]interface{}{
+						"versioning": false,
+					},
+					After: map[string]interface{}{
+						"versioning": true,
+					},
+				},
+			},
+			expectedError:   false,
+			expectedRisk:    "low",
+			hasReplacements: false,
+		},
+		{
+			name: "Sensitive resource replacement should be high risk",
+			change: &tfjson.ResourceChange{
+				Type: "aws_rds_instance",
+				Change: &tfjson.Change{
+					Actions:      tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
+					ReplacePaths: []interface{}{"engine_version"},
+				},
+			},
+			expectedError:   false,
+			expectedRisk:    "high",
+			hasReplacements: true,
+		},
+		{
+			name: "Resource with dependencies should extract them",
+			change: &tfjson.ResourceChange{
+				Type: "aws_ec2_instance",
+				Change: &tfjson.Change{
+					Actions: tfjson.Actions{tfjson.ActionCreate},
+					After: map[string]interface{}{
+						"depends_on": []interface{}{
+							"aws_vpc.main",
+						},
+					},
+				},
+			},
+			expectedError:   false,
+			expectedRisk:    "low",
+			hasReplacements: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := analyzer.AnalyzeResource(tc.change)
+			
+			if tc.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tc.expectedRisk, result.RiskLevel, "Risk level mismatch")
+				
+				if tc.hasReplacements {
+					assert.Greater(t, len(result.ReplacementReasons), 0, "Should have replacement reasons")
+				}
+				
+				// Verify all fields are populated
+				assert.NotNil(t, result.PropertyChanges, "PropertyChanges should not be nil")
+				assert.NotNil(t, result.ReplacementReasons, "ReplacementReasons should not be nil")
+				assert.NotEmpty(t, result.RiskLevel, "RiskLevel should not be empty")
+			}
+		})
+	}
+}
+
+func TestEstimateValueSize(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		value    interface{}
+		expected int
+	}{
+		{
+			name:     "Nil should return 0",
+			value:    nil,
+			expected: 0,
+		},
+		{
+			name:     "String should return length",
+			value:    "hello",
+			expected: 5,
+		},
+		{
+			name:     "Int should return 8 bytes",
+			value:    42,
+			expected: 8,
+		},
+		{
+			name:     "Float64 should return 8 bytes",
+			value:    3.14,
+			expected: 8,
+		},
+		{
+			name:     "Bool should return 1 byte",
+			value:    true,
+			expected: 1,
+		},
+		{
+			name: "Map should sum key and value sizes",
+			value: map[string]interface{}{
+				"key1": "value1", // 4 + 6 = 10
+				"key2": "value2", // 4 + 6 = 10
+			},
+			expected: 20,
+		},
+		{
+			name: "Array should sum element sizes",
+			value: []interface{}{
+				"hello", // 5
+				"world", // 5
+			},
+			expected: 10,
+		},
+		{
+			name: "Complex nested structure",
+			value: map[string]interface{}{
+				"name": "test", // 4 + 4 = 8
+				"tags": map[string]interface{}{ // 4 + (3+4 + 5+4) = 20
+					"env": "prod",
+					"owner": "team",
+				},
+			},
+			expected: 28,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.estimateValueSize(tc.value)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestCompareValues(t *testing.T) {
+	analyzer := &Analyzer{}
+	
+	testCases := []struct {
+		name           string
+		before         interface{}
+		after          interface{}
+		expectedChanges int
+	}{
+		{
+			name:           "Identical values should return no changes",
+			before:         "same",
+			after:          "same",
+			expectedChanges: 0,
+		},
+		{
+			name:           "Different primitive values should return one change",
+			before:         "old",
+			after:          "new",
+			expectedChanges: 1,
+		},
+		{
+			name: "Map with one change should return one change",
+			before: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			after: map[string]interface{}{
+				"key1": "value1",
+				"key2": "new_value2",
+			},
+			expectedChanges: 1,
+		},
+		{
+			name: "Map with new key should return one change",
+			before: map[string]interface{}{
+				"key1": "value1",
+			},
+			after: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			expectedChanges: 1,
+		},
+		{
+			name: "Map with removed key should return one change",
+			before: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			after: map[string]interface{}{
+				"key1": "value1",
+			},
+			expectedChanges: 1,
+		},
+		{
+			name: "Array changes should be detected",
+			before: []interface{}{"a", "b"},
+			after:  []interface{}{"a", "c"},
+			expectedChanges: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			changes := []PropertyChange{}
+			
+			err := analyzer.compareValues(tc.before, tc.after, nil, 0, 5, func(pc PropertyChange) bool {
+				changes = append(changes, pc)
+				return true
+			})
+			
+			assert.NoError(t, err)
+			assert.Len(t, changes, tc.expectedChanges, "Number of changes should match expected")
+		})
+	}
+}
