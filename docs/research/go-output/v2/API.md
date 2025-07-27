@@ -332,8 +332,282 @@ Defines individual table columns:
 type Field struct {
     Name      string                    // Field name
     Type      string                    // Data type hint
-    Formatter func(any) string         // Custom formatter
+    Formatter func(any) any           // Custom formatter (can return CollapsibleValue)
     Hidden    bool                      // Hide from output
+}
+```
+
+### Collapsible Content System
+
+The v2 library provides comprehensive support for collapsible content that adapts to each output format, enabling summary/detail views for complex data.
+
+#### CollapsibleValue Interface
+
+Core interface for creating expandable content in table cells:
+
+```go
+type CollapsibleValue interface {
+    Summary() string                              // Collapsed view text
+    Details() any                                 // Expanded content (any type)
+    IsExpanded() bool                            // Default expansion state
+    FormatHint(format string) map[string]any     // Format-specific rendering hints
+}
+```
+
+**Usage**: Field formatters can return CollapsibleValue instances to create expandable content.
+
+#### DefaultCollapsibleValue
+
+Standard implementation with configuration options:
+
+```go
+type DefaultCollapsibleValue struct {
+    // Internal fields (not exported)
+}
+
+// NewCollapsibleValue creates a collapsible value with options
+func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption) *DefaultCollapsibleValue
+
+// Configuration options
+func WithExpanded(expanded bool) CollapsibleOption
+func WithMaxLength(length int) CollapsibleOption
+func WithFormatHint(format string, hints map[string]any) CollapsibleOption
+```
+
+**Example**:
+```go
+// Create collapsible error list
+errorValue := output.NewCollapsibleValue(
+    "3 errors found",
+    []string{"Missing import", "Unused variable", "Type error"},
+    output.WithExpanded(false),
+    output.WithMaxLength(200),
+)
+```
+
+#### Built-in Collapsible Formatters
+
+Pre-built formatters for common patterns:
+
+```go
+// Error list formatter - collapses arrays of strings/errors
+func ErrorListFormatter(opts ...CollapsibleOption) func(any) any
+
+// File path formatter - shortens long paths with expandable details
+func FilePathFormatter(maxLength int, opts ...CollapsibleOption) func(any) any
+
+// JSON formatter - collapses large JSON objects
+func JSONFormatter(maxLength int, opts ...CollapsibleOption) func(any) any
+
+// Custom collapsible formatter
+func CollapsibleFormatter(summaryTemplate string, detailFunc func(any) any, opts ...CollapsibleOption) func(any) any
+```
+
+**Usage Example**:
+```go
+schema := output.WithSchema(
+    output.Field{
+        Name: "errors",
+        Type: "array",
+        Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+    },
+    output.Field{
+        Name: "path",
+        Type: "string", 
+        Formatter: output.FilePathFormatter(30),
+    },
+    output.Field{
+        Name: "config",
+        Type: "object",
+        Formatter: output.JSONFormatter(100),
+    },
+)
+```
+
+#### CollapsibleSection Interface
+
+Interface for section-level collapsible content:
+
+```go
+type CollapsibleSection interface {
+    Title() string                               // Section title/summary
+    Content() []Content                          // Nested content items
+    IsExpanded() bool                           // Default expansion state
+    Level() int                                 // Nesting level (0-3)
+    FormatHint(format string) map[string]any    // Format-specific hints
+}
+```
+
+**Usage**: Create collapsible sections containing entire tables or content blocks.
+
+#### DefaultCollapsibleSection
+
+Standard implementation for collapsible sections:
+
+```go
+type DefaultCollapsibleSection struct {
+    // Internal fields (not exported)
+}
+
+// NewCollapsibleSection creates a collapsible section
+func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection
+
+// Helper constructors
+func NewCollapsibleTable(title string, table *TableContent, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection
+func NewCollapsibleReport(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection
+
+// Configuration options
+func WithSectionExpanded(expanded bool) CollapsibleSectionOption
+func WithSectionLevel(level int) CollapsibleSectionOption
+func WithSectionFormatHint(format string, hints map[string]any) CollapsibleSectionOption
+```
+
+**Example**:
+```go
+// Create collapsible table section
+analysisTable := output.NewTableContent("Analysis Results", data)
+section := output.NewCollapsibleTable(
+    "Detailed Code Analysis",
+    analysisTable,
+    output.WithSectionExpanded(false),
+)
+
+// Create multi-content section
+reportSection := output.NewCollapsibleReport(
+    "Performance Report",
+    []output.Content{
+        output.NewTextContent("Analysis complete"),
+        analysisTable,
+        output.NewTextContent("All systems operational"),
+    },
+    output.WithSectionExpanded(true),
+)
+```
+
+#### Cross-Format Rendering
+
+Collapsible content adapts automatically to each output format:
+
+| Format   | CollapsibleValue Rendering | CollapsibleSection Rendering |
+|----------|----------------------------|------------------------------|
+| Markdown | `<details><summary>` HTML elements | Nested `<details>` structure |
+| JSON     | `{"type": "collapsible", "summary": "...", "details": [...]}` | Structured data with content array |
+| YAML     | YAML mapping with summary/details fields | YAML structure with nested content |
+| HTML     | Semantic `<details>` with CSS classes | Section elements with collapsible behavior |
+| Table    | Summary + expansion indicator | Section headers with indented content |
+| CSV      | Summary + automatic detail columns | Metadata comments with table data |
+
+#### Renderer Configuration
+
+Control collapsible behavior globally per renderer:
+
+```go
+type CollapsibleConfig struct {
+    GlobalExpansion      bool              // Override all IsExpanded() settings
+    MaxDetailLength      int               // Character limit for details (default: 500)
+    TruncateIndicator    string            // Truncation suffix (default: "[...truncated]")
+    TableHiddenIndicator string            // Table collapse indicator
+    HTMLCSSClasses       map[string]string // Custom CSS classes for HTML
+}
+
+// Apply configuration to renderers
+tableOutput := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        GlobalExpansion:      false,
+        TableHiddenIndicator: "[click to expand]",
+        MaxDetailLength:      200,
+    }),
+)
+
+htmlOutput := output.NewOutput(
+    output.WithFormat(output.HTML),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        HTMLCSSClasses: map[string]string{
+            "details": "my-collapsible",
+            "summary": "my-summary",
+            "content": "my-details",
+        },
+    }),
+)
+```
+
+#### Complete Example
+
+```go
+package main
+
+import (
+    "context"
+    output "github.com/ArjenSchwarz/go-output/v2"
+)
+
+func main() {
+    // Data with complex nested information
+    analysisData := []map[string]any{
+        {
+            "file": "/very/long/path/to/project/src/components/UserProfile.tsx",
+            "errors": []string{
+                "Missing import for React",
+                "Unused variable 'userData'",
+                "Type annotation missing for 'props'",
+            },
+            "config": map[string]any{
+                "eslint": true,
+                "typescript": true,
+                "prettier": false,
+                "rules": []string{"no-unused-vars", "explicit-return-type"},
+            },
+        },
+    }
+    
+    // Create table with collapsible formatters
+    table := output.NewTableContent("Code Analysis", analysisData,
+        output.WithSchema(
+            output.Field{
+                Name: "file",
+                Type: "string",
+                Formatter: output.FilePathFormatter(25), // Shorten long paths
+            },
+            output.Field{
+                Name: "errors", 
+                Type: "array",
+                Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+            },
+            output.Field{
+                Name: "config",
+                Type: "object",
+                Formatter: output.JSONFormatter(50, output.WithExpanded(false)),
+            },
+        ))
+    
+    // Wrap in collapsible section
+    section := output.NewCollapsibleTable(
+        "Detailed Analysis Results",
+        table,
+        output.WithSectionExpanded(false),
+    )
+    
+    // Build document
+    doc := output.New().
+        Header("Project Analysis Report").
+        Text("Analysis completed successfully. Click sections to expand details.").
+        Add(section).
+        Build()
+    
+    // Render with custom configuration
+    out := output.NewOutput(
+        output.WithFormats(output.Markdown, output.JSON, output.Table),
+        output.WithWriter(output.NewStdoutWriter()),
+        output.WithCollapsibleConfig(output.CollapsibleConfig{
+            TableHiddenIndicator: "[expand for details]",
+            MaxDetailLength:      100,
+        }),
+    )
+    
+    if err := out.Render(context.Background(), doc); err != nil {
+        panic(err)
+    }
 }
 ```
 
@@ -817,6 +1091,256 @@ doc = output.New().
 
 out := output.NewOutput(
     output.WithFormat(output.Mermaid),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+```
+
+### Collapsible Content Patterns
+
+#### Simple Field Collapsible Content
+
+```go
+// Data with error arrays and long paths
+data := []map[string]any{
+    {
+        "file": "/very/long/path/to/project/src/components/UserDashboard.tsx",
+        "errors": []string{"Import missing", "Unused variable", "Type error"},
+        "warnings": []string{"Deprecated API", "Performance concern"},
+    },
+}
+
+// Create table with collapsible formatters
+doc := output.New().
+    Table("Analysis Results", data, output.WithSchema(
+        output.Field{
+            Name: "file",
+            Type: "string",
+            Formatter: output.FilePathFormatter(25), // Shorten paths > 25 chars
+        },
+        output.Field{
+            Name: "errors",
+            Type: "array", 
+            Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+        },
+        output.Field{
+            Name: "warnings",
+            Type: "array",
+            Formatter: output.ErrorListFormatter(output.WithExpanded(true)),
+        },
+    )).
+    Build()
+
+// Render to GitHub-compatible markdown
+out := output.NewOutput(
+    output.WithFormat(output.Markdown),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+```
+
+#### Custom Collapsible Formatter
+
+```go
+// Custom formatter for configuration objects
+func configFormatter(val any) any {
+    if config, ok := val.(map[string]any); ok {
+        configJSON, _ := json.MarshalIndent(config, "", "  ")
+        if len(configJSON) > 100 {
+            return output.NewCollapsibleValue(
+                fmt.Sprintf("Config (%d keys)", len(config)),
+                string(configJSON),
+                output.WithExpanded(false),
+                output.WithMaxLength(200),
+            )
+        }
+    }
+    return val
+}
+
+schema := output.WithSchema(
+    output.Field{Name: "name", Type: "string"},
+    output.Field{
+        Name: "config",
+        Type: "object",
+        Formatter: configFormatter,
+    },
+)
+```
+
+#### Collapsible Sections for Report Organization
+
+```go
+// Create detailed analysis tables
+usersTable := output.NewTableContent("User Analysis", userData)
+performanceTable := output.NewTableContent("Performance Metrics", perfData)
+securityTable := output.NewTableContent("Security Issues", securityData)
+
+// Wrap tables in collapsible sections
+userSection := output.NewCollapsibleTable(
+    "User Activity Analysis",
+    usersTable,
+    output.WithSectionExpanded(true), // Expanded by default
+)
+
+performanceSection := output.NewCollapsibleTable(
+    "Performance Analysis", 
+    performanceTable,
+    output.WithSectionExpanded(false), // Collapsed by default
+)
+
+// Multi-content section
+securitySection := output.NewCollapsibleReport(
+    "Security Report",
+    []output.Content{
+        output.NewTextContent("Security scan completed with 5 issues found"),
+        securityTable,
+        output.NewTextContent("Immediate action required for critical issues"),
+    },
+    output.WithSectionExpanded(false),
+)
+
+// Build comprehensive document
+doc := output.New().
+    Header("System Analysis Report").
+    Text("Generated on " + time.Now().Format("2006-01-02 15:04:05")).
+    Add(userSection).
+    Add(performanceSection).
+    Add(securitySection).
+    Build()
+```
+
+#### Nested Collapsible Sections
+
+```go
+// Create nested hierarchy (max 3 levels)
+subSection1 := output.NewCollapsibleTable(
+    "Database Performance",
+    dbTable,
+    output.WithSectionLevel(2),
+    output.WithSectionExpanded(false),
+)
+
+subSection2 := output.NewCollapsibleTable(
+    "API Response Times",
+    apiTable,
+    output.WithSectionLevel(2),
+    output.WithSectionExpanded(false),
+)
+
+mainSection := output.NewCollapsibleReport(
+    "Infrastructure Analysis",
+    []output.Content{
+        output.NewTextContent("Infrastructure health check results"),
+        subSection1,
+        subSection2,
+    },
+    output.WithSectionLevel(1),
+    output.WithSectionExpanded(true),
+)
+
+doc := output.New().Add(mainSection).Build()
+```
+
+#### Cross-Format Collapsible Rendering
+
+```go
+// Same data rendered in multiple formats with different behaviors
+data := []map[string]any{
+    {"errors": []string{"Error 1", "Error 2", "Error 3"}},
+}
+
+table := output.NewTableContent("Issues", data, output.WithSchema(
+    output.Field{
+        Name: "errors",
+        Type: "array",
+        Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+    },
+))
+
+doc := output.New().Add(table).Build()
+
+// Markdown: GitHub <details> elements
+markdownOut := output.NewOutput(
+    output.WithFormat(output.Markdown),
+    output.WithWriter(output.NewFileWriter(".", "report.md")),
+)
+
+// JSON: Structured collapsible data
+jsonOut := output.NewOutput(
+    output.WithFormat(output.JSON),
+    output.WithWriter(output.NewFileWriter(".", "report.json")),
+)
+
+// Table: Terminal-friendly with expansion indicators
+tableOut := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithWriter(output.NewStdoutWriter()),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        TableHiddenIndicator: "[expand to view all errors]",
+    }),
+)
+
+// CSV: Automatic detail columns for spreadsheet analysis
+csvOut := output.NewOutput(
+    output.WithFormat(output.CSV),
+    output.WithWriter(output.NewFileWriter(".", "report.csv")),
+)
+
+// Render all formats
+ctx := context.Background()
+markdownOut.Render(ctx, doc)  // Creates expandable <details> 
+jsonOut.Render(ctx, doc)      // Creates {"type": "collapsible", ...}
+tableOut.Render(ctx, doc)     // Shows: "3 errors [expand to view all errors]"
+csvOut.Render(ctx, doc)       // Creates: errors, errors_details columns
+```
+
+#### Global Expansion Control
+
+```go
+// Development/debug mode: expand all content
+debugOut := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        GlobalExpansion: true, // Override all IsExpanded() settings
+    }),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// Production mode: respect individual expansion settings
+prodOut := output.NewOutput(
+    output.WithFormat(output.Markdown),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        GlobalExpansion: false, // Use individual IsExpanded() values
+        MaxDetailLength: 500,   // Limit detail length
+        TruncateIndicator: "... (truncated)",
+    }),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+```
+
+#### Advanced Collapsible Configuration
+
+```go
+// Custom HTML output with branded styling
+htmlOut := output.NewOutput(
+    output.WithFormat(output.HTML),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        HTMLCSSClasses: map[string]string{
+            "details": "company-collapsible",
+            "summary": "company-summary",
+            "content": "company-details",
+        },
+    }),
+    output.WithWriter(output.NewFileWriter(".", "report.html")),
+)
+
+// Custom table output with branded indicators
+tableOut := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        TableHiddenIndicator: "📋 Click to expand detailed information",
+        MaxDetailLength:      150,
+        TruncateIndicator:    "... [see full details in expanded view]",
+    }),
     output.WithWriter(output.NewStdoutWriter()),
 )
 ```

@@ -6,47 +6,62 @@ The Enhanced Summary Visualization feature aims to improve how Terraform plan su
 
 ## Requirements
 
-### 1. Optional Resource Grouping
+### 1. Progressive Disclosure with Collapsible Sections
 
-**User Story:** As a DevOps engineer, I want resources to be optionally grouped by logical categories when dealing with many changes, so that I can better understand which parts of my infrastructure are being modified without cluttering simple plans.
+**User Story:** As a DevOps engineer, I want to see a clean summary with the ability to expand sections for detailed information, so that I can quickly scan high-level changes while having access to comprehensive details when needed.
 
 **Acceptance Criteria:**
-1. The system SHALL apply smart grouping hierarchy when grouping is enabled:
+1. The system SHALL use collapsible sections for all detailed information display
+2. The system SHALL show essential information (resource name, change type, risk level) by default
+3. The system SHALL allow expansion of detailed sections including:
+   - Complete property change lists (not limited to 3)
+   - Risk analysis and mitigation suggestions
+   - Resource dependencies and relationships
+   - Provider/service groupings
+4. The system SHALL mark dangerous change groups as expanded by default
+5. The system SHALL preserve the smart grouping hierarchy within collapsible sections:
    - If all resources are from the same provider, provider grouping SHALL be omitted
    - If all resources within a provider are from the same service, service grouping SHALL be omitted
-2. The system SHALL group by provider (e.g., AWS, Azure, GCP) only when multiple providers are present
-3. The system SHALL group by service type (e.g., EC2, RDS, S3) only when multiple services are present within a provider
-4. The system SHALL NOT apply grouping when the total number of modified resources (added/changed/deleted) is below a configurable threshold (default: 10)
-5. The system SHALL allow users to completely disable grouping via configuration
-6. The system SHALL allow users to configure the grouping threshold via the configuration file
-7. The system SHALL display resource counts for each group when grouping is active
+6. The system SHALL NOT apply grouping when the total number of modified resources is below a configurable threshold (default: 10)
+7. The system SHALL display resource counts in section headers when grouping is active
 
-### 2. Enhanced Change Context
+### 2. Comprehensive Change Context with Progressive Disclosure
 
-**User Story:** As an infrastructure engineer, I want to see more context about what's changing in each resource, so that I can understand the impact without opening the full plan.
+**User Story:** As an infrastructure engineer, I want to see comprehensive context about what's changing in each resource within collapsible sections, so that I can understand the full impact without overwhelming the initial view.
 
 **Acceptance Criteria:**
 1. For resource replacements:
-   - The system SHALL display ALL replacement reasons provided by Terraform
-   - The system SHALL NOT show individual property changes when showing replacement reasons
+   - The system SHALL display ALL replacement reasons provided by Terraform in the main view
+   - The system SHALL show detailed property changes in a collapsible section
+   - The system SHALL include risk analysis and recommended mitigation steps in expandable sections
 2. For resource updates (modifications without replacement):
-   - The system SHALL show the first 3 properties that are being changed
-   - The system SHALL show before/after values for these properties when available
-3. The system SHALL NOT show property details for newly created resources
-4. The system SHALL NOT show property details for deleted resources
-5. The system SHALL clearly indicate when a resource is being replaced versus updated in-place
-6. The system MAY optionally indicate dependencies between resources being changed (disabled by default)
+   - The system SHALL show a summary of changed properties in the main view
+   - The system SHALL show ALL property changes with before/after values in expandable sections
+   - The system SHALL highlight sensitive property changes in the main view
+3. The system SHALL show dependency information in expandable sections for all resource types
+4. The system SHALL clearly indicate when a resource is being replaced versus updated in-place
+5. The system SHALL provide expandable sections for:
+   - Complete property change details
+   - Resource dependency graphs
+   - Risk assessment and mitigation recommendations
+   - Related resource impacts
 
-### 3. Risk Highlighting
+### 3. Enhanced Risk Analysis with Detailed Mitigation
 
-**User Story:** As a team lead, I want clear visual indicators of risky changes, so that I can quickly identify changes that need careful review.
+**User Story:** As a team lead, I want clear visual indicators of risky changes with detailed risk analysis and mitigation suggestions in expandable sections, so that I can quickly identify changes that need careful review and understand how to address them safely.
 
 **Acceptance Criteria:**
 1. The system SHALL use color coding ONLY for risky changes (no rainbow effect)
 2. The system SHALL use the existing sensitive resources and properties configuration to determine risk
 3. The system SHALL treat all deletion operations as risky by default
 4. The system SHALL treat deletions of sensitive resources as higher risk than regular deletions
-5. The system SHALL provide brief explanations for why changes are considered risky (e.g., "Sensitive resource deletion", "Database replacement")
+5. The system SHALL provide brief explanations for why changes are considered risky in the main view
+6. The system SHALL provide detailed risk analysis in expandable sections including:
+   - Potential impact assessment (data loss, downtime, security implications)
+   - Recommended mitigation steps
+   - Alternative approaches or safer deployment strategies
+   - Dependencies that may be affected
+7. The system SHALL automatically expand risk detail sections for high-risk changes by default
 
 ## Configuration
 
@@ -54,20 +69,31 @@ The feature will be configured through the existing strata.yaml configuration fi
 
 ```yaml
 plan:
+  progressive_disclosure:
+    enabled: true                    # Enable/disable collapsible sections (default: true)
+    auto_expand_dangerous: true      # Auto-expand high-risk sections (default: true)
+    show_dependencies: true          # Show dependency sections (default: true)
+    show_mitigation: true            # Show risk mitigation suggestions (default: true)
   grouping:
-    enabled: true              # Enable/disable grouping (default: true)
-    threshold: 10              # Minimum resources to trigger grouping (default: 10)
-  context:
-    show_dependencies: false   # Show resource dependencies (default: false)
+    enabled: true                    # Enable/disable grouping (default: true)
+    threshold: 10                    # Minimum resources to trigger grouping (default: 10)
 ```
 
 ## Implementation Notes
 
-Based on the requirements clarification:
-- Change context will show the first 3 changed properties for updates only
-- Resource replacements will show all Terraform-provided replacement reasons instead of property changes
-- Grouping will use smart hierarchy that omits unnecessary levels when all resources share the same provider or service
-- Risk explanations will be brief, single-phrase descriptions
-- All configuration options will be under the existing `plan:` section
+Based on the collapsible sections capability:
+- All detailed information will be displayed in collapsible sections using go-output library's new expandable section support
+- Main view will show essential information (resource name, change type, brief risk indicator)
+- Expandable sections will provide comprehensive details without cluttering the primary view
+- High-risk changes will have their detail sections automatically expanded
+- Grouping will use smart hierarchy within collapsible sections
+- Risk mitigation suggestions will be included in expandable risk analysis sections
+- All configuration options will be under the existing `plan:` section with new `progressive_disclosure:` subsection
 
-Do the requirements look good or do you want additional changes?
+## Benefits of Collapsible Sections Integration
+
+1. **Eliminates information density constraints** - No longer limited to showing only 3 properties
+2. **Provides comprehensive context** - Users can access full details when needed
+3. **Maintains clean overview** - Primary view remains uncluttered
+4. **Enhances risk awareness** - Detailed mitigation guidance available on demand
+5. **Improves workflow efficiency** - Quick scanning with drill-down capability
