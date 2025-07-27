@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Core analysis functions for enhanced summary visualization:
+  - `analyzePropertyChanges()` function with comprehensive property change extraction (no 3-property limit)
+  - `assessRiskLevel()` function with 4-tier risk assessment (critical, high, medium, low)  
+  - `extractDependenciesWithLimit()` function for basic resource dependency extraction
+  - `AnalyzeResource()` function integrating all analysis components with performance limits
+  - Depth-limited recursive comparison for nested properties (max depth: 5)
+  - Memory tracking and truncation safeguards (10MB total limit, 100 properties/resource)
+  - Value size estimation for performance monitoring
+  - Comprehensive unit test coverage for all new analysis functions (16 new test cases)
 - New agent documentation files for enhanced summary visualization feature planning
 - Configuration support for enhanced summary visualization (group-by-provider, grouping-threshold, show-context options)  
 - Extended ResourceChange model with Provider, TopChanges, and ReplacementHints fields

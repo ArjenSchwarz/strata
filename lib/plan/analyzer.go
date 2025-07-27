@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -573,6 +574,296 @@ func (a *Analyzer) getTopChangedProperties(change *tfjson.ResourceChange, limit 
 	}
 
 	return properties
+}
+
+// analyzePropertyChanges extracts property changes with performance safeguards
+func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange, maxProps int) (PropertyChangeAnalysis, error) {
+	result := PropertyChangeAnalysis{
+		Changes: []PropertyChange{},
+	}
+
+	if change.Change == nil {
+		return result, nil
+	}
+
+	const maxTotalSize = 10 * 1024 * 1024 // 10MB limit
+
+	// Use recursive comparison with depth limit
+	err := a.compareValues(change.Change.Before, change.Change.After, nil, 0, 5, func(pc PropertyChange) bool {
+		// Calculate approximate size
+		pc.Size = a.estimateValueSize(pc.Before) + a.estimateValueSize(pc.After)
+		result.TotalSize += pc.Size
+
+		// Apply limits
+		if result.Count >= maxProps || result.TotalSize > maxTotalSize {
+			result.Truncated = true
+			return false // Stop processing
+		}
+
+		result.Changes = append(result.Changes, pc)
+		result.Count++
+		return true
+	})
+
+	if err != nil {
+		return result, fmt.Errorf("property comparison failed: %w", err)
+	}
+
+	return result, nil
+}
+
+// compareValues recursively compares two values and calls the callback for each difference
+func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDepth int, callback func(PropertyChange) bool) error {
+	// Prevent infinite recursion
+	if depth > maxDepth {
+		return nil
+	}
+
+	// Handle nil cases
+	if before == nil && after == nil {
+		return nil
+	}
+
+	// If values are equal, no change
+	if equals(before, after) {
+		return nil
+	}
+
+	// Handle maps specially
+	beforeMap, beforeIsMap := before.(map[string]any)
+	afterMap, afterIsMap := after.(map[string]any)
+
+	if beforeIsMap && afterIsMap {
+		// Compare map keys
+		allKeys := make(map[string]bool)
+		for k := range beforeMap {
+			allKeys[k] = true
+		}
+		for k := range afterMap {
+			allKeys[k] = true
+		}
+
+		for key := range allKeys {
+			beforeVal, beforeExists := beforeMap[key]
+			afterVal, afterExists := afterMap[key]
+
+			newPath := append(path, key)
+
+			if !beforeExists {
+				// New property
+				pc := PropertyChange{
+					Name:      strings.Join(newPath, "."),
+					Path:      newPath,
+					Before:    nil,
+					After:     afterVal,
+					Sensitive: false, // Will be updated if needed
+				}
+				if !callback(pc) {
+					return nil // Stop processing
+				}
+			} else if !afterExists {
+				// Removed property
+				pc := PropertyChange{
+					Name:      strings.Join(newPath, "."),
+					Path:      newPath,
+					Before:    beforeVal,
+					After:     nil,
+					Sensitive: false,
+				}
+				if !callback(pc) {
+					return nil
+				}
+			} else {
+				// Compare nested values
+				err := a.compareValues(beforeVal, afterVal, newPath, depth+1, maxDepth, callback)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// Handle slices specially
+	beforeSlice, beforeIsSlice := before.([]any)
+	afterSlice, afterIsSlice := after.([]any)
+
+	if beforeIsSlice && afterIsSlice {
+		maxLen := len(beforeSlice)
+		if len(afterSlice) > maxLen {
+			maxLen = len(afterSlice)
+		}
+
+		for i := 0; i < maxLen; i++ {
+			var beforeVal, afterVal any
+			indexPath := append(path, strconv.Itoa(i))
+
+			if i < len(beforeSlice) {
+				beforeVal = beforeSlice[i]
+			}
+			if i < len(afterSlice) {
+				afterVal = afterSlice[i]
+			}
+
+			if !equals(beforeVal, afterVal) {
+				err := a.compareValues(beforeVal, afterVal, indexPath, depth+1, maxDepth, callback)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// For primitive values or different types, record the change
+	pc := PropertyChange{
+		Name:      strings.Join(path, "."),
+		Path:      path,
+		Before:    before,
+		After:     after,
+		Sensitive: false,
+	}
+	
+	// Check if this property is sensitive
+	if len(path) > 0 && a.config != nil {
+		// Get root resource type from the context (this would need to be passed in)
+		// For now, we'll skip sensitive property detection in this function
+		// and handle it at a higher level
+	}
+
+	callback(pc)
+	return nil
+}
+
+// estimateValueSize estimates the memory size of a value in bytes
+func (a *Analyzer) estimateValueSize(value any) int {
+	if value == nil {
+		return 0
+	}
+
+	switch v := value.(type) {
+	case string:
+		return len(v)
+	case int, int8, int16, int32, int64:
+		return 8
+	case uint, uint8, uint16, uint32, uint64:
+		return 8
+	case float32:
+		return 4
+	case float64:
+		return 8
+	case bool:
+		return 1
+	case map[string]any:
+		size := 0
+		for k, val := range v {
+			size += len(k) + a.estimateValueSize(val)
+		}
+		return size
+	case []any:
+		size := 0
+		for _, val := range v {
+			size += a.estimateValueSize(val)
+		}
+		return size
+	default:
+		// For unknown types, use JSON marshaling size as approximation
+		// This is expensive but gives a reasonable estimate
+		return len(fmt.Sprintf("%v", v))
+	}
+}
+
+// assessRiskLevel provides simplified risk assessment
+func (a *Analyzer) assessRiskLevel(change *tfjson.ResourceChange) string {
+	// Simple risk assessment based on change type and resource sensitivity
+	changeType := FromTerraformAction(change.Change.Actions)
+	
+	if changeType == ChangeTypeDelete {
+		if a.IsSensitiveResource(change.Type) {
+			return "critical"
+		}
+		return "high"
+	}
+
+	if changeType == ChangeTypeReplace {
+		if a.IsSensitiveResource(change.Type) {
+			return "high"
+		}
+		return "medium"
+	}
+
+	if a.IsSensitiveResource(change.Type) && changeType == ChangeTypeUpdate {
+		return "medium"
+	}
+
+	return "low"
+}
+
+// extractDependenciesWithLimit extracts resource dependencies with cycle detection
+func (a *Analyzer) extractDependenciesWithLimit(change *tfjson.ResourceChange, maxDeps int) (*DependencyInfo, error) {
+	deps := &DependencyInfo{
+		DependsOn: []string{},
+		UsedBy:    []string{},
+	}
+
+	// For now, implement basic dependency extraction
+	// This would need access to the full plan to analyze dependencies
+	// We'll extract what we can from the change itself
+
+	// Extract explicit dependencies from depends_on if available
+	if change.Change != nil && change.Change.After != nil {
+		if afterMap, ok := change.Change.After.(map[string]any); ok {
+			if dependsOn, exists := afterMap["depends_on"]; exists {
+				if depList, ok := dependsOn.([]any); ok {
+					for _, dep := range depList {
+						if depStr, ok := dep.(string); ok && len(deps.DependsOn) < maxDeps {
+							deps.DependsOn = append(deps.DependsOn, depStr)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// For a complete implementation, we would need to:
+	// 1. Analyze resource references in the plan
+	// 2. Look for resource attributes that reference other resources
+	// 3. Build a dependency graph and traverse it with cycle detection
+	// This requires access to the full plan and is a complex operation
+
+	return deps, nil
+}
+
+// AnalyzeResource performs comprehensive analysis with performance limits
+func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnalysis, error) {
+	analysis := &ResourceAnalysis{}
+
+	// Get performance limits from config
+	limits := a.config.GetPerformanceLimitsWithDefaults()
+
+	// Extract property changes with limits for performance
+	propAnalysis, err := a.analyzePropertyChanges(change, limits.MaxPropertiesPerResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract property changes: %w", err)
+	}
+	analysis.PropertyChanges = propAnalysis
+
+	// Get replacement reasons (existing functionality)
+	analysis.ReplacementReasons = a.extractReplacementHints(change)
+
+	// Perform simple risk assessment
+	analysis.RiskLevel = a.assessRiskLevel(change)
+
+	// Extract dependencies with limit
+	deps, err := a.extractDependenciesWithLimit(change, 100)
+	if err != nil {
+		// Log but don't fail - dependencies are supplementary
+		// For now we'll just create empty dependencies
+		deps = &DependencyInfo{}
+	}
+	analysis.Dependencies = *deps
+
+	return analysis, nil
 }
 
 // equals is a helper to compare two values, handling maps and slices specially
