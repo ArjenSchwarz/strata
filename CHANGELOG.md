@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Global Expand-All Flag Support**:
+  - Added `--expand-all` / `-e` CLI flag to expand all collapsible sections globally
+  - CLI flag bound to Viper configuration system with automatic config file override
+  - Enhanced plan summary command to load expandable sections, grouping, and performance limits configuration
+  - Implemented `createOutputWithConfig()` function using go-output v2 `RendererConfig` with `ForceExpansion` for proper global expansion control
+  - Updated collapsible formatters to use renderer-level global expansion instead of custom logic
+  - Property changes formatter auto-expands sensitive properties, with global expansion handled by `ForceExpansion`
+  - Dependencies formatter respects global expansion through renderer configuration
+  - Comprehensive test coverage for expand-all functionality with property changes, dependencies, and output configuration tests
+  - Supports Table, Markdown, HTML, and CSV formats with collapsible-enabled renderers
 - **Provider Grouping with Collapsible Sections**:
   - `groupByProvider()` function for smart resource grouping by provider with configurable thresholds
   - `formatGroupedWithCollapsibleSections()` function for provider-based resource organization using go-output v2 sections

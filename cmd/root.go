@@ -86,6 +86,9 @@ func init() {
 	rootCmd.PersistentFlags().String("table-style", "", "Table style for table output")
 	rootCmd.PersistentFlags().Int("table-max-column-width", 50, "Maximum column width for table output")
 
+	// Progressive disclosure flags
+	rootCmd.PersistentFlags().BoolP("expand-all", "e", false, "Expand all collapsible sections")
+
 	// Bind output flags to Viper
 	err := viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
 	cobra.CheckErr(err)
@@ -98,6 +101,10 @@ func init() {
 	err = viper.BindPFlag("table.style", rootCmd.PersistentFlags().Lookup("table-style"))
 	cobra.CheckErr(err)
 	err = viper.BindPFlag("table.max-column-width", rootCmd.PersistentFlags().Lookup("table-max-column-width"))
+	cobra.CheckErr(err)
+
+	// Bind progressive disclosure flags to Viper
+	err = viper.BindPFlag("expand_all", rootCmd.PersistentFlags().Lookup("expand-all"))
 	cobra.CheckErr(err)
 
 	// Cobra also supports local flags, which will only run
