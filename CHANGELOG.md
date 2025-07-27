@@ -16,10 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Property change detection for update operations showing first 3 changed properties
 - Context-aware danger evaluation with descriptive resource-specific and property-specific reasons
 - Comprehensive test coverage for new configuration options and data models (47 new test cases)
+- Global `expand_all` configuration option and CLI flag for collapsible sections
+- Property change truncation with size limits for performance optimization
+- Implementation status tracking in tasks documentation
+- API clarification notes for go-output v2 implementation
+
+### Enhanced
+- Simplified design approach for enhanced summary visualization feature
+- Streamlined risk assessment to basic risk levels (low, medium, high, critical)
+- Simplified data structures for property change analysis
+- Enhanced GitHub Actions integration with expandable sections
 
 ### Changed
 - Enhanced plan analyzer with smart grouping capabilities and context extraction
 - Improved data models to support provider-based resource grouping and change context
+- Updated configuration structure from `progressive_disclosure` to `expandable_sections`
+- Removed complex risk assessment components (mitigation suggestions, detailed scoring)
+- Modified property change analysis to focus on essential information with performance limits
+- Updated API usage examples for go-output v2 compatibility
 - Replaced basic danger reason logic with enhanced evaluation system providing specific reasons for:
   - Database replacements (RDS instances, database clusters)
   - Compute instance replacements (EC2, Azure VMs)

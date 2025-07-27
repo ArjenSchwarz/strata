@@ -31,14 +31,21 @@ graph TD
 Enhanced analyzer with comprehensive context extraction and risk analysis:
 
 ```go
-// ComprehensiveChangeAnalysis provides detailed analysis for collapsible sections
-type ComprehensiveChangeAnalysis struct {
-    AllPropertyChanges     []PropertyChange     `json:"all_property_changes"`
-    PropertyChangeCount    int                  `json:"property_change_count"`
-    ReplacementReasons     []string            `json:"replacement_reasons"`
-    RiskAssessment        RiskAssessment       `json:"risk_assessment"`
-    Dependencies          DependencyInfo       `json:"dependencies"`
-    MitigationSuggestions []string            `json:"mitigation_suggestions"`
+// ResourceAnalysis contains analysis results for a single resource
+// Note: This is a container for different analysis types, each handled by separate analyzers
+type ResourceAnalysis struct {
+    PropertyChanges     PropertyChangeAnalysis `json:"property_changes"`
+    ReplacementReasons  []string              `json:"replacement_reasons"`
+    RiskLevel          string                 `json:"risk_level"`      // Simple risk level for display
+    Dependencies       DependencyInfo         `json:"dependencies"`
+}
+
+// PropertyChangeAnalysis focuses solely on property changes
+type PropertyChangeAnalysis struct {
+    Changes    []PropertyChange `json:"changes"`
+    Count      int             `json:"count"`
+    TotalSize  int             `json:"total_size_bytes"`
+    Truncated  bool            `json:"truncated"` // True if hit limits
 }
 
 type PropertyChange struct {
@@ -63,25 +70,26 @@ type DependencyInfo struct {
     UsedBy    []string `json:"used_by"`
 }
 
-// AnalyzeChangeComprehensively provides complete analysis with performance limits
-func (a *Analyzer) AnalyzeChangeComprehensively(change *tfjson.ResourceChange) (*ComprehensiveChangeAnalysis, error) {
-    analysis := &ComprehensiveChangeAnalysis{}
+// AnalyzeResource performs analysis with performance limits
+func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnalysis, error) {
+    analysis := &ResourceAnalysis{}
     
     // Extract property changes with limits for performance
-    props, err := a.extractPropertyChangesWithLimits(change, a.config.MaxPropertiesPerResource)
+    propAnalysis, err := a.analyzePropertyChanges(change, a.config.MaxPropertiesPerResource)
     if err != nil {
         return nil, fmt.Errorf("failed to extract property changes: %w", err)
     }
-    analysis.AllPropertyChanges = props
-    analysis.PropertyChangeCount = len(props)
+    analysis.PropertyChanges = propAnalysis
     
-    // Get replacement reasons
+    // Get replacement reasons (existing functionality)
     analysis.ReplacementReasons = a.extractReplacementReasons(change)
     
-    // Perform risk assessment
-    analysis.RiskAssessment = a.assessRisk(change)
+    // Perform simple risk assessment
+    analysis.RiskLevel = a.assessRiskLevel(change)
     
-    // Extract dependencies with circuit breaker for circular deps
+    // Extract dependencies with limit
+    // Note: The limit prevents infinite loops but proper cycle detection
+    // should be implemented using a visited set during graph traversal
     deps, err := a.extractDependenciesWithLimit(change, 100)
     if err != nil {
         // Log but don't fail - dependencies are supplementary
@@ -90,95 +98,67 @@ func (a *Analyzer) AnalyzeChangeComprehensively(change *tfjson.ResourceChange) (
     }
     analysis.Dependencies = deps
     
-    // Generate mitigation suggestions
-    analysis.MitigationSuggestions = a.generateMitigationSuggestions(change, analysis.RiskAssessment)
-    
     return analysis, nil
 }
 
-// extractPropertyChangesWithLimits extracts property changes with performance safeguards
-func (a *Analyzer) extractPropertyChangesWithLimits(change *tfjson.ResourceChange, maxProps int) ([]PropertyChange, error) {
-    if change.Change == nil {
-        return nil, nil
+// analyzePropertyChanges extracts property changes with performance safeguards
+func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange, maxProps int) (PropertyChangeAnalysis, error) {
+    result := PropertyChangeAnalysis{
+        Changes: []PropertyChange{},
     }
     
-    var changes []PropertyChange
-    var totalSize int
+    if change.Change == nil {
+        return result, nil
+    }
+    
     const maxTotalSize = 10 * 1024 * 1024 // 10MB limit
     
     // Use recursive comparison with depth limit
     err := a.compareValues(change.Change.Before, change.Change.After, nil, 0, 5, func(pc PropertyChange) bool {
         // Calculate approximate size
         pc.Size = a.estimateValueSize(pc.Before) + a.estimateValueSize(pc.After)
-        totalSize += pc.Size
+        result.TotalSize += pc.Size
         
         // Apply limits
-        if len(changes) >= maxProps || totalSize > maxTotalSize {
+        if result.Count >= maxProps || result.TotalSize > maxTotalSize {
+            result.Truncated = true
             return false // Stop processing
         }
         
-        changes = append(changes, pc)
+        result.Changes = append(result.Changes, pc)
+        result.Count++
         return true
     })
     
     if err != nil {
-        return changes, fmt.Errorf("property comparison failed: %w", err)
+        return result, fmt.Errorf("property comparison failed: %w", err)
     }
     
-    return changes, nil
+    return result, nil
 }
 
-// assessRisk provides risk assessment with concrete scoring
-func (a *Analyzer) assessRisk(change *tfjson.ResourceChange) RiskAssessment {
-    assessment := RiskAssessment{
-        Level: "low",
-        Score: 0,
-    }
-    
-    // Base risk from change type
-    switch {
-    case change.Change.Actions.Delete():
-        assessment.Score += 30
-        assessment.ImpactAssessment = append(assessment.ImpactAssessment, "Resource will be deleted")
-    case change.Change.Actions.Replace():
-        assessment.Score += 50
-        assessment.ImpactAssessment = append(assessment.ImpactAssessment, "Resource will be replaced (deleted and recreated)")
-    case change.Change.Actions.Create():
-        assessment.Score += 10
-        assessment.ImpactAssessment = append(assessment.ImpactAssessment, "New resource will be created")
-    }
-    
-    // Additional risk from resource type
-    if riskScore, found := a.resourceRiskScores[change.Type]; found {
-        assessment.Score += riskScore
-        if riskScore >= 30 {
-            assessment.ImpactAssessment = append(assessment.ImpactAssessment, 
-                fmt.Sprintf("Resource type %s is considered high-risk", change.Type))
+// assessRiskLevel provides simplified risk assessment
+func (a *Analyzer) assessRiskLevel(change *tfjson.ResourceChange) string {
+    // Simple risk assessment based on change type and resource sensitivity
+    if change.Change.Actions.Delete() {
+        if a.isSensitiveResource(change) {
+            return "critical"
         }
+        return "high"
     }
     
-    // Check for sensitive resource patterns
-    if a.isSensitiveResource(change) {
-        assessment.Score += 20
-        assessment.PotentialConsequences = append(assessment.PotentialConsequences,
-            "Changes to sensitive resources may impact security or availability")
+    if change.Change.Actions.Replace() {
+        if a.isSensitiveResource(change) {
+            return "high"
+        }
+        return "medium"
     }
     
-    // Determine level based on score
-    switch {
-    case assessment.Score >= 80:
-        assessment.Level = "critical"
-        assessment.AutoExpand = true
-    case assessment.Score >= 60:
-        assessment.Level = "high"
-        assessment.AutoExpand = true
-    case assessment.Score >= 40:
-        assessment.Level = "medium"
-    default:
-        assessment.Level = "low"
+    if a.isSensitiveResource(change) && change.Change.Actions.Update() {
+        return "medium"
     }
     
-    return assessment
+    return "low"
 }
 ```
 
@@ -236,22 +216,25 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 // propertyChangesFormatter creates a collapsible formatter for property changes
 func (f *Formatter) propertyChangesFormatter() func(any) any {
     return func(val any) any {
-        if changes, ok := val.([]PropertyChange); ok && len(changes) > 0 {
+        if propAnalysis, ok := val.(PropertyChangeAnalysis); ok && propAnalysis.Count > 0 {
             // Create summary showing count and highlighting sensitive properties
             sensitiveCount := 0
-            for _, change := range changes {
+            for _, change := range propAnalysis.Changes {
                 if change.Sensitive {
                     sensitiveCount++
                 }
             }
             
-            summary := fmt.Sprintf("%d properties changed", len(changes))
+            summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
             if sensitiveCount > 0 {
-                summary = fmt.Sprintf("⚠️ %d properties changed (%d sensitive)", len(changes), sensitiveCount)
+                summary = fmt.Sprintf("⚠️ %d properties changed (%d sensitive)", propAnalysis.Count, sensitiveCount)
+            }
+            if propAnalysis.Truncated {
+                summary += " [truncated]"
             }
             
             // Format details as structured data
-            details := f.formatPropertyChangeDetails(changes)
+            details := f.formatPropertyChangeDetails(propAnalysis.Changes)
             
             return output.NewCollapsibleValue(
                 summary,
@@ -263,36 +246,8 @@ func (f *Formatter) propertyChangesFormatter() func(any) any {
     }
 }
 
-// riskAnalysisFormatter creates a collapsible formatter for risk assessment
-func (f *Formatter) riskAnalysisFormatter() func(any) any {
-    return func(val any) any {
-        if risk, ok := val.(*RiskAssessment); ok && risk != nil {
-            summary := fmt.Sprintf("Risk: %s", strings.ToUpper(risk.Level))
-            
-            // Build detailed risk information
-            var details []string
-            details = append(details, "Impact Assessment:")
-            details = append(details, risk.ImpactAssessment...)
-            
-            if len(risk.PotentialConsequences) > 0 {
-                details = append(details, "", "Potential Consequences:")
-                details = append(details, risk.PotentialConsequences...)
-            }
-            
-            if len(risk.MitigationSuggestions) > 0 {
-                details = append(details, "", "Recommended Mitigations:")
-                details = append(details, risk.MitigationSuggestions...)
-            }
-            
-            return output.NewCollapsibleValue(
-                summary,
-                details,
-                output.WithExpanded(risk.Level == "high" || risk.Level == "critical"),
-            )
-        }
-        return val
-    }
-}
+// Note: Risk analysis is simplified to just a risk level string
+// Future enhancement could add a collapsible risk details formatter
 
 // formatGroupedWithCollapsibleSections uses go-output v2 collapsible sections
 func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error) {
@@ -325,7 +280,9 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
             output.WithSectionExpanded(autoExpand),
         )
         
-        builder.Add(section) // Note: Add() is shown in v2 API examples for CollapsibleSection
+        // Note: The v2 API examples show Add() but it's not documented in the Builder interface
+        // This needs clarification during implementation - may need to use Section() method instead
+        builder.Add(section)
     }
     
     return builder.Build(), nil
@@ -346,17 +303,12 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
         {
             Name: "risk_level",
             Type: "string",
-            Formatter: f.riskLevelFormatter(),
+            // Simple string display, could add color formatting later
         },
         {
             Name: "property_changes",
-            Type: "array",
-            Formatter: f.propertyChangesFormatter(),
-        },
-        {
-            Name: "risk_analysis",
             Type: "object",
-            Formatter: f.riskAnalysisFormatter(),
+            Formatter: f.propertyChangesFormatter(),
         },
         {
             Name: "dependencies",
@@ -447,15 +399,19 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
     tableData := make([]map[string]any, 0, len(changes))
     
     for _, change := range changes {
-        analysis := f.analyzer.AnalyzeChangeComprehensively(&change.Change)
+        analysis, err := f.analyzer.AnalyzeResource(&change.Change)
+        if err != nil {
+            // Log error but continue with partial data
+            f.logger.Warn("resource analysis failed", "resource", change.Address, "error", err)
+            continue
+        }
         
         row := map[string]any{
             "address":          change.Address,
             "change_type":      change.ChangeType,
-            "risk_level":       analysis.RiskAssessment.Level,
-            "property_changes": analysis.AllPropertyChanges,     // Will be formatted by collapsible formatter
-            "risk_analysis":    &analysis.RiskAssessment,        // Will be formatted by collapsible formatter
-            "dependencies":     &analysis.Dependencies,          // Will be formatted by collapsible formatter
+            "risk_level":       analysis.RiskLevel,
+            "property_changes": analysis.PropertyChanges,  // Will be formatted by collapsible formatter
+            "dependencies":     &analysis.Dependencies,     // Will be formatted by collapsible formatter
         }
         
         // Add replacement reasons if applicable
@@ -473,8 +429,8 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 type PlanConfig struct {
     // ... existing fields ...
     
-    // Progressive disclosure configuration
-    ProgressiveDisclosure ProgressiveDisclosureConfig `mapstructure:"progressive_disclosure"`
+    // Expandable sections configuration
+    ExpandableSections ExpandableSectionsConfig `mapstructure:"expandable_sections"`
     
     // Grouping configuration (enhanced)
     Grouping GroupingConfig `mapstructure:"grouping"`
@@ -483,11 +439,10 @@ type PlanConfig struct {
     OutputConfig OutputConfig `mapstructure:"output"`
 }
 
-type ProgressiveDisclosureConfig struct {
+type ExpandableSectionsConfig struct {
     Enabled             bool `mapstructure:"enabled"`                // Enable collapsible sections
     AutoExpandDangerous bool `mapstructure:"auto_expand_dangerous"`  // Auto-expand high-risk sections
     ShowDependencies    bool `mapstructure:"show_dependencies"`      // Show dependency sections
-    ShowMitigation      bool `mapstructure:"show_mitigation"`        // Show mitigation suggestions
 }
 
 type GroupingConfig struct {
@@ -509,12 +464,14 @@ type CollapsibleDisplayConfig struct {
 ### Enhanced Configuration
 
 ```yaml
+# Global expand control
+expand_all: false                    # Expand all collapsible sections
+
 plan:
-  progressive_disclosure:
+  expandable_sections:
     enabled: true                    # Enable collapsible sections
     auto_expand_dangerous: true      # Auto-expand high-risk sections
     show_dependencies: true          # Show dependency information
-    show_mitigation: true            # Show mitigation suggestions
   grouping:
     enabled: true                    # Enable provider grouping
     threshold: 10                    # Minimum resources to trigger grouping
@@ -534,6 +491,7 @@ func (f *Formatter) createOutputWithConfig(format output.Format) *output.Output 
         MaxDetailLength:      f.config.Plan.OutputConfig.CollapsibleConfig.MaxDetailLength,
         TruncateIndicator:    f.config.Plan.OutputConfig.CollapsibleConfig.TruncateIndicator,
         TableHiddenIndicator: f.config.Plan.OutputConfig.CollapsibleConfig.TableHiddenIndicator,
+        GlobalExpansion:      f.config.ExpandAll, // Apply global expand-all setting
     }
     
     // Set defaults if not configured
@@ -552,6 +510,13 @@ func (f *Formatter) createOutputWithConfig(format output.Format) *output.Output 
         output.WithWriter(output.NewStdoutWriter()),
         output.WithCollapsibleConfig(config),
     )
+}
+
+// RootConfig represents the top-level configuration
+type RootConfig struct {
+    ExpandAll bool       `mapstructure:"expand_all"` // Global expand all flag
+    Plan      PlanConfig `mapstructure:"plan"`
+    // ... other sections ...
 }
 ```
 
@@ -834,11 +799,56 @@ The original design concepts remain valid but are now implemented using v2's nat
 
 This approach transforms the feature into a comprehensive Terraform plan analysis platform leveraging go-output v2's powerful progressive disclosure capabilities.
 
+## Implementation Clarifications
+
+### API Usage Notes
+
+1. **CollapsibleSection Integration**: The v2 examples show `builder.Add()` being used with CollapsibleSection objects, but this method is not documented in the Builder interface. During implementation, we may need to:
+   - Verify the actual API availability
+   - Use alternative approaches like the `Section()` method if `Add()` is not available
+   - Adapt the design based on the actual v2 implementation
+
+2. **Risk Scoring Justification**: The risk scores (30 for delete, 50 for replace) are initial values that should be:
+   - Configurable via strata.yaml
+   - Adjusted based on user feedback
+   - Potentially tied to resource-specific risk profiles
+
+3. **Performance Targets**: The stated targets (100ms for 10 resources, etc.) are goals based on reasonable user expectations. Actual targets will be:
+   - Measured against current implementation baseline
+   - Adjusted based on profiling results
+   - Used as optimization guides, not hard requirements
+
+4. **Memory Tracking Implementation**: The `estimateValueSize()` function will use:
+   - `unsafe.Sizeof()` for basic types
+   - JSON marshaling for complex objects to get byte size
+   - Approximate calculations for nested structures
+
+5. **Provider Extraction Enhancement**: Beyond simple string splitting, the implementation will:
+   - Support custom provider patterns via configuration
+   - Handle edge cases with regex patterns
+   - Fall back to "unknown" provider for unrecognized patterns
+
+### Simplified Design Considerations
+
+To address complexity concerns:
+
+1. **Phased Implementation**: 
+   - Phase 1: Basic collapsible properties and dependencies
+   - Phase 2: Risk assessment with configurable scores
+   - Phase 3: Provider grouping with collapsible sections
+
+2. **Formatter Abstraction**: Create a generic collapsible formatter factory to reduce code duplication:
+   ```go
+   func createCollapsibleFormatter(summaryFn, detailsFn func(any) (string, any)) func(any) any
+   ```
+
+3. **Backward Compatibility**: All new features are opt-in via configuration, existing behavior unchanged when disabled
+
 ## API Clarification
 
 ### go-output v2 Collapsible APIs
 
-The following APIs are documented in the go-output v2 API documentation:
+Based on the v2 API documentation, the following features are available:
 
 1. **CollapsibleValue Creation**:
    - `output.NewCollapsibleValue(summary, details, opts...)` - Creates expandable table cell content
@@ -849,11 +859,7 @@ The following APIs are documented in the go-output v2 API documentation:
    - `output.NewCollapsibleReport(title, []Content, opts...)` - Creates multi-content section
    - `output.WithSectionExpanded(bool)` - Controls default expansion state
 
-3. **Builder Pattern with Add()**:
-   - The `Add()` method is shown in v2 examples for adding CollapsibleSection content
-   - Regular content uses fluent methods: `Table()`, `Text()`, `Header()`
-
-4. **Output Configuration**:
+3. **Output Configuration**:
    - `output.WithCollapsibleConfig(config)` - Configures collapsible behavior
 
 ## Complete Integration Example
@@ -867,6 +873,11 @@ func (c *PlanSummaryCmd) Run() error {
     plan, err := c.parsePlan()
     if err != nil {
         return err
+    }
+    
+    // Apply CLI flag override for expand-all
+    if c.expandAllFlag {
+        c.config.ExpandAll = true
     }
     
     // Create formatter with configuration
@@ -897,6 +908,11 @@ func (c *PlanSummaryCmd) Run() error {
     // Render to stdout
     return out.Render(context.Background(), doc)
 }
+
+// Root command flag definition
+func init() {
+    rootCmd.PersistentFlags().BoolP("expand-all", "e", false, "Expand all collapsible sections")
+}
 ```
 
 ### Example Output (Markdown Format)
@@ -916,12 +932,13 @@ Total changes: 15 resources
 
 ```yaml
 # strata.yaml for GitHub Actions
+expand_all: false                  # Can be overridden by --expand-all flag
+
 plan:
-  progressive_disclosure:
+  expandable_sections:
     enabled: true
     auto_expand_dangerous: true    # Always show critical risks in PR comments
-    show_dependencies: false       # Hide in PR comments for brevity
-    show_mitigation: true         # Show actionable steps
+    show_dependencies: true        # Show dependencies when available
   grouping:
     enabled: true
     threshold: 20                 # Group when many resources
@@ -929,4 +946,22 @@ plan:
     collapsible:
       max_detail_length: 300      # Limit for GitHub comment size
       table_hidden_indicator: "[expand]"
+```
+
+### GitHub Action Integration
+
+The feature automatically detects when running in GitHub Actions and:
+1. Uses Markdown format with GitHub-compatible `<details>` elements
+2. Respects the `--expand-all` flag if passed to the action
+3. Auto-expands dangerous changes for visibility in PR reviews
+4. Works seamlessly with existing GitHub Action workflows
+
+Example GitHub Action usage:
+```yaml
+- name: Run Terraform Plan Summary
+  uses: ArjenSchwarz/strata-action@v1
+  with:
+    plan-file: terraform.tfplan
+    # Optional: expand all sections in PR comment
+    extra-args: --expand-all
 ```
