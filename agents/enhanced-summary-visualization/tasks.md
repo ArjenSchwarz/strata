@@ -1,10 +1,31 @@
-# Enhanced Summary Visualization with Collapsible Sections - Implementation Tasks
+# Enhanced Summary Visualization - Implementation Tasks
 
-This document provides an actionable implementation plan for the Enhanced Summary Visualization feature with collapsible sections support, broken down into discrete coding tasks that build incrementally on each other.
+This document provides an actionable implementation plan for the Enhanced Summary Visualization feature, broken down into discrete coding tasks that build incrementally on each other.
 
-## Important Note on Existing Completed Tasks
+## Current Implementation Status
 
-Some tasks marked as completed (1.x, 2.x, 3.x) were implemented based on the original limited design. These need to be updated for the new collapsible sections approach, which removes the "first 3 properties" limitation and adds comprehensive progressive disclosure.
+### ✅ Already Completed
+- **Basic data model enhancements**: `Provider`, `TopChanges`, `ReplacementHints` fields added to ResourceChange
+- **Provider extraction**: `extractProvider()` function working with aws_, azurerm_, google_ patterns
+- **Replacement hints**: `extractReplacementHints()` function extracting human-readable reasons
+- **Property changes**: `getTopChangedProperties()` function (limited to 3 properties)
+- **Configuration**: `GroupingThreshold`, `ShowContext` configuration options
+- **go-output v2 dependency**: v2.0.5 added to go.mod
+
+### ❌ Currently Broken (Needs Fix)
+- **go-output v2 API usage**: Compilation errors due to incorrect API calls (FormatTable, etc.)
+- **Tests**: Some tests likely failing due to API changes
+
+### 🔄 In Progress (Partial Implementation)
+- **Data models**: Enhanced fields added but need additional structs for comprehensive analysis
+- **Formatter**: Started v2 migration but has compilation errors
+
+### ⏳ Not Started Yet
+- **Collapsible formatters**: No collapsible content formatters implemented
+- **Provider grouping logic**: Only extraction done, no grouping algorithm
+- **Expand-all flag**: No CLI flag or configuration support
+- **GitHub Actions integration**: No environment detection
+- **Dependency extraction**: No dependency analysis implemented
 
 ## Prerequisites
 
@@ -14,298 +35,294 @@ Some tasks marked as completed (1.x, 2.x, 3.x) were implemented based on the ori
 
 ## Implementation Tasks
 
-### 1. Update Data Models for Collapsible Sections (NEEDS REWORK)
+### 1. Update Core Data Models for go-output v2 Integration
 
-- [x] ~~1.1 Add new fields to ResourceChange struct~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **DEPRECATED**: `TopChanges []string` field (limited to 3 properties)
-  - **DEPRECATED**: `ShowContext` configuration approach
-  - **NEW TASK NEEDED**: Update to comprehensive analysis approach
+- [x] ~~1.1 Update data models in `lib/plan/models.go`~~ **PARTIALLY COMPLETED**
+  - ✅ `Provider`, `TopChanges`, `ReplacementHints` fields already added to ResourceChange
+  - ❌ Need to add `ResourceAnalysis` struct with `PropertyChanges`, `RiskLevel`, `Dependencies` fields
+  - ❌ Need to add `PropertyChangeAnalysis` struct with `Changes`, `Count`, `TotalSize`, `Truncated` fields  
+  - ❌ Need to add `PropertyChange` struct with `Name`, `Path`, `Before`, `After`, `Sensitive`, `Size` fields
+  - ❌ Need to add `DependencyInfo` struct with `DependsOn`, `UsedBy` fields
+  - References requirements: 1.6 (dependencies in expandable sections), 2.3 (ALL property changes)
 
-- [x] ~~1.2 Extend PlanConfig struct~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **DEPRECATED**: Simple boolean flags approach
-  - **NEW TASK NEEDED**: Replace with progressive disclosure configuration structure
+- [ ] 1.1a Complete data model updates in `lib/plan/models.go` (REMAINING WORK)
+  - Add missing `ResourceAnalysis`, `PropertyChangeAnalysis`, `PropertyChange`, `DependencyInfo` structs
+  - Keep existing enhanced fields (`Provider`, `TopChanges`, `ReplacementHints`) for backward compatibility
+  - Ensure new structs work alongside existing fields
 
-- [x] ~~1.3 Write unit tests for data model extensions~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **NEW TASK NEEDED**: Update tests for new comprehensive data model
+- [ ] 1.2 Update configuration structures in `config/config.go`
+  - Add `ExpandAll bool` field to root configuration structure
+  - Replace or enhance existing `ShowContext`, `GroupingThreshold` with `ExpandableSections ExpandableSectionsConfig`
+  - Add `ExpandableSectionsConfig` with `Enabled`, `AutoExpandDangerous`, `ShowDependencies` fields
+  - Maintain backward compatibility with existing configuration files
+  - References requirements: 5.1-5.5 (global expand control), 1.6 (expandable sections configuration)
 
-**NEW TASKS TO REPLACE COMPLETED ONES:**
+- [ ] 1.3 Add performance limit constants and configuration
+  - Add `PerformanceLimits` struct with `MaxPropertiesPerResource`, `MaxPropertySize`, `MaxTotalMemory` fields
+  - Set default limits: 100 properties, 1MB property size, 100MB total memory
+  - Add configuration validation for performance limits
+  - References design: Performance and scalability section
 
-- [ ] 1.4 Update ResourceChange struct for collapsible sections in `lib/plan/models.go`
-  - Add `ComprehensiveAnalysis *ComprehensiveChangeAnalysis` field
-  - Add `SummaryView string` field for main view display
-  - Add `RiskLevel string` field ("low", "medium", "high", "critical")
-  - Add `HasExpandableSections bool` field
-  - Remove or deprecate `TopChanges` field (replaced by comprehensive analysis)
+- [ ] 1.4 Write unit tests for updated data models
+  - Test `ResourceAnalysis` struct creation and field access
+  - Test `PropertyChangeAnalysis` truncation behavior when limits are hit
+  - Test configuration loading with new `expand_all` and `expandable_sections` fields
+  - Test backward compatibility with old configuration format
 
-- [ ] 1.5 Add CollapsibleSection and related structs to `lib/plan/models.go`
-  - Add `CollapsibleSection` struct with Title, Content, AutoExpand, SectionType
-  - Add `ComprehensiveChangeAnalysis` struct with all analysis fields
-  - Add `PropertyChange`, `RiskAssessment`, `DependencyInfo` structs
-  - References requirement: Progressive disclosure with collapsible sections
+### 2. Implement Core Analysis Functions
 
-- [ ] 1.6 Update PlanConfig for progressive disclosure in `config/config.go`
-  - Replace simple flags with `ProgressiveDisclosure ProgressiveDisclosureConfig`
-  - Replace simple flags with `Grouping GroupingConfig`
-  - Add new configuration structs with comprehensive options
-  - Maintain backward compatibility with existing config files
+- [x] ~~2.1 Add provider extraction in `lib/plan/analyzer.go`~~ **COMPLETED**
+  - ✅ `extractProvider(resourceType string) string` function already implemented
+  - ✅ Basic string splitting logic for aws_, azurerm_, google_ patterns implemented
 
-- [ ] 1.7 Write unit tests for updated data models
-  - Test new ResourceChange fields and comprehensive analysis structure
-  - Test CollapsibleSection serialization and functionality
-  - Test updated PlanConfig loading with progressive disclosure options
-  - Test backward compatibility with old configuration formats
+- [x] ~~2.2 Add replacement hints extraction in `lib/plan/analyzer.go`~~ **COMPLETED**  
+  - ✅ `extractReplacementHints(change *tfjson.ResourceChange) []string` function already implemented
+  - ✅ Human-readable replacement reasons extraction already working
 
-### 2. Implement Provider Extraction and Caching
+- [x] ~~2.3 Add top property changes extraction in `lib/plan/analyzer.go`~~ **COMPLETED**
+  - ✅ `getTopChangedProperties(change *tfjson.ResourceChange, limit int) []string` already implemented
+  - ✅ Currently limited to 3 properties but working
 
-- [x] 2.1 Add provider extraction function to `lib/plan/analyzer.go`
-  - Implement `extractProvider(resourceType string) string` function using string split
-  - Handle edge cases for malformed resource types
-  - References requirement: Optional resource grouping (1.1) - group by provider
+- [ ] 2.4 Add enhanced property change analysis in `lib/plan/analyzer.go` (NEW)
+  - Implement `analyzePropertyChanges(change *tfjson.ResourceChange, maxProps int) (PropertyChangeAnalysis, error)`
+  - Extract ALL property changes with before/after values (no 3-property limit)
+  - Implement depth-limited recursive comparison for nested properties
+  - Track total size and set `Truncated` flag when limits exceeded
+  - References requirements: 2.3 (ALL property changes with before/after values)
 
-- [x] 2.2 Add provider extraction caching for performance
-  - Implement thread-safe cache using sync.Map for provider extraction results
-  - Add cache hit/miss tracking for testing
-  - References design: Performance optimizations - provider extraction caching
+- [ ] 2.5 Add simplified risk assessment in `lib/plan/analyzer.go` (NEW)
+  - Implement `assessRiskLevel(change *tfjson.ResourceChange) string`
+  - Return "critical", "high", "medium", or "low" based on change type and resource sensitivity
+  - Use delete operations as high risk, sensitive resource deletes as critical
+  - Use existing sensitive resource configuration and danger detection logic
+  - References requirements: 3.1-3.5 (risk analysis), 3.7 (auto-expand high-risk)
 
-- [x] 2.3 Write unit tests for provider extraction
-  - Test extraction for AWS resources (aws_s3_bucket → "aws")
-  - Test extraction for Azure resources (azurerm_virtual_machine → "azurerm")
-  - Test extraction for Google resources (google_compute_instance → "google")
-  - Test edge cases and malformed resource types
+- [ ] 2.6 Add dependency extraction in `lib/plan/analyzer.go` (NEW)
+  - Implement `extractDependenciesWithLimit(change *tfjson.ResourceChange, maxDeps int) (*DependencyInfo, error)`
+  - Extract resources this change depends on and resources that depend on this change
+  - Implement cycle detection using visited set to prevent infinite loops
+  - Apply depth limit as circuit breaker for complex dependency chains
+  - References requirements: 3.6 (dependencies in expandable sections)
 
-### 3. Implement Comprehensive Change Analysis (NEEDS MAJOR REWORK)
+- [ ] 2.7 Implement main resource analysis function in `lib/plan/analyzer.go` (NEW)
+  - Implement `AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnalysis, error)`
+  - Call property analysis, risk assessment, and dependency extraction
+  - Handle errors gracefully with partial data and logging
+  - Include replacement reasons from existing `extractReplacementHints()` function
+  - References design: Simplified analyzer structure
 
-- [x] ~~3.1 Implement limited context extraction~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **DEPRECATED**: Limited replacement hints approach
-  - **NEW TASK NEEDED**: Comprehensive analysis with risk assessment
+- [ ] 2.8 Write comprehensive unit tests for new analysis functions
+  - Test enhanced property change analysis with various data types and nesting levels
+  - Test risk level assessment for different change types and resource types
+  - Test dependency extraction with circular dependencies and limits
+  - Test main analysis function integration and error handling
+  - Extend existing tests for `extractProvider()`, `extractReplacementHints()`, `getTopChangedProperties()`
 
-- [x] ~~3.2 Implement limited property change detection~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **DEPRECATED**: "First 3 properties" limitation
-  - **NEW TASK NEEDED**: ALL property changes with comprehensive details
+### 3. Fix and Enhance go-output v2 Integration
 
-- [x] ~~3.3 Enhance existing danger reason logic~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **PARTIALLY USABLE**: Basic danger detection can be extended
-  - **NEW TASK NEEDED**: Comprehensive risk assessment with mitigation
+- [x] ~~3.1 Basic go-output v2 integration started~~ **PARTIALLY COMPLETED**
+  - ✅ go-output v2.0.5 already added to go.mod
+  - ✅ Basic v2 API calls already implemented in formatter.go
+  - ❌ Compilation errors due to incorrect API usage (FormatTable, FormatMarkdown, etc.)
+  - ❌ Need to fix API calls to match actual v2 interface
 
-- [x] ~~3.4 Write unit tests for limited context extraction~~ - **COMPLETED BUT NEEDS UPDATE**
-  - **NEW TASK NEEDED**: Tests for comprehensive analysis
+- [ ] 3.1a Fix go-output v2 API usage in `lib/plan/formatter.go` (URGENT)
+  - Fix undefined references: `output.FormatTable`, `output.FormatMarkdown`, etc.
+  - Use correct v2 format constants: `output.Table`, `output.Markdown`, etc.
+  - Fix `output.New()` and table creation API calls to match v2 interface
+  - Get basic compilation working before adding collapsible features
 
-**NEW TASKS TO REPLACE COMPLETED ONES:**
+- [ ] 3.2 Add collapsible property formatter in `lib/plan/formatter.go` (NEW)
+  - Implement `propertyChangesFormatter() func(any) any`
+  - Return `output.NewCollapsibleValue` with property count summary and detailed changes
+  - Auto-expand when sensitive properties are changed
+  - Handle `PropertyChangeAnalysis` with truncation indicator
+  - References requirements: 2.3 (expandable property changes), design: go-output v2 integration
 
-- [ ] 3.5 Implement comprehensive change analysis in `lib/plan/analyzer.go`
-  - Add `AnalyzeChangeComprehensively(change *tfjson.ResourceChange) *ComprehensiveChangeAnalysis`
-  - Extract ALL property changes with before/after values (no limit)
-  - Generate comprehensive risk assessment with impact analysis
-  - Extract dependencies and relationships between resources
-  - References requirement: Comprehensive change context with progressive disclosure
+- [ ] 3.3 Add collapsible dependencies formatter in `lib/plan/formatter.go` (NEW)
+  - Implement `dependenciesFormatter() func(any) any`
+  - Return `output.NewCollapsibleValue` with dependency count summary and detailed relationships
+  - Format "Depends On" and "Used By" lists clearly
+  - Collapse by default since dependencies are supplementary information
+  - References requirements: 3.6 (dependencies in expandable sections)
 
-- [ ] 3.6 Implement risk assessment engine in `lib/plan/analyzer.go`
-  - Add `assessRisk(change *tfjson.ResourceChange) RiskAssessment` function
-  - Determine risk levels: low, medium, high, critical
-  - Generate impact assessments and potential consequences
-  - Determine auto-expand behavior for high-risk changes
-  - References requirement: Enhanced risk analysis with detailed mitigation
+- [ ] 3.4 Implement table data preparation in `lib/plan/formatter.go` (NEW)
+  - Implement `prepareResourceTableData(changes []ResourceChange) []map[string]any`
+  - Call `AnalyzeResource` for each change and handle errors gracefully
+  - Prepare data structure with `address`, `change_type`, `risk_level`, `property_changes`, `dependencies`
+  - Include replacement reasons when applicable
+  - References design: Data transformation for go-output v2
 
-- [ ] 3.7 Implement mitigation suggestion engine in `lib/plan/analyzer.go`
-  - Add `generateMitigationSuggestions(change, risk) []string` function
-  - Provide actionable recommendations based on resource type and risk
-  - Include alternative deployment strategies for high-risk changes
-  - Generate specific mitigation steps for different scenarios
-  - References requirement: Risk mitigation guidance
+- [ ] 3.5 Add main formatting function in `lib/plan/formatter.go` (NEW)
+  - Implement `formatResourceChangesWithProgressiveDisclosure(summary *PlanSummary) (*output.Document, error)`
+  - Use `output.New().Table()` with schema containing collapsible formatters
+  - Apply global expand-all setting from configuration
+  - Build document using go-output v2 document builder pattern
+  - References requirements: 1.1-1.7 (progressive disclosure with collapsible sections)
 
-- [ ] 3.8 Implement dependency extraction in `lib/plan/analyzer.go`
-  - Add `extractDependencies(change *tfjson.ResourceChange) DependencyInfo` function
-  - Identify resources that this change depends on
-  - Identify resources that depend on this change
-  - Extract relationship information for display in collapsible sections
-  - References requirement: Dependency visualization
+- [ ] 3.6 Write unit tests for fixed and enhanced formatters
+  - Fix existing formatter tests to work with v2 API
+  - Test property formatter with sensitive and non-sensitive changes
+  - Test dependencies formatter with various dependency patterns
+  - Test table data preparation with mixed resource types
+  - Mock go-output v2 components for isolated testing
 
-- [ ] 3.9 Write comprehensive unit tests for new analysis functions
-  - Test comprehensive change analysis with various resource types
-  - Test risk assessment accuracy and auto-expand logic
-  - Test mitigation suggestion generation for different scenarios
-  - Test dependency extraction and relationship identification
+### 4. Implement Provider Grouping with Collapsible Sections
 
-### 4. Implement Smart Resource Grouping
+- [x] ~~4.1 Add provider extraction function in `lib/plan/analyzer.go`~~ **COMPLETED**
+  - ✅ `extractProvider(resourceType string) string` already implemented
+  - ✅ Basic string splitting logic for aws_, azurerm_, google_ patterns working
+  - ✅ Returns fallback for unrecognized patterns
+  - References requirements: 1.5 (smart grouping threshold), design: Simple provider extraction
 
-- [ ] 4.1 Add grouping logic function to `lib/plan/analyzer.go`
-  - Implement `GroupResourcesByProvider(changes []ResourceChange) (map[string][]ResourceChange, bool)`
-  - Check resource count against `GroupingThreshold` configuration
-  - Detect provider diversity and skip grouping if all resources are from same provider
-  - Return grouped resources and boolean indicating if grouping should be applied
-  - References requirement: Optional resource grouping (1.1) - smart grouping hierarchy
+- [ ] 4.2 Add grouping logic in `lib/plan/analyzer.go` (NEW)
+  - Implement `groupByProvider(changes []ResourceChange) map[string][]ResourceChange`
+  - Use existing `extractProvider()` function and `GroupingThreshold` configuration
+  - Only group when resource count meets threshold and multiple providers present
+  - Skip grouping if all resources from same provider
+  - References requirements: 1.5 (smart grouping), 1.6 (omit grouping when not needed)
 
-- [ ] 4.2 Write comprehensive unit tests for grouping logic
-  - Test threshold behavior with resources below/above threshold
-  - Test single-provider scenarios (should not group)
-  - Test multi-provider scenarios (should group)
-  - Test edge cases with empty resource lists
-  - Verify correct provider extraction and grouping
-
-### 5. Implement Progressive Disclosure Formatter (MAJOR REWORK NEEDED)
-
-**DEPRECATED TASKS:**
-- [ ] ~~5.1 Simple grouped display~~ - **NEEDS COMPLETE REWORK**
-- [ ] ~~5.2 Basic provider grouping~~ - **NEEDS ENHANCEMENT FOR COLLAPSIBLE SECTIONS**
-- [ ] ~~5.3 Limited context display~~ - **NEEDS COMPREHENSIVE REWORK**
-- [ ] ~~5.4 Basic formatter tests~~ - **NEEDS UPDATE FOR NEW APPROACH**
-
-**NEW TASKS FOR PROGRESSIVE DISCLOSURE:**
-
-- [ ] 5.5 Implement progressive disclosure formatter in `lib/plan/formatter.go`
-  - Add `formatResourceChangesWithProgressiveDisclosure()` function
-  - Create main view with essential information only (resource name, change type, risk level)
-  - Generate collapsible sections for each resource using comprehensive analysis
-  - Use go-output library's new collapsible sections capability
-  - References requirement: Progressive disclosure with collapsible sections
-
-- [ ] 5.6 Implement collapsible section creation in `lib/plan/formatter.go`
-  - Add `createCollapsibleSections(change, analysis) []CollapsibleSection` function
-  - Create property changes section with ALL properties (no limit)
-  - Create risk analysis section with mitigation suggestions
-  - Create dependencies section when enabled
-  - Create replacement reasons section for replacements
-  - Implement auto-expand logic for high-risk sections
-
-- [ ] 5.7 Implement provider grouping with collapsible sections
-  - Update `formatGroupedByProvider()` to use collapsible framework
-  - Create provider-level collapsible sections
+- [ ] 4.3 Add grouped formatting with collapsible sections in `lib/plan/formatter.go` (NEW)
+  - Implement `formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error)`
+  - Create `output.NewCollapsibleTable` for each provider group
   - Auto-expand provider groups containing high-risk changes
-  - Nest resource-level collapsible sections within provider groups
-  - References requirement: Progressive disclosure within provider grouping
+  - Use collapsible sections API from go-output v2
+  - References requirements: 1.5 (provider grouping), design: CollapsibleSection integration
 
-- [ ] 5.8 Implement section content formatting
-  - Add `formatPropertyChanges(properties []PropertyChange)` for detailed property display
-  - Add `formatRiskAnalysis(risk, mitigations)` for comprehensive risk display
-  - Add `formatDependencies(deps DependencyInfo)` for relationship visualization
-  - Respect sensitive property handling in detailed views
-  - Include before/after values with proper formatting
+- [ ] 4.4 Write unit tests for provider grouping (EXTEND EXISTING)
+  - Extend existing tests for `extractProvider()` with more edge cases
+  - Test grouping logic with threshold and provider diversity
+  - Test grouped formatting with collapsible sections
+  - Test auto-expand behavior for high-risk provider groups
 
-- [ ] 5.9 Write comprehensive tests for progressive disclosure formatter
-  - Test collapsible section creation and content
-  - Test auto-expand logic for high-risk resources
-  - Test provider grouping with nested collapsible sections
-  - Test that main view remains clean while details are comprehensive
-  - Mock go-output collapsible sections functionality
+### 5. Add Global Expand-All Flag Support
 
-### 6. Update Command Line Interface for Progressive Disclosure
+- [ ] 5.1 Add CLI flag to root command in `cmd/root.go`
+  - Add `--expand-all` / `-e` persistent flag to root command
+  - Set default value to false
+  - Add flag description: "Expand all collapsible sections"
+  - References requirements: 5.1 (global --expand-all CLI flag)
 
-**NEEDS SIGNIFICANT UPDATES:**
+- [ ] 5.2 Update plan summary command in `cmd/plan_summary.go`
+  - Read expand-all flag value in command execution
+  - Override configuration `ExpandAll` setting when CLI flag is provided
+  - Apply setting to go-output v2 `CollapsibleConfig.GlobalExpansion`
+  - References requirements: 5.3 (CLI flag overrides config), design: Global expand configuration
 
-- [ ] 6.1 Update configuration flags in `cmd/plan_summary.go`
-  - **DEPRECATED**: `--show-context` flag (replaced by progressive disclosure)
-  - **UPDATE**: Enhance `--group-by-provider` to work with collapsible sections
-  - **NEW**: Add `--progressive-disclosure` flag (default: true)
-  - **NEW**: Add `--auto-expand-dangerous` flag (default: true) 
-  - **NEW**: Add `--show-dependencies` flag (default: true)
-  - **NEW**: Add `--show-mitigation` flag (default: true)
-  - Update command help text for new progressive disclosure approach
+- [ ] 5.3 Update output configuration in `lib/plan/formatter.go`
+  - Implement `createOutputWithConfig(format output.Format) *output.Output`
+  - Set `CollapsibleConfig.GlobalExpansion` from configuration or CLI override
+  - Configure other collapsible behavior (detail length, indicators)
+  - Use `output.WithCollapsibleConfig()` to apply settings
+  - References requirements: 5.5 (apply to all collapsible content), design: go-output v2 integration
 
-- [ ] 6.2 Update default configuration file template
-  - Replace old configuration structure with progressive disclosure section
-  - Add comprehensive configuration options with inline documentation
-  - Ensure backward compatibility with old config files
-  - Provide migration path from old to new configuration format
-  - Update `strata.yaml` template with new structure
+- [ ] 5.4 Write tests for expand-all functionality
+  - Test CLI flag parsing and application
+  - Test configuration override behavior
+  - Test global expansion applied to all collapsible content
+  - Test precedence: CLI flag > config file > default
 
-- [ ] 6.3 Write integration tests for progressive disclosure flow
-  - Create test fixtures with multi-provider Terraform plans
-  - Test end-to-end flow with collapsible sections enabled
-  - Verify auto-expand behavior for high-risk changes
-  - Test both CLI flags and configuration file options for new features
-  - Test backward compatibility with old configuration files
+### 6. Add GitHub Action Integration Support
 
-### 7. Testing and Validation for Progressive Disclosure
+- [ ] 6.1 Add GitHub Actions environment detection in `lib/plan/formatter.go`
+  - Implement `isGitHubActions() bool` function checking `GITHUB_ACTIONS` environment variable
+  - Automatically use Markdown format when running in GitHub Actions
+  - Respect expand-all configuration for GitHub Action output
+  - References requirements: 4.1-4.4 (GitHub Action integration)
 
-**ENHANCED TESTING FOR COLLAPSIBLE SECTIONS:**
+- [ ] 6.2 Update command execution for GitHub Actions in `cmd/plan_summary.go`
+  - Call GitHub Actions detection in command execution
+  - Auto-expand dangerous changes in CI environment via configuration
+  - Ensure Markdown output compatible with GitHub PR comments
+  - References requirements: 4.2 (Markdown compatible), 4.3 (respect expand-all config)
 
-- [ ] 7.1 Create comprehensive test fixtures for progressive disclosure
-  - `testdata/single_provider_plan.json` - Plan with only AWS resources (should not group)
-  - `testdata/multi_provider_plan.json` - Plan with AWS, Azure, GCP resources (should group)
-  - `testdata/high_risk_plan.json` - Plan with dangerous changes requiring auto-expand
-  - `testdata/complex_dependencies_plan.json` - Plan with complex resource dependencies
-  - `testdata/sensitive_properties_plan.json` - Plan with sensitive property changes
-  - `testdata/large_plan.json` - Plan with 50+ resources to test performance and display
-  - `testdata/replacement_plan.json` - Plan with various replacement scenarios
+- [ ] 6.3 Write tests for GitHub Actions integration
+  - Test environment variable detection
+  - Test automatic Markdown format selection
+  - Test expand-all flag behavior in GitHub Actions environment
+  - Mock environment variables for testing
 
-- [ ] 7.2 Write end-to-end tests for progressive disclosure
-  - Test complete analysis and formatting pipeline with collapsible sections
-  - Verify collapsible sections are created correctly for each resource
-  - Test auto-expand behavior for high-risk changes
-  - Test comprehensive property change display (no 3-property limit)
-  - Test risk analysis and mitigation suggestion display
-  - Test dependency visualization in collapsible sections
-  - Ensure no regressions in existing functionality
+### 7. Integration and End-to-End Testing
 
-- [ ] 7.3 Add enhanced error handling and edge case tests
+- [ ] 7.1 Create test fixtures for comprehensive scenarios
+  - Create `testdata/simple_plan.json` with basic resource changes
+  - Create `testdata/multi_provider_plan.json` for grouping tests
+  - Create `testdata/high_risk_plan.json` with sensitive resources and deletions
+  - Create `testdata/dependencies_plan.json` with resource dependencies
+  - References design: Testing strategy
+
+- [ ] 7.2 Write end-to-end integration tests
+  - Test complete flow from plan parsing to formatted output with collapsible sections
+  - Test provider grouping with collapsible sections and auto-expand
+  - Test expand-all flag affecting all collapsible content
+  - Test GitHub Actions environment behavior
+  - Verify backward compatibility with existing configurations
+
+- [ ] 7.3 Add error handling and edge case tests
   - Test behavior with malformed Terraform plans
-  - Test progressive disclosure configuration loading with invalid values
-  - Test graceful degradation when collapsible section creation fails
-  - Test fallback to simple display when go-output collapsible sections unavailable
-  - Test memory usage with very large plans containing comprehensive analysis
-  - Verify error messages are user-friendly for new features
+  - Test graceful degradation when analysis fails
+  - Test memory limits with large property changes
+  - Test circular dependency detection
+  - Ensure user-friendly error messages
 
-### 8. Performance Optimization for Progressive Disclosure
+- [ ] 7.4 Write performance validation tests
+  - Test analysis performance with plans containing 100+ resources
+  - Verify memory usage stays within reasonable bounds
+  - Test that performance limits prevent excessive resource usage
+  - Benchmark collapsible formatter performance vs simple display
 
-**ENHANCED PERFORMANCE REQUIREMENTS:**
+### 8. Final Integration and Validation
 
-- [ ] 8.1 Implement parallel processing for comprehensive analysis
-  - Add worker pool pattern for processing comprehensive change analysis concurrently
-  - Parallelize risk assessment, dependency extraction, and mitigation generation
-  - Implement parallel collapsible section creation for large resource lists
-  - Include configuration option to control worker count
-  - **NEW REQUIREMENT**: Handle increased computational load from comprehensive analysis
+- [ ] 8.1 Update command help and documentation
+  - Update `cmd/plan_summary.go` help text for new flags and behavior
+  - Add examples showing expandable sections in command help
+  - Document the global expand-all flag usage
+  - References requirements: 5.1 (CLI flag documentation)
 
-- [ ] 8.2 Add memory streaming for collapsible sections
-  - Implement buffered writing for large formatted outputs with collapsible sections
-  - Stream collapsible section content instead of building complete sections in memory
-  - Optimize memory usage for comprehensive property change data
-  - Add memory usage monitoring for progressive disclosure features
-  - **NEW REQUIREMENT**: Handle memory impact of storing ALL property changes
+- [ ] 8.2 Add configuration migration support
+  - Handle old configuration files gracefully in `config/config.go`
+  - Provide helpful warnings when deprecated config options are used
+  - Ensure smooth transition from old to new configuration structure
+  - References design: Backward compatibility
 
-- [ ] 8.3 Write performance tests for progressive disclosure
-  - Create very large test fixtures (200+ resources) to test comprehensive analysis impact
-  - Benchmark performance with vs without comprehensive analysis enabled
-  - Test memory usage with progressive disclosure vs simple display
-  - Verify performance scales appropriately with increased analysis depth
-  - Test collapsible section creation performance with large datasets
-  - **NEW REQUIREMENT**: Ensure comprehensive analysis doesn't degrade performance significantly
+- [ ] 8.3 Perform final integration validation
+  - Run all tests with go-output v2 integration
+  - Validate that expandable sections work correctly across all output formats
+  - Test complete user workflows with various configuration combinations
+  - Verify no regression in existing functionality
 
-- [ ] 8.4 Implement progressive analysis loading (NEW)
-  - Add option to lazy-load comprehensive analysis only when sections are expanded
-  - Implement caching for expensive analysis operations
-  - Add progressive analysis depth based on resource risk level
-  - Optimize analysis pipeline to focus on high-risk resources first
-  - **NEW REQUIREMENT**: Support scenarios where full analysis isn't always needed
+## Task Dependencies
 
-## Updated Task Dependencies for Progressive Disclosure
+**CRITICAL PATH (Fix broken code first):**
+1. **Task 3.1a** (Fix go-output v2 API) must be completed FIRST to restore compilation
+2. **Tasks 1.1a, 1.2** (Complete data models) should be done early for foundation
 
-**IMPORTANT**: Some dependencies have changed due to the progressive disclosure approach:
+**MAIN IMPLEMENTATION PATH:**
+- Tasks 1.x must be completed before all others (foundation)
+- **Task 3.1a is URGENT** - needed before any other formatter work
+- Tasks 2.4-2.7 (new analysis functions) must be completed before 3.2+ (new collapsible formatters)
+- Tasks 3.x must be completed before 4.x (basic formatting before grouping)
+- Tasks 4.x and 5.x can be done in parallel after 3.x
+- Task 6.x can be done after 5.x (GitHub Actions needs expand-all support)
+- Tasks 7.x can begin after 6.x (integration testing)
+- Tasks 8.x should be completed last (final validation)
 
-- **Tasks 1.4-1.7** must be completed before all other tasks (new foundation)
-- **Tasks 2.x** can continue as-is (provider extraction still needed)
-- **Tasks 3.5-3.9** must be completed before Tasks 5.x (comprehensive analysis needed for collapsible sections)
-- **Task 4.x** depends on completion of Task 2.x (grouping needs provider extraction)
-- **Tasks 5.5-5.9** depend on completion of Tasks 3.5-3.9 and 4.x (progressive disclosure formatter needs comprehensive analysis)
-- **Task 6.x** depends on completion of Task 5.x (CLI needs working progressive disclosure formatter)
-- **Tasks 7.x** can begin after Task 6.x (integration testing)
-- **Task 8.x** can be completed in parallel with Task 7.x (performance optimization)
+**PRIORITY ORDER:**
+1. **URGENT**: Task 3.1a (fix compilation errors)
+2. **HIGH**: Tasks 1.1a, 1.2 (complete data models)
+3. **HIGH**: Tasks 2.4-2.7 (new analysis functions)
+4. **MEDIUM**: Tasks 3.2+ (collapsible formatters)
+5. **MEDIUM**: Tasks 4.2+ (grouping logic), Tasks 5.x (expand-all flag)
+6. **LOW**: Tasks 6.x (GitHub Actions), 7.x (testing), 8.x (validation)
 
-## Updated Requirements Coverage
+## Requirements Coverage
 
-All tasks above ensure complete coverage of the updated requirements:
+This implementation plan covers all requirements:
 
-1. **Progressive Disclosure with Collapsible Sections** - Covered by tasks 1.4-1.7, 5.5-5.9, 6.1-6.2
-2. **Comprehensive Change Context with Progressive Disclosure** - Covered by tasks 3.5-3.9, 5.6, 5.8
-3. **Enhanced Risk Analysis with Detailed Mitigation** - Covered by tasks 3.6-3.7, 5.6, 5.8
+1. **Progressive Disclosure (1.1-1.7)** - Tasks 1.x, 3.x, 4.x
+2. **Comprehensive Change Context (2.1-2.3)** - Tasks 2.x, 3.1-3.2  
+3. **Enhanced Risk Analysis (3.1-3.7)** - Tasks 2.2, 3.x
+4. **GitHub Action Integration (4.1-4.4)** - Tasks 6.x
+5. **Global Expand Control (5.1-5.5)** - Tasks 5.x
 
-## Implementation Strategy for Existing Completed Tasks
-
-Since tasks 1.1-1.3, 3.1-3.4 were completed based on the old design:
-
-1. **Immediate Priority**: Complete tasks 1.4-1.7 to update data models
-2. **Refactor Existing**: Update completed analysis code (3.1-3.4) to support comprehensive approach  
-3. **Extend Rather Than Replace**: Build on existing provider extraction and basic analysis
-4. **Backward Compatibility**: Ensure old configurations continue to work during transition
-
-The implementation plan maintains the test-driven development approach while accommodating the significant enhancement from collapsible sections capability.
+All tasks focus on code implementation that can be executed by a coding agent, building incrementally on previous work.

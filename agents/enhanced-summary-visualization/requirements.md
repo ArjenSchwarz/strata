@@ -57,23 +57,43 @@ The Enhanced Summary Visualization feature aims to improve how Terraform plan su
 4. The system SHALL treat deletions of sensitive resources as higher risk than regular deletions
 5. The system SHALL provide brief explanations for why changes are considered risky in the main view
 6. The system SHALL provide detailed risk analysis in expandable sections including:
-   - Potential impact assessment (data loss, downtime, security implications)
-   - Recommended mitigation steps
-   - Alternative approaches or safer deployment strategies
    - Dependencies that may be affected
 7. The system SHALL automatically expand risk detail sections for high-risk changes by default
+
+### 4. GitHub Action Integration
+
+**User Story:** As a CI/CD engineer, I want the enhanced summary visualization to work seamlessly in GitHub Actions with expandable sections in PR comments, so that reviewers can see clear summaries with the ability to drill down into details.
+
+**Acceptance Criteria:**
+1. The system SHALL enable expandable sections when running in GitHub Actions
+2. The system SHALL produce Markdown output compatible with GitHub PR comments
+3. The system SHALL respect the expand-all configuration when set via CLI or config
+4. The system SHALL work correctly with the existing GitHub Action workflow
+
+### 5. Global Expand Control
+
+**User Story:** As a user, I want a global flag to expand all collapsible sections at once, so that I can see all details when needed without manually expanding each section.
+
+**Acceptance Criteria:**
+1. The system SHALL provide a global `--expand-all` CLI flag that expands all collapsible sections
+2. The system SHALL support an `expand_all` configuration option in strata.yaml
+3. The CLI flag SHALL override the configuration file setting when both are present
+4. The expand-all setting SHALL be a top-level configuration, not tied to the plan section
+5. The system SHALL apply expand-all to all collapsible content (sections and field values)
 
 ## Configuration
 
 The feature will be configured through the existing strata.yaml configuration file:
 
 ```yaml
+# Global expand control
+expand_all: false                    # Expand all collapsible sections (default: false)
+
 plan:
-  progressive_disclosure:
+  expandable_sections:
     enabled: true                    # Enable/disable collapsible sections (default: true)
     auto_expand_dangerous: true      # Auto-expand high-risk sections (default: true)
     show_dependencies: true          # Show dependency sections (default: true)
-    show_mitigation: true            # Show risk mitigation suggestions (default: true)
   grouping:
     enabled: true                    # Enable/disable grouping (default: true)
     threshold: 10                    # Minimum resources to trigger grouping (default: 10)
@@ -82,13 +102,15 @@ plan:
 ## Implementation Notes
 
 Based on the collapsible sections capability:
-- All detailed information will be displayed in collapsible sections using go-output library's new expandable section support
+- All detailed information will be displayed in collapsible sections using go-output v2's expandable section support
 - Main view will show essential information (resource name, change type, brief risk indicator)
 - Expandable sections will provide comprehensive details without cluttering the primary view
 - High-risk changes will have their detail sections automatically expanded
 - Grouping will use smart hierarchy within collapsible sections
-- Risk mitigation suggestions will be included in expandable risk analysis sections
-- All configuration options will be under the existing `plan:` section with new `progressive_disclosure:` subsection
+- Dependencies will be shown in expandable sections for affected resources
+- The global `expand_all` flag will be implemented at the root command level
+- All plan-specific configuration options will be under the existing `plan:` section with new `expandable_sections:` subsection
+- GitHub Action integration will automatically use Markdown format with proper collapsible syntax
 
 ## Benefits of Collapsible Sections Integration
 
