@@ -36,7 +36,7 @@ func (t *ActionSortTransformer) Priority() int {
 
 // CanTransform implements the output.Transformer interface
 func (t *ActionSortTransformer) CanTransform(format string) bool {
-	return format == output.FormatTable || format == output.FormatMarkdown || format == output.FormatHTML || format == output.FormatCSV
+	return format == output.Table.Name || format == output.Markdown.Name || format == output.HTML.Name || format == output.CSV.Name
 }
 
 // Transform implements the output.Transformer interface
@@ -478,4 +478,200 @@ func getActionDisplay(changeType ChangeType) string {
 	default:
 		return "No-op"
 	}
+}
+
+// propertyChangesFormatter creates a collapsible formatter for property changes
+func (f *Formatter) propertyChangesFormatter() func(any) any {
+	return func(val any) any {
+		if propAnalysis, ok := val.(PropertyChangeAnalysis); ok && propAnalysis.Count > 0 {
+			// Create summary showing count and highlighting sensitive properties
+			sensitiveCount := 0
+			for _, change := range propAnalysis.Changes {
+				if change.Sensitive {
+					sensitiveCount++
+				}
+			}
+
+			summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
+			if sensitiveCount > 0 {
+				summary = fmt.Sprintf("⚠️ %d properties changed (%d sensitive)", propAnalysis.Count, sensitiveCount)
+			}
+			if propAnalysis.Truncated {
+				summary += " [truncated]"
+			}
+
+			// Format details as structured data for display
+			details := f.formatPropertyChangeDetails(propAnalysis.Changes)
+
+			return output.NewCollapsibleValue(
+				summary,
+				details,
+				output.WithExpanded(sensitiveCount > 0), // Auto-expand if sensitive
+			)
+		}
+		return val
+	}
+}
+
+// dependenciesFormatter creates a collapsible formatter for dependency information
+func (f *Formatter) dependenciesFormatter() func(any) any {
+	return func(val any) any {
+		if deps, ok := val.(*DependencyInfo); ok && deps != nil {
+			total := len(deps.DependsOn) + len(deps.UsedBy)
+			if total == 0 {
+				return "No dependencies"
+			}
+
+			summary := fmt.Sprintf("%d dependencies", total)
+
+			var details []string
+			if len(deps.DependsOn) > 0 {
+				details = append(details, "Depends On:")
+				for _, dep := range deps.DependsOn {
+					details = append(details, fmt.Sprintf("  - %s", dep))
+				}
+			}
+
+			if len(deps.UsedBy) > 0 {
+				if len(details) > 0 {
+					details = append(details, "")
+				}
+				details = append(details, "Used By:")
+				for _, used := range deps.UsedBy {
+					details = append(details, fmt.Sprintf("  - %s", used))
+				}
+			}
+
+			return output.NewCollapsibleValue(
+				summary,
+				strings.Join(details, "\n"),
+				output.WithExpanded(false), // Dependencies collapsed by default
+			)
+		}
+		return val
+	}
+}
+
+// formatPropertyChangeDetails formats property changes for collapsible display
+func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string {
+	var details []string
+	for _, change := range changes {
+		if change.Sensitive {
+			// Mask sensitive values
+			details = append(details, fmt.Sprintf("• %s: [sensitive value hidden] → [sensitive value hidden]", change.Name))
+		} else {
+			// Show actual values for non-sensitive properties
+			details = append(details, fmt.Sprintf("• %s: %v → %v", change.Name, change.Before, change.After))
+		}
+	}
+	return strings.Join(details, "\n")
+}
+
+// prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
+// This is a basic implementation that works with existing ResourceChange data
+func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[string]any {
+	tableData := make([]map[string]any, 0, len(changes))
+
+	for _, change := range changes {
+		// Skip no-op changes from details
+		if change.ChangeType == ChangeTypeNoOp {
+			continue
+		}
+
+		// Use existing data from ResourceChange struct
+		// Create basic property changes data structure
+		propChanges := PropertyChangeAnalysis{
+			Changes: []PropertyChange{}, // Empty for now, will be enhanced later
+			Count:   len(change.TopChanges),
+		}
+
+		// Convert TopChanges to PropertyChange format for collapsible display
+		for _, topChange := range change.TopChanges {
+			propChanges.Changes = append(propChanges.Changes, PropertyChange{
+				Name:      topChange,
+				Before:    "unknown", // Will be enhanced later
+				After:     "unknown", // Will be enhanced later
+				Sensitive: false,     // Will be determined later
+			})
+		}
+
+		// Create basic dependency info (empty for now)
+		deps := &DependencyInfo{
+			DependsOn: []string{},
+			UsedBy:    []string{},
+		}
+
+		// Determine risk level based on existing danger flags
+		riskLevel := "low"
+		if change.IsDangerous {
+			if change.ChangeType == ChangeTypeDelete {
+				riskLevel = "critical"
+			} else if change.ChangeType == ChangeTypeReplace {
+				riskLevel = "high"
+			} else {
+				riskLevel = "medium"
+			}
+		}
+
+		row := map[string]any{
+			"address":          change.Address,
+			"change_type":      string(change.ChangeType),
+			"risk_level":       riskLevel,
+			"property_changes": propChanges, // Will be formatted by collapsible formatter
+			"dependencies":     deps,        // Will be formatted by collapsible formatter
+		}
+
+		// Add replacement reasons if available
+		if len(change.ReplacementHints) > 0 {
+			row["replacement_reasons"] = strings.Join(change.ReplacementHints, ", ")
+		}
+
+		tableData = append(tableData, row)
+	}
+
+	return tableData
+}
+
+// formatResourceChangesWithProgressiveDisclosure uses go-output v2's collapsible features
+func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *PlanSummary) (*output.Document, error) {
+	builder := output.New()
+
+	// Add summary header
+	builder.Header("Terraform Plan Summary").
+		Text(fmt.Sprintf("Total changes: %d resources", len(summary.ResourceChanges)))
+
+	// Create table with collapsible formatters for detailed information
+	tableData := f.prepareResourceTableData(summary.ResourceChanges)
+
+	// Define schema with collapsible formatters
+	schema := []output.Field{
+		{
+			Name:      "address",
+			Type:      "string",
+			Formatter: output.FilePathFormatter(40), // Shorten long resource addresses
+		},
+		{
+			Name: "change_type",
+			Type: "string",
+		},
+		{
+			Name: "risk_level",
+			Type: "string",
+			// Simple string display, could add color formatting later
+		},
+		{
+			Name:      "property_changes",
+			Type:      "object",
+			Formatter: f.propertyChangesFormatter(), // Collapsible property changes
+		},
+		{
+			Name:      "dependencies",
+			Type:      "object",
+			Formatter: f.dependenciesFormatter(), // Collapsible dependency info
+		},
+	}
+
+	builder.Table("Resource Changes", tableData, output.WithSchema(schema...))
+
+	return builder.Build(), nil
 }

@@ -1212,11 +1212,11 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	analyzer := &Analyzer{config: cfg}
 
 	testCases := []struct {
-		name           string
-		change         *tfjson.ResourceChange
-		expectedCount  int
-		expectedTrunc  bool
-		expectedError  bool
+		name          string
+		change        *tfjson.ResourceChange
+		expectedCount int
+		expectedTrunc bool
+		expectedError bool
 	}{
 		{
 			name: "Nil change should return empty",
@@ -1310,7 +1310,7 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := analyzer.analyzePropertyChanges(tc.change, 10)
-			
+
 			if tc.expectedError {
 				assert.Error(t, err)
 			} else {
@@ -1521,7 +1521,7 @@ func TestExtractDependenciesWithLimit(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := analyzer.extractDependenciesWithLimit(tc.change, 10)
-			
+
 			if tc.expectedError {
 				assert.Error(t, err)
 			} else {
@@ -1550,10 +1550,10 @@ func TestAnalyzeResource(t *testing.T) {
 	analyzer := &Analyzer{config: cfg}
 
 	testCases := []struct {
-		name           string
-		change         *tfjson.ResourceChange
-		expectedError  bool
-		expectedRisk   string
+		name            string
+		change          *tfjson.ResourceChange
+		expectedError   bool
+		expectedRisk    string
 		hasReplacements bool
 	}{
 		{
@@ -1609,18 +1609,18 @@ func TestAnalyzeResource(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := analyzer.AnalyzeResource(tc.change)
-			
+
 			if tc.expectedError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
 				assert.Equal(t, tc.expectedRisk, result.RiskLevel, "Risk level mismatch")
-				
+
 				if tc.hasReplacements {
 					assert.Greater(t, len(result.ReplacementReasons), 0, "Should have replacement reasons")
 				}
-				
+
 				// Verify all fields are populated
 				assert.NotNil(t, result.PropertyChanges, "PropertyChanges should not be nil")
 				assert.NotNil(t, result.ReplacementReasons, "ReplacementReasons should not be nil")
@@ -1684,7 +1684,7 @@ func TestEstimateValueSize(t *testing.T) {
 			value: map[string]interface{}{
 				"name": "test", // 4 + 4 = 8
 				"tags": map[string]interface{}{ // 4 + (3+4 + 5+4) = 20
-					"env": "prod",
+					"env":   "prod",
 					"owner": "team",
 				},
 			},
@@ -1702,23 +1702,23 @@ func TestEstimateValueSize(t *testing.T) {
 
 func TestCompareValues(t *testing.T) {
 	analyzer := &Analyzer{}
-	
+
 	testCases := []struct {
-		name           string
-		before         interface{}
-		after          interface{}
+		name            string
+		before          interface{}
+		after           interface{}
 		expectedChanges int
 	}{
 		{
-			name:           "Identical values should return no changes",
-			before:         "same",
-			after:          "same",
+			name:            "Identical values should return no changes",
+			before:          "same",
+			after:           "same",
 			expectedChanges: 0,
 		},
 		{
-			name:           "Different primitive values should return one change",
-			before:         "old",
-			after:          "new",
+			name:            "Different primitive values should return one change",
+			before:          "old",
+			after:           "new",
 			expectedChanges: 1,
 		},
 		{
@@ -1756,9 +1756,9 @@ func TestCompareValues(t *testing.T) {
 			expectedChanges: 1,
 		},
 		{
-			name: "Array changes should be detected",
-			before: []interface{}{"a", "b"},
-			after:  []interface{}{"a", "c"},
+			name:            "Array changes should be detected",
+			before:          []interface{}{"a", "b"},
+			after:           []interface{}{"a", "c"},
 			expectedChanges: 1,
 		},
 	}
@@ -1766,12 +1766,12 @@ func TestCompareValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			changes := []PropertyChange{}
-			
+
 			err := analyzer.compareValues(tc.before, tc.after, nil, 0, 5, func(pc PropertyChange) bool {
 				changes = append(changes, pc)
 				return true
 			})
-			
+
 			assert.NoError(t, err)
 			assert.Len(t, changes, tc.expectedChanges, "Number of changes should match expected")
 		})

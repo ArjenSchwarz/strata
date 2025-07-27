@@ -33,7 +33,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(cat:*)",
       "WebFetch(domain:pkg.go.dev)",
-      "Bash(./strata:*)"
+      "Bash(./strata:*)",
+      "mcp__context7__resolve-library-id"
     ],
     "deny": []
   }
