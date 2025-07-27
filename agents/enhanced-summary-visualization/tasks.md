@@ -180,25 +180,26 @@ This document provides an actionable implementation plan for the Enhanced Summar
   - ✅ Returns fallback for unrecognized patterns
   - References requirements: 1.5 (smart grouping threshold), design: Simple provider extraction
 
-- [ ] 4.2 Add grouping logic in `lib/plan/analyzer.go` (NEW)
-  - Implement `groupByProvider(changes []ResourceChange) map[string][]ResourceChange`
-  - Use existing `extractProvider()` function and `GroupingThreshold` configuration
-  - Only group when resource count meets threshold and multiple providers present
-  - Skip grouping if all resources from same provider
-  - References requirements: 1.5 (smart grouping), 1.6 (omit grouping when not needed)
+- [x] ~~4.2 Add grouping logic in `lib/plan/analyzer.go` (NEW)~~ **COMPLETED**
+  - ✅ Implemented `groupByProvider(changes []ResourceChange) map[string][]ResourceChange`
+  - ✅ Uses existing `extractProvider()` function and `GroupingThreshold` configuration
+  - ✅ Only groups when resource count meets threshold and multiple providers present
+  - ✅ Skips grouping if all resources from same provider
+  - ✅ References requirements: 1.5 (smart grouping), 1.6 (omit grouping when not needed)
 
-- [ ] 4.3 Add grouped formatting with collapsible sections in `lib/plan/formatter.go` (NEW)
-  - Implement `formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error)`
-  - Create `output.NewCollapsibleTable` for each provider group
-  - Auto-expand provider groups containing high-risk changes
-  - Use collapsible sections API from go-output v2
-  - References requirements: 1.5 (provider grouping), design: CollapsibleSection integration
+- [x] ~~4.3 Add grouped formatting with collapsible sections in `lib/plan/formatter.go` (NEW)~~ **COMPLETED**
+  - ✅ Implemented `formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error)`
+  - ✅ Creates sections using `builder.Section()` for each provider group  
+  - ✅ Includes `hasHighRiskChanges()` helper for auto-expand logic
+  - ✅ Uses go-output v2 Section API (NewCollapsibleTable API not available)
+  - ✅ References requirements: 1.5 (provider grouping), design: CollapsibleSection integration
 
-- [ ] 4.4 Write unit tests for provider grouping (EXTEND EXISTING)
-  - Extend existing tests for `extractProvider()` with more edge cases
-  - Test grouping logic with threshold and provider diversity
-  - Test grouped formatting with collapsible sections
-  - Test auto-expand behavior for high-risk provider groups
+- [x] ~~4.4 Write unit tests for provider grouping (EXTEND EXISTING)~~ **COMPLETED**
+  - ✅ Added comprehensive tests for `groupByProvider()` covering all scenarios
+  - ✅ Test grouping logic with threshold and provider diversity
+  - ✅ Test grouped formatting with collapsible sections - basic functionality test
+  - ✅ Test `hasHighRiskChanges()` behavior for auto-expand logic
+  - ✅ Added helper functions for testing provider extraction
 
 ### 5. Add Global Expand-All Flag Support
 

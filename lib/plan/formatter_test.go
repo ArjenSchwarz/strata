@@ -185,3 +185,150 @@ func TestFormatter_getFormatFromConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatter_formatGroupedWithCollapsibleSections(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			Grouping: config.GroupingConfig{
+				Enabled:   true,
+				Threshold: 2,
+			},
+		},
+	}
+	formatter := NewFormatter(cfg)
+
+	// Create test data with multiple providers
+	summary := &PlanSummary{
+		PlanFile:         "test.tfplan",
+		TerraformVersion: "1.6.0",
+		ResourceChanges:  []ResourceChange{},
+	}
+
+	// Create test groups
+	groups := map[string][]ResourceChange{
+		"aws": {
+			{
+				Address:    "aws_s3_bucket.test",
+				Type:       "aws_s3_bucket",
+				ChangeType: ChangeTypeCreate,
+			},
+			{
+				Address:    "aws_ec2_instance.web",
+				Type:       "aws_ec2_instance",
+				ChangeType: ChangeTypeUpdate,
+			},
+		},
+		"azurerm": {
+			{
+				Address:    "azurerm_storage_account.test",
+				Type:       "azurerm_storage_account",
+				ChangeType: ChangeTypeCreate,
+			},
+		},
+	}
+
+	// Test that the function doesn't panic and returns a document
+	doc, err := formatter.formatGroupedWithCollapsibleSections(summary, groups)
+	if err != nil {
+		t.Errorf("formatGroupedWithCollapsibleSections() error = %v", err)
+		return
+	}
+
+	if doc == nil {
+		t.Error("formatGroupedWithCollapsibleSections() returned nil document")
+		return
+	}
+
+	// Check that the document has content
+	contents := doc.GetContents()
+	if len(contents) == 0 {
+		t.Error("formatGroupedWithCollapsibleSections() returned document with no contents")
+	}
+}
+
+func TestFormatter_hasHighRiskChanges(t *testing.T) {
+	formatter := &Formatter{}
+
+	testCases := []struct {
+		name      string
+		resources []ResourceChange
+		expected  bool
+	}{
+		{
+			name:      "Empty resources should return false",
+			resources: []ResourceChange{},
+			expected:  false,
+		},
+		{
+			name: "Non-dangerous resources should return false",
+			resources: []ResourceChange{
+				{
+					ChangeType:  ChangeTypeCreate,
+					IsDangerous: false,
+				},
+				{
+					ChangeType:  ChangeTypeUpdate,
+					IsDangerous: false,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Dangerous deletion should return true",
+			resources: []ResourceChange{
+				{
+					ChangeType:  ChangeTypeDelete,
+					IsDangerous: true,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Dangerous replacement should return true",
+			resources: []ResourceChange{
+				{
+					ChangeType:  ChangeTypeReplace,
+					IsDangerous: true,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Dangerous update should return false",
+			resources: []ResourceChange{
+				{
+					ChangeType:  ChangeTypeUpdate,
+					IsDangerous: true,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Mixed with one dangerous deletion should return true",
+			resources: []ResourceChange{
+				{
+					ChangeType:  ChangeTypeCreate,
+					IsDangerous: false,
+				},
+				{
+					ChangeType:  ChangeTypeDelete,
+					IsDangerous: true,
+				},
+				{
+					ChangeType:  ChangeTypeUpdate,
+					IsDangerous: false,
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := formatter.hasHighRiskChanges(tc.resources)
+			if result != tc.expected {
+				t.Errorf("hasHighRiskChanges() = %v, expected %v", result, tc.expected)
+			}
+		})
+	}
+}
