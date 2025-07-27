@@ -37,37 +37,39 @@ This document provides an actionable implementation plan for the Enhanced Summar
 
 ### 1. Update Core Data Models for go-output v2 Integration
 
-- [x] ~~1.1 Update data models in `lib/plan/models.go`~~ **PARTIALLY COMPLETED**
+- [x] ~~1.1 Update data models in `lib/plan/models.go`~~ **COMPLETED**
   - ✅ `Provider`, `TopChanges`, `ReplacementHints` fields already added to ResourceChange
-  - ❌ Need to add `ResourceAnalysis` struct with `PropertyChanges`, `RiskLevel`, `Dependencies` fields
-  - ❌ Need to add `PropertyChangeAnalysis` struct with `Changes`, `Count`, `TotalSize`, `Truncated` fields  
-  - ❌ Need to add `PropertyChange` struct with `Name`, `Path`, `Before`, `After`, `Sensitive`, `Size` fields
-  - ❌ Need to add `DependencyInfo` struct with `DependsOn`, `UsedBy` fields
+  - ✅ Added `ResourceAnalysis` struct with `PropertyChanges`, `RiskLevel`, `Dependencies` fields
+  - ✅ Added `PropertyChangeAnalysis` struct with `Changes`, `Count`, `TotalSize`, `Truncated` fields  
+  - ✅ Added `PropertyChange` struct with `Name`, `Path`, `Before`, `After`, `Sensitive`, `Size` fields
+  - ✅ Added `DependencyInfo` struct with `DependsOn`, `UsedBy` fields
   - References requirements: 1.6 (dependencies in expandable sections), 2.3 (ALL property changes)
 
-- [ ] 1.1a Complete data model updates in `lib/plan/models.go` (REMAINING WORK)
-  - Add missing `ResourceAnalysis`, `PropertyChangeAnalysis`, `PropertyChange`, `DependencyInfo` structs
-  - Keep existing enhanced fields (`Provider`, `TopChanges`, `ReplacementHints`) for backward compatibility
-  - Ensure new structs work alongside existing fields
+- [x] ~~1.1a Complete data model updates in `lib/plan/models.go`~~ **COMPLETED**
+  - ✅ Added missing `ResourceAnalysis`, `PropertyChangeAnalysis`, `PropertyChange`, `DependencyInfo` structs
+  - ✅ Kept existing enhanced fields (`Provider`, `TopChanges`, `ReplacementHints`) for backward compatibility
+  - ✅ Ensured new structs work alongside existing fields
 
-- [ ] 1.2 Update configuration structures in `config/config.go`
-  - Add `ExpandAll bool` field to root configuration structure
-  - Replace or enhance existing `ShowContext`, `GroupingThreshold` with `ExpandableSections ExpandableSectionsConfig`
-  - Add `ExpandableSectionsConfig` with `Enabled`, `AutoExpandDangerous`, `ShowDependencies` fields
-  - Maintain backward compatibility with existing configuration files
+- [x] ~~1.2 Update configuration structures in `config/config.go`~~ **COMPLETED**
+  - ✅ Added `ExpandAll bool` field to root configuration structure
+  - ✅ Enhanced existing configuration with `ExpandableSections ExpandableSectionsConfig`
+  - ✅ Added `ExpandableSectionsConfig` with `Enabled`, `AutoExpandDangerous`, `ShowDependencies` fields
+  - ✅ Added `GroupingConfig` and `PerformanceLimitsConfig` for enhanced configuration
+  - ✅ Maintained backward compatibility with existing configuration files
   - References requirements: 5.1-5.5 (global expand control), 1.6 (expandable sections configuration)
 
-- [ ] 1.3 Add performance limit constants and configuration
-  - Add `PerformanceLimits` struct with `MaxPropertiesPerResource`, `MaxPropertySize`, `MaxTotalMemory` fields
-  - Set default limits: 100 properties, 1MB property size, 100MB total memory
-  - Add configuration validation for performance limits
+- [x] ~~1.3 Add performance limit constants and configuration~~ **COMPLETED**
+  - ✅ Added `PerformanceLimitsConfig` struct with `MaxPropertiesPerResource`, `MaxPropertySize`, `MaxTotalMemory` fields
+  - ✅ Set default limits: 100 properties, 1MB property size, 100MB total memory
+  - ✅ Added `GetPerformanceLimitsWithDefaults()` method for configuration validation and defaults
   - References design: Performance and scalability section
 
-- [ ] 1.4 Write unit tests for updated data models
-  - Test `ResourceAnalysis` struct creation and field access
-  - Test `PropertyChangeAnalysis` truncation behavior when limits are hit
-  - Test configuration loading with new `expand_all` and `expandable_sections` fields
-  - Test backward compatibility with old configuration format
+- [x] ~~1.4 Write unit tests for updated data models~~ **COMPLETED**
+  - ✅ Added tests for `ResourceAnalysis` struct creation, serialization, and field access
+  - ✅ Added tests for `PropertyChangeAnalysis` truncation behavior and sensitive data handling
+  - ✅ Added tests for configuration loading with new `expand_all` and `expandable_sections` fields
+  - ✅ Added tests for `GetPerformanceLimitsWithDefaults()` with various configuration scenarios
+  - ✅ Verified backward compatibility with old configuration format
 
 ### 2. Implement Core Analysis Functions
 

@@ -160,3 +160,221 @@ func TestPlanConfig_DefaultValues(t *testing.T) {
 		t.Errorf("ShowDetails should be true as specified, got %v", planConfig.ShowDetails)
 	}
 }
+
+func TestConfig_ExpandAllFlag(t *testing.T) {
+	tests := []struct {
+		name        string
+		yamlContent map[string]any
+		expected    bool
+	}{
+		{
+			name: "expand_all set to true",
+			yamlContent: map[string]any{
+				"expand_all": true,
+			},
+			expected: true,
+		},
+		{
+			name: "expand_all set to false",
+			yamlContent: map[string]any{
+				"expand_all": false,
+			},
+			expected: false,
+		},
+		{
+			name:        "expand_all not specified",
+			yamlContent: map[string]any{},
+			expected:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+
+			for key, value := range tt.yamlContent {
+				v.Set(key, value)
+			}
+
+			var config Config
+			err := v.Unmarshal(&config)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal config: %v", err)
+			}
+
+			if config.ExpandAll != tt.expected {
+				t.Errorf("ExpandAll = %v, expected %v", config.ExpandAll, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExpandableSectionsConfig_Loading(t *testing.T) {
+	tests := []struct {
+		name        string
+		yamlContent map[string]any
+		expectedESC ExpandableSectionsConfig
+	}{
+		{
+			name: "all expandable sections fields set",
+			yamlContent: map[string]any{
+				"plan": map[string]any{
+					"expandable_sections": map[string]any{
+						"enabled":               true,
+						"auto_expand_dangerous": true,
+						"show_dependencies":     true,
+					},
+				},
+			},
+			expectedESC: ExpandableSectionsConfig{
+				Enabled:             true,
+				AutoExpandDangerous: true,
+				ShowDependencies:    true,
+			},
+		},
+		{
+			name: "partial expandable sections config",
+			yamlContent: map[string]any{
+				"plan": map[string]any{
+					"expandable_sections": map[string]any{
+						"enabled": false,
+					},
+				},
+			},
+			expectedESC: ExpandableSectionsConfig{
+				Enabled:             false,
+				AutoExpandDangerous: false,
+				ShowDependencies:    false,
+			},
+		},
+		{
+			name:        "no expandable sections config",
+			yamlContent: map[string]any{},
+			expectedESC: ExpandableSectionsConfig{
+				Enabled:             false,
+				AutoExpandDangerous: false,
+				ShowDependencies:    false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+
+			for key, value := range tt.yamlContent {
+				v.Set(key, value)
+			}
+
+			var config Config
+			err := v.Unmarshal(&config)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal config: %v", err)
+			}
+
+			esc := config.Plan.ExpandableSections
+			if esc.Enabled != tt.expectedESC.Enabled {
+				t.Errorf("ExpandableSections.Enabled = %v, expected %v", esc.Enabled, tt.expectedESC.Enabled)
+			}
+			if esc.AutoExpandDangerous != tt.expectedESC.AutoExpandDangerous {
+				t.Errorf("ExpandableSections.AutoExpandDangerous = %v, expected %v", esc.AutoExpandDangerous, tt.expectedESC.AutoExpandDangerous)
+			}
+			if esc.ShowDependencies != tt.expectedESC.ShowDependencies {
+				t.Errorf("ExpandableSections.ShowDependencies = %v, expected %v", esc.ShowDependencies, tt.expectedESC.ShowDependencies)
+			}
+		})
+	}
+}
+
+func TestGetPerformanceLimitsWithDefaults(t *testing.T) {
+	tests := []struct {
+		name        string
+		yamlContent map[string]any
+		expected    PerformanceLimitsConfig
+	}{
+		{
+			name: "all performance limits specified",
+			yamlContent: map[string]any{
+				"plan": map[string]any{
+					"performance_limits": map[string]any{
+						"max_properties_per_resource": 50,
+						"max_property_size":           524288,   // 512KB
+						"max_total_memory":            52428800, // 50MB
+						"max_dependency_depth":        5,
+						"max_resources_per_group":     500,
+					},
+				},
+			},
+			expected: PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 50,
+				MaxPropertySize:          524288,
+				MaxTotalMemory:           52428800,
+				MaxDependencyDepth:       5,
+				MaxResourcesPerGroup:     500,
+			},
+		},
+		{
+			name:        "no performance limits - defaults applied",
+			yamlContent: map[string]any{},
+			expected: PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 100,
+				MaxPropertySize:          1048576,   // 1MB
+				MaxTotalMemory:           104857600, // 100MB
+				MaxDependencyDepth:       10,
+				MaxResourcesPerGroup:     1000,
+			},
+		},
+		{
+			name: "partial performance limits - defaults for missing",
+			yamlContent: map[string]any{
+				"plan": map[string]any{
+					"performance_limits": map[string]any{
+						"max_properties_per_resource": 200,
+						"max_total_memory":            209715200, // 200MB
+					},
+				},
+			},
+			expected: PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 200,
+				MaxPropertySize:          1048576,   // Default 1MB
+				MaxTotalMemory:           209715200, // Specified 200MB
+				MaxDependencyDepth:       10,        // Default 10
+				MaxResourcesPerGroup:     1000,      // Default 1000
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+
+			for key, value := range tt.yamlContent {
+				v.Set(key, value)
+			}
+
+			var config Config
+			err := v.Unmarshal(&config)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal config: %v", err)
+			}
+
+			limits := config.GetPerformanceLimitsWithDefaults()
+
+			if limits.MaxPropertiesPerResource != tt.expected.MaxPropertiesPerResource {
+				t.Errorf("MaxPropertiesPerResource = %v, expected %v", limits.MaxPropertiesPerResource, tt.expected.MaxPropertiesPerResource)
+			}
+			if limits.MaxPropertySize != tt.expected.MaxPropertySize {
+				t.Errorf("MaxPropertySize = %v, expected %v", limits.MaxPropertySize, tt.expected.MaxPropertySize)
+			}
+			if limits.MaxTotalMemory != tt.expected.MaxTotalMemory {
+				t.Errorf("MaxTotalMemory = %v, expected %v", limits.MaxTotalMemory, tt.expected.MaxTotalMemory)
+			}
+			if limits.MaxDependencyDepth != tt.expected.MaxDependencyDepth {
+				t.Errorf("MaxDependencyDepth = %v, expected %v", limits.MaxDependencyDepth, tt.expected.MaxDependencyDepth)
+			}
+			if limits.MaxResourcesPerGroup != tt.expected.MaxResourcesPerGroup {
+				t.Errorf("MaxResourcesPerGroup = %v, expected %v", limits.MaxResourcesPerGroup, tt.expected.MaxResourcesPerGroup)
+			}
+		})
+	}
+}

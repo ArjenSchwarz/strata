@@ -11,29 +11,14 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-replace github.com/ArjenSchwarz/go-output/v2 => ../go-output-claude
+replace github.com/ArjenSchwarz/go-output/v2 => ../go-output-claude/v2
 
 require (
-	github.com/ArjenSchwarz/go-output v1.5.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.22.2 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.2.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.2.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.16.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.42.1 // indirect
-	github.com/aws/smithy-go v1.16.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emicklei/dot v1.6.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/gosimple/slug v1.13.1 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.6.7 // indirect

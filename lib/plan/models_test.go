@@ -169,3 +169,137 @@ func TestChangeType_IsDestructive(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceAnalysis_Serialization(t *testing.T) {
+	tests := []struct {
+		name     string
+		analysis ResourceAnalysis
+		wantJSON string
+	}{
+		{
+			name: "complete resource analysis",
+			analysis: ResourceAnalysis{
+				PropertyChanges: PropertyChangeAnalysis{
+					Changes: []PropertyChange{
+						{
+							Name:      "instance_type",
+							Path:      []string{"instance_type"},
+							Before:    "t3.micro",
+							After:     "t3.small",
+							Sensitive: false,
+							Size:      20,
+						},
+					},
+					Count:     1,
+					TotalSize: 20,
+					Truncated: false,
+				},
+				ReplacementReasons: []string{"Instance type changes require replacement"},
+				RiskLevel:          "medium",
+				Dependencies: DependencyInfo{
+					DependsOn: []string{"aws_vpc.main"},
+					UsedBy:    []string{"aws_load_balancer.main"},
+				},
+			},
+			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium","dependencies":{"depends_on":["aws_vpc.main"],"used_by":["aws_load_balancer.main"]}}`,
+		},
+		{
+			name: "analysis with truncated properties",
+			analysis: ResourceAnalysis{
+				PropertyChanges: PropertyChangeAnalysis{
+					Changes:   []PropertyChange{},
+					Count:     150,
+					TotalSize: 2097152, // 2MB
+					Truncated: true,
+				},
+				ReplacementReasons: []string{},
+				RiskLevel:          "high",
+				Dependencies: DependencyInfo{
+					DependsOn: []string{},
+					UsedBy:    []string{},
+				},
+			},
+			wantJSON: `{"property_changes":{"changes":[],"count":150,"total_size_bytes":2097152,"truncated":true},"replacement_reasons":[],"risk_level":"high","dependencies":{"depends_on":[],"used_by":[]}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test marshaling
+			jsonData, err := json.Marshal(tt.analysis)
+			if err != nil {
+				t.Fatalf("Failed to marshal ResourceAnalysis: %v", err)
+			}
+
+			if string(jsonData) != tt.wantJSON {
+				t.Errorf("JSON marshaling failed\nexpected: %s\ngot:      %s", tt.wantJSON, string(jsonData))
+			}
+
+			// Test unmarshaling
+			var unmarshaled ResourceAnalysis
+			err = json.Unmarshal(jsonData, &unmarshaled)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal ResourceAnalysis: %v", err)
+			}
+
+			// Compare key fields
+			if unmarshaled.RiskLevel != tt.analysis.RiskLevel {
+				t.Errorf("RiskLevel mismatch: expected %s, got %s", tt.analysis.RiskLevel, unmarshaled.RiskLevel)
+			}
+			if unmarshaled.PropertyChanges.Count != tt.analysis.PropertyChanges.Count {
+				t.Errorf("PropertyChanges.Count mismatch: expected %d, got %d", tt.analysis.PropertyChanges.Count, unmarshaled.PropertyChanges.Count)
+			}
+			if unmarshaled.PropertyChanges.Truncated != tt.analysis.PropertyChanges.Truncated {
+				t.Errorf("PropertyChanges.Truncated mismatch: expected %v, got %v", tt.analysis.PropertyChanges.Truncated, unmarshaled.PropertyChanges.Truncated)
+			}
+		})
+	}
+}
+
+func TestPropertyChange_SensitiveData(t *testing.T) {
+	tests := []struct {
+		name     string
+		change   PropertyChange
+		expected bool
+	}{
+		{
+			name: "sensitive property",
+			change: PropertyChange{
+				Name:      "password",
+				Before:    "secret123",
+				After:     "newsecret456",
+				Sensitive: true,
+			},
+			expected: true,
+		},
+		{
+			name: "non-sensitive property",
+			change: PropertyChange{
+				Name:      "instance_type",
+				Before:    "t3.micro",
+				After:     "t3.small",
+				Sensitive: false,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.change.Sensitive != tt.expected {
+				t.Errorf("Sensitive flag = %v, expected %v", tt.change.Sensitive, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDependencyInfo_Empty(t *testing.T) {
+	deps := DependencyInfo{}
+
+	if len(deps.DependsOn) != 0 {
+		t.Errorf("Empty DependencyInfo should have no DependsOn, got %d", len(deps.DependsOn))
+	}
+	if len(deps.UsedBy) != 0 {
+		t.Errorf("Empty DependencyInfo should have no UsedBy, got %d", len(deps.UsedBy))
+	}
+}
