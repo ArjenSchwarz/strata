@@ -165,12 +165,12 @@ This document provides an actionable implementation plan for the Enhanced Summar
   - ✅ Built with go-output v2 document builder pattern
   - ✅ References requirements: 1.1-1.7 (progressive disclosure with collapsible sections)
 
-- [ ] 3.6 Write unit tests for fixed and enhanced formatters
-  - Fix existing formatter tests to work with v2 API
-  - Test property formatter with sensitive and non-sensitive changes
-  - Test dependencies formatter with various dependency patterns
-  - Test table data preparation with mixed resource types
-  - Mock go-output v2 components for isolated testing
+- [x] ~~3.6 Write unit tests for fixed and enhanced formatters~~ **COMPLETED**
+  - ✅ Fix existing formatter tests to work with v2 API
+  - ✅ Test property formatter with sensitive and non-sensitive changes
+  - ✅ Test dependencies formatter with various dependency patterns
+  - ✅ Test table data preparation with mixed resource types
+  - ✅ Mock go-output v2 components for isolated testing
 
 ### 4. Implement Provider Grouping with Collapsible Sections
 

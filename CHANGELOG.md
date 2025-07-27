@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Comprehensive Unit Tests for Enhanced Formatters**:
+  - Unit tests for `propertyChangesFormatter()` with sensitive and non-sensitive property change scenarios
+  - Unit tests for `dependenciesFormatter()` with various dependency patterns (depends-on, used-by, no dependencies)
+  - Unit tests for `prepareResourceTableData()` with mixed resource types and risk assessment validation
+  - Unit tests for `formatResourceChangesWithProgressiveDisclosure()` main formatting function
+  - Error handling tests for invalid input types and edge cases
+  - Property change details formatting tests with sensitive data masking validation
+  - Fixed existing formatter tests for go-output v2 API compatibility
+  - Integration tests for go-output v2 component interaction and document creation
 - **go-output v2 Collapsible Content Integration**:
   - Fixed go-output v2 API usage with correct format constants (`output.Table.Name` instead of `output.FormatTable`)
   - Implemented `propertyChangesFormatter()` for collapsible property changes with sensitive data auto-expansion
