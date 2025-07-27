@@ -103,6 +103,30 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		},
 	}
 
+	// Read expand-all configuration from Viper (includes CLI flag override)
+	cfg.ExpandAll = viper.GetBool("expand_all")
+
+	// Load expandable sections configuration from config file if it exists
+	if viper.IsSet("plan.expandable_sections") {
+		if err := viper.UnmarshalKey("plan.expandable_sections", &cfg.Plan.ExpandableSections); err != nil {
+			return fmt.Errorf("failed to parse expandable_sections config: %w", err)
+		}
+	}
+
+	// Load grouping configuration from config file if it exists
+	if viper.IsSet("plan.grouping") {
+		if err := viper.UnmarshalKey("plan.grouping", &cfg.Plan.Grouping); err != nil {
+			return fmt.Errorf("failed to parse grouping config: %w", err)
+		}
+	}
+
+	// Load performance limits configuration from config file if it exists
+	if viper.IsSet("plan.performance_limits") {
+		if err := viper.UnmarshalKey("plan.performance_limits", &cfg.Plan.PerformanceLimits); err != nil {
+			return fmt.Errorf("failed to parse performance_limits config: %w", err)
+		}
+	}
+
 	// Load sensitive resources and properties from config file if they exist
 	if viper.IsSet("sensitive_resources") {
 		if err := viper.UnmarshalKey("sensitive_resources", &cfg.SensitiveResources); err != nil {

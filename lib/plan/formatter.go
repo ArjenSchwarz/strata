@@ -503,10 +503,14 @@ func (f *Formatter) propertyChangesFormatter() func(any) any {
 			// Format details as structured data for display
 			details := f.formatPropertyChangeDetails(propAnalysis.Changes)
 
+			// Auto-expand if sensitive properties are present
+			// Global expansion is handled by ForceExpansion in RendererConfig
+			shouldExpand := sensitiveCount > 0
+
 			return output.NewCollapsibleValue(
 				summary,
 				details,
-				output.WithExpanded(sensitiveCount > 0), // Auto-expand if sensitive
+				output.WithExpanded(shouldExpand),
 			)
 		}
 		return val
@@ -542,10 +546,14 @@ func (f *Formatter) dependenciesFormatter() func(any) any {
 				}
 			}
 
+			// Dependencies collapsed by default
+			// Global expansion is handled by ForceExpansion in RendererConfig
+			shouldExpand := false
+
 			return output.NewCollapsibleValue(
 				summary,
 				strings.Join(details, "\n"),
-				output.WithExpanded(false), // Dependencies collapsed by default
+				output.WithExpanded(shouldExpand),
 			)
 		}
 		return val
@@ -745,4 +753,56 @@ func (f *Formatter) hasHighRiskChanges(resources []ResourceChange) bool {
 		}
 	}
 	return false
+}
+
+// createOutputWithConfig creates go-output v2 Output with collapsible configuration
+func (f *Formatter) createOutputWithConfig(format output.Format) *output.Output {
+	// Create renderer configuration with global expansion setting
+	rendererConfig := output.RendererConfig{
+		ForceExpansion:       f.config.ExpandAll,
+		MaxDetailLength:      500,
+		TruncateIndicator:    "... [truncated]",
+		TableHiddenIndicator: "[expand for details]",
+		HTMLCSSClasses: map[string]string{
+			"details": "strata-collapsible",
+			"summary": "strata-summary",
+			"content": "strata-details",
+		},
+	}
+
+	// Create format with collapsible-enabled renderer based on format type
+	var actualFormat output.Format
+	switch format.Name {
+	case output.Table.Name:
+		actualFormat = output.Format{
+			Name:     output.Table.Name,
+			Renderer: output.NewTableRendererWithCollapsible("Default", rendererConfig),
+		}
+	case output.Markdown.Name:
+		actualFormat = output.Format{
+			Name:     output.Markdown.Name,
+			Renderer: output.NewMarkdownRendererWithCollapsible(rendererConfig),
+		}
+	case output.HTML.Name:
+		actualFormat = output.Format{
+			Name:     output.HTML.Name,
+			Renderer: output.NewHTMLRendererWithCollapsible(rendererConfig),
+		}
+	case output.CSV.Name:
+		actualFormat = output.Format{
+			Name:     output.CSV.Name,
+			Renderer: output.NewCSVRendererWithCollapsible(rendererConfig),
+		}
+	default:
+		// Fallback to original format for unsupported types (like JSON)
+		actualFormat = format
+	}
+
+	// Create output options with configured format
+	options := []output.OutputOption{
+		output.WithFormat(actualFormat),
+		output.WithWriter(output.NewStdoutWriter()),
+	}
+
+	return output.NewOutput(options...)
 }

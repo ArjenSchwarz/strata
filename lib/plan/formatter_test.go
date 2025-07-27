@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	output "github.com/ArjenSchwarz/go-output/v2"
 	"github.com/ArjenSchwarz/strata/config"
 )
 
@@ -329,6 +330,182 @@ func TestFormatter_hasHighRiskChanges(t *testing.T) {
 			if result != tc.expected {
 				t.Errorf("hasHighRiskChanges() = %v, expected %v", result, tc.expected)
 			}
+		})
+	}
+}
+
+// Test cases for expand-all functionality
+func TestFormatter_propertyChangesFormatter_ExpandAll(t *testing.T) {
+	testCases := []struct {
+		name         string
+		expandAll    bool
+		hasSensitive bool
+		expected     bool // expected expansion state
+	}{
+		{
+			name:         "ExpandAll false, no sensitive properties",
+			expandAll:    false,
+			hasSensitive: false,
+			expected:     false,
+		},
+		{
+			name:         "ExpandAll false, has sensitive properties",
+			expandAll:    false,
+			hasSensitive: true,
+			expected:     true, // Should expand due to sensitive properties
+		},
+		{
+			name:         "ExpandAll true, no sensitive properties",
+			expandAll:    true,
+			hasSensitive: false,
+			expected:     false, // Individual formatter doesn't expand, ForceExpansion will handle it
+		},
+		{
+			name:         "ExpandAll true, has sensitive properties",
+			expandAll:    true,
+			hasSensitive: true,
+			expected:     true, // Should expand due to sensitive properties
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				ExpandAll: tc.expandAll,
+			}
+			formatter := NewFormatter(cfg)
+
+			// Create test property changes
+			var changes []PropertyChange
+			if tc.hasSensitive {
+				changes = append(changes, PropertyChange{
+					Name:      "sensitive_prop",
+					Before:    "old",
+					After:     "new",
+					Sensitive: true,
+				})
+			}
+			changes = append(changes, PropertyChange{
+				Name:      "normal_prop",
+				Before:    "val1",
+				After:     "val2",
+				Sensitive: false,
+			})
+
+			propAnalysis := PropertyChangeAnalysis{
+				Changes: changes,
+				Count:   len(changes),
+			}
+
+			// Get the formatter function and apply it
+			formatterFunc := formatter.propertyChangesFormatter()
+			result := formatterFunc(propAnalysis)
+
+			// Check if result is a CollapsibleValue
+			if collapsibleValue, ok := result.(output.CollapsibleValue); ok {
+				if collapsibleValue.IsExpanded() != tc.expected {
+					t.Errorf("propertyChangesFormatter() expansion = %v, expected %v",
+						collapsibleValue.IsExpanded(), tc.expected)
+				}
+			} else {
+				t.Errorf("propertyChangesFormatter() did not return CollapsibleValue, got %T", result)
+			}
+		})
+	}
+}
+
+func TestFormatter_dependenciesFormatter_ExpandAll(t *testing.T) {
+	testCases := []struct {
+		name      string
+		expandAll bool
+		expected  bool // expected expansion state
+	}{
+		{
+			name:      "ExpandAll false",
+			expandAll: false,
+			expected:  false,
+		},
+		{
+			name:      "ExpandAll true",
+			expandAll: true,
+			expected:  false, // Individual formatter doesn't expand, ForceExpansion will handle it
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				ExpandAll: tc.expandAll,
+			}
+			formatter := NewFormatter(cfg)
+
+			// Create test dependency info
+			deps := &DependencyInfo{
+				DependsOn: []string{"resource1", "resource2"},
+				UsedBy:    []string{"resource3"},
+			}
+
+			// Get the formatter function and apply it
+			formatterFunc := formatter.dependenciesFormatter()
+			result := formatterFunc(deps)
+
+			// Check if result is a CollapsibleValue
+			if collapsibleValue, ok := result.(output.CollapsibleValue); ok {
+				if collapsibleValue.IsExpanded() != tc.expected {
+					t.Errorf("dependenciesFormatter() expansion = %v, expected %v",
+						collapsibleValue.IsExpanded(), tc.expected)
+				}
+			} else {
+				t.Errorf("dependenciesFormatter() did not return CollapsibleValue, got %T", result)
+			}
+		})
+	}
+}
+
+func TestFormatter_createOutputWithConfig(t *testing.T) {
+	testCases := []struct {
+		name      string
+		expandAll bool
+		format    output.Format
+	}{
+		{
+			name:      "ExpandAll false with table format",
+			expandAll: false,
+			format:    output.Table,
+		},
+		{
+			name:      "ExpandAll true with table format",
+			expandAll: true,
+			format:    output.Table,
+		},
+		{
+			name:      "ExpandAll false with JSON format",
+			expandAll: false,
+			format:    output.JSON,
+		},
+		{
+			name:      "ExpandAll true with JSON format",
+			expandAll: true,
+			format:    output.JSON,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				ExpandAll: tc.expandAll,
+			}
+			formatter := NewFormatter(cfg)
+
+			// Test that createOutputWithConfig doesn't panic and returns valid output
+			outputInstance := formatter.createOutputWithConfig(tc.format)
+			if outputInstance == nil {
+				t.Error("createOutputWithConfig() returned nil")
+			}
+
+			// Note: The global expansion setting is now applied through RendererConfig.ForceExpansion
+			// This is a more proper implementation that uses the actual go-output v2 API
+			// for global expansion control rather than custom logic in individual formatters
 		})
 	}
 }
