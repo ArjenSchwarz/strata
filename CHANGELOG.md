@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **GitHub Action expand-all Support**:
+  - Added `expand-all` input parameter to GitHub Action configuration with default `false`
+  - GitHub Action now supports `expand-all: true` to expand all collapsible sections in PR comments
+  - Updated action.sh to validate and sanitize expand-all boolean input parameter
+  - Enhanced lib/action/strata.sh to pass `--expand-all` flag through to strata command
+  - Added INPUT_EXPAND_ALL environment variable mapping in action configuration
+  - Proper parameter flow: action.yml → action.sh → strata.sh → strata command
+  - Maintains backward compatibility - default behavior unchanged when expand-all not specified
+  - Added comprehensive logging to track expand-all parameter through execution chain
 - **Global Expand-All Flag Support**:
   - Added `--expand-all` / `-e` CLI flag to expand all collapsible sections globally
   - CLI flag bound to Viper configuration system with automatic config file override

@@ -150,10 +150,11 @@ run_strata() {
   local stdout_format=$1
   local plan_file=$2
   local show_details=$3
+  local expand_all=$4
   
   
   # Comprehensive logging for dual output initialization
-  log "Initializing dual output execution" "Display format: $stdout_format, File format: markdown, Show details: $show_details"
+  log "Initializing dual output execution" "Display format: $stdout_format, File format: markdown, Show details: $show_details, Expand all: $expand_all"
   log "Dual output configuration" "Stdout: $stdout_format (for terminal display), File: markdown (for GitHub features)"
   log "Plan file path" "$plan_file"
   
@@ -226,6 +227,11 @@ run_strata() {
   
   if [ "$show_details" = "true" ]; then
     cmd="$cmd --details"
+  fi
+  
+  # Add expand-all flag if enabled
+  if [ "$expand_all" = "true" ]; then
+    cmd="$cmd --expand-all"
   fi
   
   # Add plan file

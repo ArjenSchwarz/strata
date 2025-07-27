@@ -78,6 +78,7 @@ validate_and_sanitize_inputs() {
 
   # Sanitize and validate boolean inputs
   SHOW_DETAILS=$(sanitize_input_parameter "show-details" "${INPUT_SHOW_DETAILS:-false}" "boolean")
+  EXPAND_ALL=$(sanitize_input_parameter "expand-all" "${INPUT_EXPAND_ALL:-false}" "boolean")
   COMMENT_ON_PR=$(sanitize_input_parameter "comment-on-pr" "${INPUT_COMMENT_ON_PR:-true}" "boolean")
   UPDATE_COMMENT=$(sanitize_input_parameter "update-comment" "${INPUT_UPDATE_COMMENT:-true}" "boolean")
 
@@ -115,7 +116,7 @@ execute_strata_analysis() {
   
   # Call run_strata directly to allow real-time output display
   # The function will set STRATA_OUTPUT and STRATA_EXIT_CODE as global variables
-  run_strata "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS"
+  run_strata "table" "$INPUT_PLAN_FILE" "$SHOW_DETAILS" "$EXPAND_ALL"
   STRATA_EXIT_CODE=$?
 
   # Log the results of dual output execution
@@ -165,7 +166,7 @@ Please check the action logs for more details."
 }
 
 # Export variables that are used by modules but defined here
-export TEMP_DIR COMMENT_ON_PR UPDATE_COMMENT COMMENT_HEADER
+export TEMP_DIR COMMENT_ON_PR UPDATE_COMMENT COMMENT_HEADER EXPAND_ALL
 
 # Export functions that might be needed by modules
 export -f log warning error set_output write_summary
