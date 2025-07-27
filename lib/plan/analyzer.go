@@ -866,6 +866,45 @@ func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnal
 	return analysis, nil
 }
 
+// groupByProvider groups resource changes by provider with smart grouping logic
+func (a *Analyzer) groupByProvider(changes []ResourceChange) map[string][]ResourceChange {
+	groups := make(map[string][]ResourceChange)
+
+	// Check if grouping should be applied
+	if a.config == nil || !a.config.Plan.Grouping.Enabled {
+		return groups
+	}
+
+	// Check threshold - only group if we have enough resources
+	threshold := a.config.Plan.Grouping.Threshold
+	if threshold == 0 {
+		threshold = 10 // Default threshold
+	}
+	if len(changes) < threshold {
+		return groups
+	}
+
+	// Count providers to check diversity
+	providerCounts := make(map[string]int)
+	for _, change := range changes {
+		provider := a.extractProvider(change.Type)
+		providerCounts[provider]++
+	}
+
+	// Skip grouping if all resources are from the same provider
+	if len(providerCounts) <= 1 {
+		return groups
+	}
+
+	// Group resources by provider
+	for _, change := range changes {
+		provider := a.extractProvider(change.Type)
+		groups[provider] = append(groups[provider], change)
+	}
+
+	return groups
+}
+
 // equals is a helper to compare two values, handling maps and slices specially
 func equals(a, b any) bool {
 	// Handle nil cases

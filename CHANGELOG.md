@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Provider Grouping with Collapsible Sections**:
+  - `groupByProvider()` function for smart resource grouping by provider with configurable thresholds
+  - `formatGroupedWithCollapsibleSections()` function for provider-based resource organization using go-output v2 sections
+  - `hasHighRiskChanges()` helper function for auto-expansion of high-risk provider groups
+  - `getResourceTableSchema()` for consistent table schema across grouped displays
+  - Smart grouping logic that only activates with multiple providers and sufficient resource count (default: 10)
+  - Provider diversity checking to skip grouping when all resources are from same provider
+  - Comprehensive unit test coverage with 7 test cases for grouping logic and 6 test cases for risk detection
+  - Integration with existing collapsible formatters (property changes, dependencies) within provider sections
 - **Comprehensive Unit Tests for Enhanced Formatters**:
   - Unit tests for `propertyChangesFormatter()` with sensitive and non-sensitive property change scenarios
   - Unit tests for `dependenciesFormatter()` with various dependency patterns (depends-on, used-by, no dependencies)

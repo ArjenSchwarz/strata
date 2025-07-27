@@ -675,3 +675,74 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 
 	return builder.Build(), nil
 }
+
+// formatGroupedWithCollapsibleSections uses go-output v2 collapsible sections for provider grouping
+func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error) {
+	builder := output.New()
+
+	builder.Header("Terraform Plan Summary by Provider")
+
+	// Create sections for each provider using the Section method
+	for provider, resources := range groups {
+		// Prepare table data for this provider's resources
+		tableData := f.prepareResourceTableData(resources)
+
+		// Define schema for resource tables
+		schema := f.getResourceTableSchema()
+
+		// Add section using builder's Section method
+		builder = builder.Section(
+			fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(provider), len(resources)),
+			func(b *output.Builder) {
+				b.Table(
+					fmt.Sprintf("%s Resources", strings.ToUpper(provider)),
+					tableData,
+					output.WithSchema(schema...),
+				)
+			},
+		)
+	}
+
+	return builder.Build(), nil
+}
+
+// getResourceTableSchema returns the schema configuration for resource tables
+func (f *Formatter) getResourceTableSchema() []output.Field {
+	return []output.Field{
+		{
+			Name:      "address",
+			Type:      "string",
+			Formatter: output.FilePathFormatter(40),
+		},
+		{
+			Name: "change_type",
+			Type: "string",
+		},
+		{
+			Name: "risk_level",
+			Type: "string",
+			// Simple string display, could add color formatting later
+		},
+		{
+			Name:      "property_changes",
+			Type:      "object",
+			Formatter: f.propertyChangesFormatter(),
+		},
+		{
+			Name:      "dependencies",
+			Type:      "object",
+			Formatter: f.dependenciesFormatter(),
+		},
+	}
+}
+
+// hasHighRiskChanges checks if any resources in the list are high risk
+func (f *Formatter) hasHighRiskChanges(resources []ResourceChange) bool {
+	for _, resource := range resources {
+		// Auto-expand for critical or high risk changes
+		if resource.IsDangerous && (resource.ChangeType == ChangeTypeDelete || resource.ChangeType == ChangeTypeReplace) {
+			return true
+		}
+	}
+	return false
+}
