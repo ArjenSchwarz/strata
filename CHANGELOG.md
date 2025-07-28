@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Comprehensive Test Suite for Enhanced Summary Visualization**:
+  - End-to-end integration tests covering complete flow from plan parsing to formatted output with 5 comprehensive test scenarios
+  - Error handling tests for malformed Terraform plans, graceful degradation, memory limits, and circular dependency detection
+  - Performance validation tests including benchmarks for small/medium/large plans (10/100/1000 resources) with performance targets (<100ms/<1s/<10s)
+  - Memory usage verification tests ensuring system stays under 500MB limit for large plans
+  - Test fixtures with realistic Terraform plan JSON data for simple, multi-provider, high-risk, and dependency scenarios
+  - Collapsible formatter performance tests comparing overhead vs simple display (max 3x allowed)
 - **GitHub Action expand-all Support**:
   - Added `expand-all` input parameter to GitHub Action configuration with default `false`
   - GitHub Action now supports `expand-all: true` to expand all collapsible sections in PR comments
@@ -56,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Compilation errors in formatter.go due to incorrect go-output v2 format constant usage
 - ActionSortTransformer now uses correct v2 format constants for proper format detection
+- Analyzer nil plan handling - Added plan loading fallback in GenerateSummary method to prevent nil pointer errors
+
+### Changed
+- Claude settings - Added MCP context7 documentation tools and copy command permissions for enhanced development capabilities
 
 ### Added
 - Core analysis functions for enhanced summary visualization:

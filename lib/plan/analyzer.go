@@ -29,6 +29,15 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 func (a *Analyzer) GenerateSummary(planFile string) *PlanSummary {
 	parser := NewParser(planFile)
 
+	// Load the plan if not already loaded
+	if a.plan == nil {
+		plan, err := parser.LoadPlan()
+		if err != nil {
+			return nil
+		}
+		a.plan = plan
+	}
+
 	summary := &PlanSummary{
 		FormatVersion:    a.plan.FormatVersion,
 		TerraformVersion: a.plan.TerraformVersion,

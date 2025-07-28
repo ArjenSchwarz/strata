@@ -1,0 +1,309 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.6.2",
+    "variables": {
+        "environment": {
+            "value": "production"
+        },
+        "region": {
+            "value": "us-west-2"
+        }
+    },
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.web_server[0]",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web_server",
+                    "index": 0,
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "ami": "ami-0c02fb55956c7d316",
+                        "instance_type": "t3.medium",
+                        "tags": {
+                            "Environment": "production",
+                            "Name": "web-server-1"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "resource_changes": [
+        {
+            "address": "aws_instance.web_server[0]",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web_server",
+            "index": 0,
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.medium",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "web-server-1"
+                    },
+                    "vpc_security_group_ids": [
+                        "sg-12345678"
+                    ],
+                    "subnet_id": "subnet-abcdef12"
+                },
+                "after_unknown": {
+                    "id": true,
+                    "public_ip": true,
+                    "private_ip": true,
+                    "arn": true
+                }
+            }
+        },
+        {
+            "address": "aws_instance.web_server[1]",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web_server",
+            "index": 1,
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.small",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "web-server-2"
+                    },
+                    "vpc_security_group_ids": [
+                        "sg-87654321"
+                    ],
+                    "subnet_id": "subnet-abcdef12"
+                },
+                "after": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.medium",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "web-server-2",
+                        "UpdatedBy": "terraform"
+                    },
+                    "vpc_security_group_ids": [
+                        "sg-12345678"
+                    ],
+                    "subnet_id": "subnet-abcdef12"
+                },
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "aws_instance.legacy_server",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "legacy_server",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "ami": "ami-0abcdef1234567890",
+                    "instance_type": "t2.micro",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "legacy-server",
+                        "Deprecated": "true"
+                    },
+                    "vpc_security_group_ids": [
+                        "sg-99999999"
+                    ],
+                    "subnet_id": "subnet-legacy01"
+                },
+                "after": null,
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "aws_db_instance.main",
+            "mode": "managed",
+            "type": "aws_db_instance",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "replace"
+                ],
+                "before": {
+                    "allocated_storage": 20,
+                    "engine": "mysql",
+                    "engine_version": "8.0.28",
+                    "instance_class": "db.t3.micro",
+                    "db_name": "appdb",
+                    "username": "admin",
+                    "backup_retention_period": 7,
+                    "multi_az": false
+                },
+                "after": {
+                    "allocated_storage": 50,
+                    "engine": "mysql",
+                    "engine_version": "8.0.35",
+                    "instance_class": "db.t3.small",
+                    "db_name": "appdb",
+                    "username": "admin",
+                    "backup_retention_period": 14,
+                    "multi_az": true
+                },
+                "after_unknown": {
+                    "id": true,
+                    "endpoint": true,
+                    "port": true,
+                    "arn": true
+                }
+            }
+        },
+        {
+            "address": "aws_s3_bucket.app_assets",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "app_assets",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "bucket": "my-app-assets-prod-12345",
+                    "tags": {
+                        "Environment": "production",
+                        "Purpose": "static-assets"
+                    }
+                },
+                "after": {
+                    "bucket": "my-app-assets-prod-12345",
+                    "tags": {
+                        "Environment": "production",
+                        "Purpose": "static-assets",
+                        "BackupEnabled": "true",
+                        "CostCenter": "engineering"
+                    }
+                },
+                "after_unknown": {}
+            }
+        },
+        {
+            "address": "aws_security_group.web_sg",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "web_sg",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "name": "web-security-group",
+                    "description": "Security group for web servers",
+                    "vpc_id": "vpc-12345678",
+                    "ingress": [
+                        {
+                            "from_port": 80,
+                            "to_port": 80,
+                            "protocol": "tcp",
+                            "cidr_blocks": [
+                                "0.0.0.0/0"
+                            ]
+                        },
+                        {
+                            "from_port": 443,
+                            "to_port": 443,
+                            "protocol": "tcp",
+                            "cidr_blocks": [
+                                "0.0.0.0/0"
+                            ]
+                        }
+                    ],
+                    "egress": [
+                        {
+                            "from_port": 0,
+                            "to_port": 0,
+                            "protocol": "-1",
+                            "cidr_blocks": [
+                                "0.0.0.0/0"
+                            ]
+                        }
+                    ],
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "web-sg"
+                    }
+                },
+                "after_unknown": {
+                    "id": true,
+                    "arn": true
+                }
+            }
+        },
+        {
+            "address": "aws_launch_template.web",
+            "mode": "managed",
+            "type": "aws_launch_template",
+            "name": "web",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "replace"
+                ],
+                "before": {
+                    "name": "web-launch-template",
+                    "image_id": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.small",
+                    "vpc_security_group_ids": [
+                        "sg-87654321"
+                    ],
+                    "user_data": "IyEvYmluL2Jhc2gKZWNobyAiSGVsbG8gV29ybGQi"
+                },
+                "after": {
+                    "name": "web-launch-template",
+                    "image_id": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.medium",
+                    "vpc_security_group_ids": [
+                        "sg-12345678"
+                    ],
+                    "user_data": "IyEvYmluL2Jhc2gKZWNobyAiVXBkYXRlZCBTZXJ2ZXIi"
+                },
+                "after_unknown": {
+                    "id": true,
+                    "arn": true,
+                    "latest_version": true
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "provider_config": {
+            "aws": {
+                "name": "aws",
+                "full_name": "registry.terraform.io/hashicorp/aws",
+                "version_constraint": "~> 5.0",
+                "expressions": {
+                    "region": {
+                        "references": [
+                            "var.region"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "timestamp": "2024-03-15T14:30:25Z",
+    "errored": false
+}

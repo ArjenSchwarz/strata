@@ -1,0 +1,589 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.5.0",
+    "planned_changes": {
+        "add": 11,
+        "change": 0,
+        "remove": 0
+    },
+    "resource_changes": [
+        {
+            "address": "aws_vpc.main",
+            "mode": "managed",
+            "type": "aws_vpc",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "cidr_block": "10.0.0.0/16",
+                    "enable_dns_hostnames": true,
+                    "enable_dns_support": true,
+                    "tags": {
+                        "Name": "main-vpc",
+                        "Environment": "production"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "default_network_acl_id": true,
+                    "default_route_table_id": true,
+                    "default_security_group_id": true,
+                    "dhcp_options_id": true,
+                    "id": true,
+                    "instance_tenancy": true,
+                    "ipv6_association_id": true,
+                    "ipv6_cidr_block": true,
+                    "ipv6_cidr_block_network_border_group": true,
+                    "main_route_table_id": true,
+                    "owner_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_s3_bucket.storage",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "storage",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "bucket": "my-app-storage-bucket-12345",
+                    "tags": {
+                        "Environment": "production",
+                        "Purpose": "application-storage"
+                    }
+                },
+                "after_unknown": {
+                    "acceleration_status": true,
+                    "acl": true,
+                    "arn": true,
+                    "bucket_domain_name": true,
+                    "bucket_regional_domain_name": true,
+                    "cors_rule": true,
+                    "grant": true,
+                    "hosted_zone_id": true,
+                    "id": true,
+                    "lifecycle_rule": true,
+                    "logging": true,
+                    "notification": true,
+                    "object_lock_configuration": true,
+                    "policy": true,
+                    "region": true,
+                    "replication_configuration": true,
+                    "request_payer": true,
+                    "server_side_encryption_configuration": true,
+                    "versioning": true,
+                    "website": true,
+                    "website_domain": true,
+                    "website_endpoint": true
+                }
+            }
+        },
+        {
+            "address": "aws_instance.web",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.micro",
+                    "tags": {
+                        "Name": "web-server",
+                        "Environment": "production"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "associate_public_ip_address": true,
+                    "availability_zone": true,
+                    "cpu_core_count": true,
+                    "cpu_threads_per_core": true,
+                    "ebs_block_device": true,
+                    "ebs_optimized": true,
+                    "ephemeral_block_device": true,
+                    "get_password_data": true,
+                    "host_id": true,
+                    "id": true,
+                    "instance_state": true,
+                    "ipv6_address_count": true,
+                    "ipv6_addresses": true,
+                    "key_name": true,
+                    "metadata_options": true,
+                    "monitoring": true,
+                    "network_interface": true,
+                    "outpost_arn": true,
+                    "password_data": true,
+                    "placement_group": true,
+                    "primary_network_interface_id": true,
+                    "private_dns": true,
+                    "private_ip": true,
+                    "public_dns": true,
+                    "public_ip": true,
+                    "root_block_device": true,
+                    "secondary_private_ips": true,
+                    "security_groups": true,
+                    "source_dest_check": true,
+                    "subnet_id": true,
+                    "tenancy": true,
+                    "user_data": true,
+                    "user_data_base64": true,
+                    "vpc_security_group_ids": true
+                }
+            }
+        },
+        {
+            "address": "azurerm_resource_group.main",
+            "mode": "managed",
+            "type": "azurerm_resource_group",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "location": "East US",
+                    "name": "rg-myapp-prod",
+                    "tags": {
+                        "Environment": "production",
+                        "Project": "myapp"
+                    }
+                },
+                "after_unknown": {
+                    "id": true
+                }
+            }
+        },
+        {
+            "address": "azurerm_virtual_network.main",
+            "mode": "managed",
+            "type": "azurerm_virtual_network",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "address_space": [
+                        "10.1.0.0/16"
+                    ],
+                    "location": "East US",
+                    "name": "vnet-myapp-prod",
+                    "resource_group_name": "rg-myapp-prod",
+                    "tags": {
+                        "Environment": "production"
+                    }
+                },
+                "after_unknown": {
+                    "ddos_protection_plan": true,
+                    "dns_servers": true,
+                    "guid": true,
+                    "id": true,
+                    "subnet": true
+                }
+            }
+        },
+        {
+            "address": "azurerm_storage_account.main",
+            "mode": "managed",
+            "type": "azurerm_storage_account",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "account_replication_type": "LRS",
+                    "account_tier": "Standard",
+                    "location": "East US",
+                    "name": "stmyappprod12345",
+                    "resource_group_name": "rg-myapp-prod",
+                    "tags": {
+                        "Environment": "production"
+                    }
+                },
+                "after_unknown": {
+                    "access_tier": true,
+                    "account_kind": true,
+                    "allow_blob_public_access": true,
+                    "blob_properties": true,
+                    "custom_domain": true,
+                    "enable_https_traffic_only": true,
+                    "id": true,
+                    "identity": true,
+                    "is_hns_enabled": true,
+                    "large_file_share_enabled": true,
+                    "min_tls_version": true,
+                    "network_rules": true,
+                    "primary_access_key": true,
+                    "primary_blob_connection_string": true,
+                    "primary_blob_endpoint": true,
+                    "primary_blob_host": true,
+                    "primary_connection_string": true,
+                    "primary_dfs_endpoint": true,
+                    "primary_dfs_host": true,
+                    "primary_file_endpoint": true,
+                    "primary_file_host": true,
+                    "primary_location": true,
+                    "primary_queue_endpoint": true,
+                    "primary_queue_host": true,
+                    "primary_table_endpoint": true,
+                    "primary_table_host": true,
+                    "primary_web_endpoint": true,
+                    "primary_web_host": true,
+                    "queue_properties": true,
+                    "routing": true,
+                    "secondary_access_key": true,
+                    "secondary_blob_connection_string": true,
+                    "secondary_blob_endpoint": true,
+                    "secondary_blob_host": true,
+                    "secondary_connection_string": true,
+                    "secondary_dfs_endpoint": true,
+                    "secondary_dfs_host": true,
+                    "secondary_file_endpoint": true,
+                    "secondary_file_host": true,
+                    "secondary_location": true,
+                    "secondary_queue_endpoint": true,
+                    "secondary_queue_host": true,
+                    "secondary_table_endpoint": true,
+                    "secondary_table_host": true,
+                    "secondary_web_endpoint": true,
+                    "secondary_web_host": true,
+                    "share_properties": true,
+                    "static_website": true
+                }
+            }
+        },
+        {
+            "address": "google_compute_network.main",
+            "mode": "managed",
+            "type": "google_compute_network",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/google",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "auto_create_subnetworks": false,
+                    "description": "Main VPC network for the application",
+                    "name": "main-network",
+                    "project": "my-gcp-project-12345",
+                    "routing_mode": "REGIONAL"
+                },
+                "after_unknown": {
+                    "gateway_ipv4": true,
+                    "id": true,
+                    "self_link": true
+                }
+            }
+        },
+        {
+            "address": "google_compute_instance.web",
+            "mode": "managed",
+            "type": "google_compute_instance",
+            "name": "web",
+            "provider_name": "registry.terraform.io/hashicorp/google",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "boot_disk": [
+                        {
+                            "auto_delete": true,
+                            "device_name": "persistent-disk-0",
+                            "initialize_params": [
+                                {
+                                    "image": "debian-cloud/debian-11",
+                                    "size": 20,
+                                    "type": "pd-standard"
+                                }
+                            ]
+                        }
+                    ],
+                    "machine_type": "e2-micro",
+                    "name": "web-server",
+                    "network_interface": [
+                        {
+                            "network": "main-network",
+                            "subnetwork": "main-subnet"
+                        }
+                    ],
+                    "tags": [
+                        "web",
+                        "production"
+                    ],
+                    "zone": "us-central1-a"
+                },
+                "after_unknown": {
+                    "can_ip_forward": true,
+                    "cpu_platform": true,
+                    "current_status": true,
+                    "deletion_protection": true,
+                    "guest_accelerator": true,
+                    "hostname": true,
+                    "id": true,
+                    "instance_id": true,
+                    "label_fingerprint": true,
+                    "labels": true,
+                    "metadata": true,
+                    "metadata_fingerprint": true,
+                    "metadata_startup_script": true,
+                    "min_cpu_platform": true,
+                    "project": true,
+                    "scheduling": true,
+                    "scratch_disk": true,
+                    "self_link": true,
+                    "service_account": true,
+                    "shielded_instance_config": true,
+                    "tags_fingerprint": true
+                }
+            }
+        },
+        {
+            "address": "google_storage_bucket.main",
+            "mode": "managed",
+            "type": "google_storage_bucket",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/google",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "location": "US",
+                    "name": "my-app-storage-bucket-gcp-12345",
+                    "project": "my-gcp-project-12345",
+                    "storage_class": "STANDARD"
+                },
+                "after_unknown": {
+                    "cors": true,
+                    "default_event_based_hold": true,
+                    "encryption": true,
+                    "force_destroy": true,
+                    "id": true,
+                    "labels": true,
+                    "lifecycle_rule": true,
+                    "logging": true,
+                    "retention_policy": true,
+                    "self_link": true,
+                    "url": true,
+                    "versioning": true,
+                    "website": true
+                }
+            }
+        },
+        {
+            "address": "kubernetes_namespace.app",
+            "mode": "managed",
+            "type": "kubernetes_namespace",
+            "name": "app",
+            "provider_name": "registry.terraform.io/hashicorp/kubernetes",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "metadata": [
+                        {
+                            "annotations": {},
+                            "labels": {
+                                "environment": "production",
+                                "managed-by": "terraform"
+                            },
+                            "name": "myapp-production"
+                        }
+                    ]
+                },
+                "after_unknown": {
+                    "id": true,
+                    "metadata": [
+                        {
+                            "generation": true,
+                            "resource_version": true,
+                            "uid": true
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "address": "helm_release.nginx_ingress",
+            "mode": "managed",
+            "type": "helm_release",
+            "name": "nginx_ingress",
+            "provider_name": "registry.terraform.io/hashicorp/helm",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "chart": "ingress-nginx",
+                    "create_namespace": true,
+                    "name": "nginx-ingress",
+                    "namespace": "ingress-nginx",
+                    "repository": "https://kubernetes.github.io/ingress-nginx",
+                    "values": [
+                        "controller:\n  service:\n    type: LoadBalancer\n  metrics:\n    enabled: true\n"
+                    ],
+                    "version": "4.7.1",
+                    "wait": true
+                },
+                "after_unknown": {
+                    "atomic": true,
+                    "cleanup_on_fail": true,
+                    "dependency_update": true,
+                    "description": true,
+                    "devel": true,
+                    "disable_crd_hooks": true,
+                    "disable_openapi_validation": true,
+                    "disable_webhooks": true,
+                    "force_update": true,
+                    "id": true,
+                    "keyring": true,
+                    "lint": true,
+                    "manifest": true,
+                    "max_history": true,
+                    "metadata": true,
+                    "pass_credentials": true,
+                    "postrender": true,
+                    "recreate_pods": true,
+                    "render_subchart_notes": true,
+                    "replace": true,
+                    "reset_values": true,
+                    "reuse_values": true,
+                    "set": true,
+                    "set_sensitive": true,
+                    "skip_crds": true,
+                    "status": true,
+                    "timeout": true,
+                    "verify": true,
+                    "wait_for_jobs": true
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "provider_config": {
+            "aws": {
+                "name": "aws",
+                "full_name": "registry.terraform.io/hashicorp/aws",
+                "version_constraint": "~> 5.0"
+            },
+            "azurerm": {
+                "name": "azurerm",
+                "full_name": "registry.terraform.io/hashicorp/azurerm",
+                "version_constraint": "~> 3.0"
+            },
+            "google": {
+                "name": "google",
+                "full_name": "registry.terraform.io/hashicorp/google",
+                "version_constraint": "~> 4.0"
+            },
+            "kubernetes": {
+                "name": "kubernetes",
+                "full_name": "registry.terraform.io/hashicorp/kubernetes",
+                "version_constraint": "~> 2.0"
+            },
+            "helm": {
+                "name": "helm",
+                "full_name": "registry.terraform.io/hashicorp/helm",
+                "version_constraint": "~> 2.0"
+            }
+        },
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_vpc.main",
+                    "mode": "managed",
+                    "type": "aws_vpc",
+                    "name": "main",
+                    "provider_config_key": "aws",
+                    "expressions": {
+                        "cidr_block": {
+                            "constant_value": "10.0.0.0/16"
+                        },
+                        "enable_dns_hostnames": {
+                            "constant_value": true
+                        },
+                        "enable_dns_support": {
+                            "constant_value": true
+                        },
+                        "tags": {
+                            "constant_value": {
+                                "Name": "main-vpc",
+                                "Environment": "production"
+                            }
+                        }
+                    }
+                },
+                {
+                    "address": "aws_s3_bucket.storage",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket",
+                    "name": "storage",
+                    "provider_config_key": "aws",
+                    "expressions": {
+                        "bucket": {
+                            "constant_value": "my-app-storage-bucket-12345"
+                        },
+                        "tags": {
+                            "constant_value": {
+                                "Environment": "production",
+                                "Purpose": "application-storage"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "variables": {},
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_vpc.main",
+                    "mode": "managed",
+                    "type": "aws_vpc",
+                    "name": "main",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "values": {
+                        "cidr_block": "10.0.0.0/16",
+                        "enable_dns_hostnames": true,
+                        "enable_dns_support": true,
+                        "tags": {
+                            "Name": "main-vpc",
+                            "Environment": "production"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

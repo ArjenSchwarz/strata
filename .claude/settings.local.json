@@ -34,7 +34,9 @@
       "Bash(cat:*)",
       "WebFetch(domain:pkg.go.dev)",
       "Bash(./strata:*)",
-      "mcp__context7__resolve-library-id"
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
