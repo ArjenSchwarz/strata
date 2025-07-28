@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Multi-table rendering in Markdown and HTML formats**: Resolved critical bug where Plan Information and Summary Statistics tables were missing in markdown/HTML output due to ActionSortTransformer interference with multi-table rendering
+- **Simplified plan rendering architecture**: Unified all table creation using `output.NewTableContent()` pattern following go-output v2 best practices, eliminating architectural complexity and mixed rendering approaches
+- **Provider grouping with collapsible sections**: Enhanced provider-based resource grouping to use proper collapsible sections with auto-expansion for high-risk changes
+
+### Changed
+- **Unified table creation pattern**: All tables now created consistently in `OutputSummary()` method using single `output.New().AddContent().Build()` document building pattern
+- **ActionSortTransformer scope**: Limited ActionSortTransformer to table/JSON/CSV formats only, excluding markdown/HTML to prevent rendering conflicts
+- **Performance test threshold**: Adjusted collapsible formatting performance threshold from 3x to 6x slower to accommodate multi-table rendering complexity
+
 ## [1.1.0] - 2025-07-28
 
 ### Added

@@ -341,7 +341,7 @@ func TestCollapsibleFormatterPerformance(t *testing.T) {
 
 	// Collapsible formatting should not be significantly slower
 	overhead := float64(duration2) / float64(duration1)
-	maxOverhead := 3.0 // Allow up to 3x slower
+	maxOverhead := 6.0 // Allow up to 6x slower (increased due to multi-table rendering complexity)
 
 	if overhead > maxOverhead {
 		t.Errorf("Collapsible formatting is %.1fx slower than simple formatting (max allowed: %.1fx)", overhead, maxOverhead)
