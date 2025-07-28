@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -215,4 +216,105 @@ func (config *Config) GetPerformanceLimitsWithDefaults() PerformanceLimitsConfig
 	}
 
 	return limits
+}
+
+// MigrateDeprecatedConfig handles migration from old configuration format to new
+func (config *Config) MigrateDeprecatedConfig() []string {
+	var warnings []string
+
+	// Set default values for new configuration sections if not present
+	if !viper.IsSet("plan.expandable_sections") {
+		config.Plan.ExpandableSections = ExpandableSectionsConfig{
+			Enabled:             true,
+			AutoExpandDangerous: true,
+			ShowDependencies:    true,
+		}
+	}
+
+	if !viper.IsSet("plan.grouping") {
+		// Use existing threshold value if it was migrated, otherwise default to 10
+		threshold := 10
+		if config.Plan.GroupingThreshold > 0 {
+			threshold = config.Plan.GroupingThreshold
+		}
+
+		config.Plan.Grouping = GroupingConfig{
+			Enabled:   true,
+			Threshold: threshold,
+		}
+	}
+
+	// Provide informational messages about new features
+	if !viper.IsSet("expand_all") {
+		warnings = append(warnings, "New feature: Use 'expand_all: true' or --expand-all flag to expand all collapsible sections.")
+	}
+
+	return warnings
+}
+
+// ValidateConfiguration checks for invalid configuration combinations
+func (config *Config) ValidateConfiguration() error {
+	// Validate grouping threshold
+	if config.Plan.Grouping.Threshold < 1 {
+		return fmt.Errorf("plan.grouping.threshold must be at least 1, got %d", config.Plan.Grouping.Threshold)
+	}
+
+	// Validate performance limits
+	limits := config.Plan.PerformanceLimits
+	if limits.MaxPropertiesPerResource < 1 && limits.MaxPropertiesPerResource != 0 {
+		return fmt.Errorf("plan.performance_limits.max_properties_per_resource must be positive, got %d", limits.MaxPropertiesPerResource)
+	}
+	if limits.MaxPropertySize < 1024 && limits.MaxPropertySize != 0 {
+		return fmt.Errorf("plan.performance_limits.max_property_size must be at least 1024 bytes, got %d", limits.MaxPropertySize)
+	}
+	if limits.MaxTotalMemory < 1048576 && limits.MaxTotalMemory != 0 {
+		return fmt.Errorf("plan.performance_limits.max_total_memory must be at least 1MB, got %d", limits.MaxTotalMemory)
+	}
+
+	return nil
+}
+
+// PrintDeprecationWarnings prints deprecation warnings to stderr
+func PrintDeprecationWarnings(warnings []string) {
+	if len(warnings) > 0 {
+		fmt.Fprintf(os.Stderr, "\n⚠️  Configuration Deprecation Warnings:\n")
+		for _, warning := range warnings {
+			fmt.Fprintf(os.Stderr, "   %s\n", warning)
+		}
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+}
+
+// GetDefaultConfig returns a config with sensible defaults
+func GetDefaultConfig() *Config {
+	return &Config{
+		ExpandAll: false,
+		Plan: PlanConfig{
+			ShowDetails:             true,
+			HighlightDangers:        true,
+			ShowStatisticsSummary:   true,
+			StatisticsSummaryFormat: "horizontal",
+			AlwaysShowSensitive:     true,
+			ExpandableSections: ExpandableSectionsConfig{
+				Enabled:             true,
+				AutoExpandDangerous: true,
+				ShowDependencies:    true,
+			},
+			Grouping: GroupingConfig{
+				Enabled:   true,
+				Threshold: 10,
+			},
+			PerformanceLimits: PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 100,
+				MaxPropertySize:          1048576,   // 1MB
+				MaxTotalMemory:           104857600, // 100MB
+				MaxDependencyDepth:       10,
+				MaxResourcesPerGroup:     1000,
+			},
+		},
+		Table: TableConfig{
+			Style:          "ColoredBlackOnMagentaWhite",
+			MaxColumnWidth: 50,
+		},
+	}
 }

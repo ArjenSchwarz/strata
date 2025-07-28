@@ -3,15 +3,13 @@ module github.com/ArjenSchwarz/strata
 go 1.24.5
 
 require (
-	github.com/ArjenSchwarz/go-output/v2 v2.0.5
+	github.com/ArjenSchwarz/go-output/v2 v2.1.0
 	github.com/hashicorp/terraform-json v0.25.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 )
-
-replace github.com/ArjenSchwarz/go-output/v2 => ../go-output-claude/v2
 
 require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect

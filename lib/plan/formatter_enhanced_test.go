@@ -257,11 +257,11 @@ func TestPrepareResourceTableData(t *testing.T) {
 
 	// Check first resource
 	row1 := tableData[0]
-	if row1["address"] != "aws_instance.web" {
-		t.Errorf("Expected address 'aws_instance.web', got %v", row1["address"])
+	if row1["resource"] != "aws_instance.web" {
+		t.Errorf("Expected resource 'aws_instance.web', got %v", row1["resource"])
 	}
-	if row1["change_type"] != string(ChangeTypeCreate) {
-		t.Errorf("Expected change_type %v, got %v", string(ChangeTypeCreate), row1["change_type"])
+	if row1["action"] != "Add" {
+		t.Errorf("Expected action 'Add', got %v", row1["action"])
 	}
 	if row1["risk_level"] != "low" {
 		t.Errorf("Expected risk_level 'low', got %v", row1["risk_level"])
@@ -274,8 +274,8 @@ func TestPrepareResourceTableData(t *testing.T) {
 
 	// Check second resource (sensitive RDS)
 	row2 := tableData[1]
-	if row2["address"] != "aws_rds_db_instance.main" {
-		t.Errorf("Expected address 'aws_rds_db_instance.main', got %v", row2["address"])
+	if row2["resource"] != "aws_rds_db_instance.main" {
+		t.Errorf("Expected resource 'aws_rds_db_instance.main', got %v", row2["resource"])
 	}
 	if row2["risk_level"] != "high" {
 		t.Errorf("Expected risk_level 'high' for sensitive resource replacement, got %v", row2["risk_level"])
@@ -327,13 +327,13 @@ func TestFormatResourceChangesWithProgressiveDisclosure(t *testing.T) {
 		t.Error("Expected document to have content")
 	}
 
-	// Check that first content is a header
-	if textContent, ok := contents[0].(*output.TextContent); ok {
-		if textContent.Text() != "Terraform Plan Summary" {
-			t.Errorf("Expected header 'Terraform Plan Summary', got %q", textContent.Text())
+	// Check that first content is the plan information table
+	if tableContent, ok := contents[0].(*output.TableContent); ok {
+		if tableContent.Title() != "Plan Information" {
+			t.Errorf("Expected table title 'Plan Information', got %q", tableContent.Title())
 		}
 	} else {
-		t.Errorf("Expected first content to be TextContent, got %T", contents[0])
+		t.Errorf("Expected first content to be TableContent, got %T", contents[0])
 	}
 }
 

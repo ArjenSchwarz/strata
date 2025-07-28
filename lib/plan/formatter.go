@@ -202,41 +202,58 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	builder = builder.Table(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
 		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
 
-	// Add resource changes table if requested
+	// Build the document first
+	doc := builder.Build()
+
+	// Add resource changes with progressive disclosure if requested
 	if showDetails {
-		resourceData, err := f.createResourceChangesDataV2(summary)
-		if err != nil {
-			return fmt.Errorf("failed to create resource changes data: %w", err)
-		}
-		if len(resourceData) > 0 {
-			builder = builder.Table("Resource Changes", resourceData,
-				output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
+		// Check if provider grouping should be used
+		if f.config.Plan.Grouping.Enabled && len(summary.ResourceChanges) >= f.config.Plan.Grouping.Threshold {
+			groups := f.groupResourcesByProvider(summary.ResourceChanges)
+			if len(groups) > 1 { // Only group if multiple providers
+				collapsibleDoc, err := f.formatGroupedWithCollapsibleSections(summary, groups)
+				if err != nil {
+					return fmt.Errorf("failed to create grouped collapsible sections: %w", err)
+				}
+				doc = collapsibleDoc
+			} else {
+				// Single provider, use regular progressive disclosure
+				collapsibleDoc, err := f.formatResourceChangesWithProgressiveDisclosure(summary)
+				if err != nil {
+					return fmt.Errorf("failed to create progressive disclosure: %w", err)
+				}
+				doc = collapsibleDoc
+			}
 		} else {
-			builder = builder.Text("All resources are unchanged.")
+			// Standard progressive disclosure without grouping
+			collapsibleDoc, err := f.formatResourceChangesWithProgressiveDisclosure(summary)
+			if err != nil {
+				return fmt.Errorf("failed to create progressive disclosure: %w", err)
+			}
+			doc = collapsibleDoc
 		}
 	} else if f.config.Plan.AlwaysShowSensitive {
 		// When details are disabled but AlwaysShowSensitive is enabled,
-		// show only the sensitive resource changes
-		sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
-		if err != nil {
-			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
-		}
-		if len(sensitiveData) > 0 {
-			builder = builder.Table("Sensitive Resource Changes", sensitiveData,
-				output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
-		} else if outputConfig.OutputFile == "" {
-			// Handle no sensitive changes case - but only for stdout-only mode
-			builder = builder.Text("No sensitive resource changes detected.")
+		// show only the sensitive resource changes using enhanced formatting
+		sensitiveChanges := f.filterSensitiveChanges(summary.ResourceChanges)
+		if len(sensitiveChanges) > 0 {
+			sensitiveSummary := &PlanSummary{
+				PlanFile:        summary.PlanFile,
+				ResourceChanges: sensitiveChanges,
+				Statistics:      summary.Statistics,
+			}
+			collapsibleDoc, err := f.formatResourceChangesWithProgressiveDisclosure(sensitiveSummary)
+			if err != nil {
+				return fmt.Errorf("failed to create sensitive progressive disclosure: %w", err)
+			}
+			doc = collapsibleDoc
 		}
 	}
 
-	// Build the document
-	doc := builder.Build()
-
-	// Render to stdout first
-	stdoutFormat := f.getFormatFromConfig(outputConfig.Format)
+	// Render to stdout first using collapsible-enabled format
+	stdoutFormat := f.getCollapsibleFormatFromConfig(outputConfig.Format)
 	if outputConfig.TableStyle != "" && outputConfig.Format == formatTable {
-		stdoutFormat = output.TableWithStyle(outputConfig.TableStyle)
+		stdoutFormat = f.getCollapsibleTableFormat(outputConfig.TableStyle)
 	}
 
 	stdoutOptions := []output.OutputOption{
@@ -266,9 +283,9 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 			return fmt.Errorf("failed to create file writer: %w", err)
 		}
 
-		fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
+		fileFormat := f.getCollapsibleFormatFromConfig(outputConfig.OutputFileFormat)
 		if outputConfig.TableStyle != "" && outputConfig.OutputFileFormat == formatTable {
-			fileFormat = output.TableWithStyle(outputConfig.TableStyle)
+			fileFormat = f.getCollapsibleTableFormat(outputConfig.TableStyle)
 		}
 		fileOptions := []output.OutputOption{
 			output.WithFormat(fileFormat),
@@ -576,7 +593,6 @@ func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string
 }
 
 // prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
-// This is a basic implementation that works with existing ResourceChange data
 func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[string]any {
 	tableData := make([]map[string]any, 0, len(changes))
 
@@ -586,24 +602,39 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			continue
 		}
 
-		// Use existing data from ResourceChange struct
-		// Create basic property changes data structure
+		// Create property changes from available data
 		propChanges := PropertyChangeAnalysis{
-			Changes: []PropertyChange{}, // Empty for now, will be enhanced later
-			Count:   len(change.TopChanges),
+			Changes: []PropertyChange{},
+			Count:   len(change.ChangeAttributes),
 		}
 
-		// Convert TopChanges to PropertyChange format for collapsible display
-		for _, topChange := range change.TopChanges {
-			propChanges.Changes = append(propChanges.Changes, PropertyChange{
-				Name:      topChange,
-				Before:    "unknown", // Will be enhanced later
-				After:     "unknown", // Will be enhanced later
-				Sensitive: false,     // Will be determined later
-			})
+		// Use ChangeAttributes for property changes
+		for _, attr := range change.ChangeAttributes {
+			propChange := PropertyChange{
+				Name:      attr,
+				Before:    change.Before,
+				After:     change.After,
+				Sensitive: f.isPropertySensitive(change.Type, attr),
+			}
+			propChanges.Changes = append(propChanges.Changes, propChange)
 		}
 
-		// Create basic dependency info (empty for now)
+		// If TopChanges is available, use it as well for better display
+		if len(change.TopChanges) > 0 {
+			propChanges.Count = len(change.TopChanges)
+			propChanges.Changes = []PropertyChange{} // Reset and use TopChanges
+			for _, topChange := range change.TopChanges {
+				propChange := PropertyChange{
+					Name:      topChange,
+					Before:    change.Before,
+					After:     change.After,
+					Sensitive: f.isPropertySensitive(change.Type, topChange),
+				}
+				propChanges.Changes = append(propChanges.Changes, propChange)
+			}
+		}
+
+		// Create basic dependency info (will be enhanced later with actual dependency analysis)
 		deps := &DependencyInfo{
 			DependsOn: []string{},
 			UsedBy:    []string{},
@@ -612,18 +643,30 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 		// Determine risk level based on existing danger flags
 		riskLevel := "low"
 		if change.IsDangerous {
-			if change.ChangeType == ChangeTypeDelete {
+			switch change.ChangeType {
+			case ChangeTypeDelete:
 				riskLevel = "critical"
-			} else if change.ChangeType == ChangeTypeReplace {
+			case ChangeTypeReplace:
 				riskLevel = "high"
-			} else {
+			default:
 				riskLevel = "medium"
 			}
 		}
 
+		// Determine action display
+		actionDisplay := getActionDisplay(change.ChangeType)
+		if change.IsDangerous {
+			actionDisplay = "⚠️ " + actionDisplay
+		}
+
 		row := map[string]any{
-			"address":          change.Address,
-			"change_type":      string(change.ChangeType),
+			"action":           actionDisplay,
+			"resource":         change.Address,
+			"type":             change.Type,
+			"id":               f.getDisplayID(change),
+			"replacement":      f.getReplacementDisplay(change),
+			"module":           change.ModulePath,
+			"danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
 			"property_changes": propChanges, // Will be formatted by collapsible formatter
 			"dependencies":     deps,        // Will be formatted by collapsible formatter
@@ -640,46 +683,77 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 	return tableData
 }
 
+// getDisplayID returns the appropriate ID for display based on change type
+func (f *Formatter) getDisplayID(change ResourceChange) string {
+	switch change.ChangeType {
+	case ChangeTypeCreate:
+		return "-"
+	case ChangeTypeDelete:
+		return change.PhysicalID
+	default:
+		return change.PhysicalID
+	}
+}
+
+// getReplacementDisplay returns the replacement display string
+func (f *Formatter) getReplacementDisplay(change ResourceChange) string {
+	if change.ChangeType == ChangeTypeDelete {
+		return notApplicable
+	}
+	return string(change.ReplacementType)
+}
+
+// getDangerDisplay returns the danger information for display
+func (f *Formatter) getDangerDisplay(change ResourceChange) string {
+	if !change.IsDangerous {
+		return ""
+	}
+
+	dangerInfo := "⚠️ " + change.DangerReason
+	if len(change.DangerProperties) > 0 {
+		dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
+	}
+	return dangerInfo
+}
+
+// isPropertySensitive checks if a property is sensitive based on configuration
+func (f *Formatter) isPropertySensitive(resourceType, property string) bool {
+	for _, sensitiveProp := range f.config.SensitiveProperties {
+		if sensitiveProp.ResourceType == resourceType && sensitiveProp.Property == property {
+			return true
+		}
+	}
+	return false
+}
+
 // formatResourceChangesWithProgressiveDisclosure uses go-output v2's collapsible features
 func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *PlanSummary) (*output.Document, error) {
 	builder := output.New()
 
-	// Add summary header
-	builder.Header("Terraform Plan Summary").
-		Text(fmt.Sprintf("Total changes: %d resources", len(summary.ResourceChanges)))
+	// Add plan information section
+	planInfoData, err := f.createPlanInfoDataV2(summary)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create plan info data: %w", err)
+	}
+	builder = builder.Table("Plan Information", planInfoData,
+		output.WithKeys("Plan File", "Version", "Workspace", "Backend", "Created"))
+
+	// Add statistics summary section
+	statsData, err := f.createStatisticsSummaryDataV2(summary)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
+	}
+	builder = builder.Table(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
+		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
 
 	// Create table with collapsible formatters for detailed information
-	tableData := f.prepareResourceTableData(summary.ResourceChanges)
-
-	// Define schema with collapsible formatters
-	schema := []output.Field{
-		{
-			Name:      "address",
-			Type:      "string",
-			Formatter: output.FilePathFormatter(40), // Shorten long resource addresses
-		},
-		{
-			Name: "change_type",
-			Type: "string",
-		},
-		{
-			Name: "risk_level",
-			Type: "string",
-			// Simple string display, could add color formatting later
-		},
-		{
-			Name:      "property_changes",
-			Type:      "object",
-			Formatter: f.propertyChangesFormatter(), // Collapsible property changes
-		},
-		{
-			Name:      "dependencies",
-			Type:      "object",
-			Formatter: f.dependenciesFormatter(), // Collapsible dependency info
-		},
+	if len(summary.ResourceChanges) > 0 {
+		tableData := f.prepareResourceTableData(summary.ResourceChanges)
+		schema := f.getResourceTableSchema()
+		builder.Table("Resource Changes", tableData, output.WithSchema(schema...))
+	} else {
+		builder.Text("All resources are unchanged.")
 	}
-
-	builder.Table("Resource Changes", tableData, output.WithSchema(schema...))
 
 	return builder.Build(), nil
 }
@@ -688,14 +762,30 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, groups map[string][]ResourceChange) (*output.Document, error) {
 	builder := output.New()
 
-	builder.Header("Terraform Plan Summary by Provider")
+	// Add plan information section
+	planInfoData, err := f.createPlanInfoDataV2(summary)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create plan info data: %w", err)
+	}
+	builder = builder.Table("Plan Information", planInfoData,
+		output.WithKeys("Plan File", "Version", "Workspace", "Backend", "Created"))
+
+	// Add statistics summary section
+	statsData, err := f.createStatisticsSummaryDataV2(summary)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
+	}
+	builder = builder.Table(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
+		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
 
 	// Create sections for each provider using the Section method
 	for provider, resources := range groups {
+		if len(resources) == 0 {
+			continue
+		}
+
 		// Prepare table data for this provider's resources
 		tableData := f.prepareResourceTableData(resources)
-
-		// Define schema for resource tables
 		schema := f.getResourceTableSchema()
 
 		// Add section using builder's Section method
@@ -718,18 +808,33 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 func (f *Formatter) getResourceTableSchema() []output.Field {
 	return []output.Field{
 		{
-			Name:      "address",
+			Name: "action",
+			Type: "string",
+		},
+		{
+			Name:      "resource",
 			Type:      "string",
-			Formatter: output.FilePathFormatter(40),
+			Formatter: output.FilePathFormatter(50),
 		},
 		{
-			Name: "change_type",
+			Name: "type",
 			Type: "string",
 		},
 		{
-			Name: "risk_level",
+			Name: "id",
 			Type: "string",
-			// Simple string display, could add color formatting later
+		},
+		{
+			Name: "replacement",
+			Type: "string",
+		},
+		{
+			Name: "module",
+			Type: "string",
+		},
+		{
+			Name: "danger",
+			Type: "string",
 		},
 		{
 			Name:      "property_changes",
@@ -805,4 +910,135 @@ func (f *Formatter) createOutputWithConfig(format output.Format) *output.Output 
 	}
 
 	return output.NewOutput(options...)
+}
+
+// groupResourcesByProvider groups resources by their provider
+func (f *Formatter) groupResourcesByProvider(changes []ResourceChange) map[string][]ResourceChange {
+	groups := make(map[string][]ResourceChange)
+	for _, change := range changes {
+		provider := change.Provider
+		if provider == "" {
+			// Extract provider from resource type (e.g., "aws_instance" -> "aws")
+			parts := strings.Split(change.Type, "_")
+			if len(parts) > 0 {
+				provider = parts[0]
+			} else {
+				provider = "unknown"
+			}
+		}
+		groups[provider] = append(groups[provider], change)
+	}
+	return groups
+}
+
+// filterSensitiveChanges returns only the changes marked as dangerous/sensitive
+func (f *Formatter) filterSensitiveChanges(changes []ResourceChange) []ResourceChange {
+	var sensitive []ResourceChange
+	for _, change := range changes {
+		if change.IsDangerous {
+			sensitive = append(sensitive, change)
+		}
+	}
+	return sensitive
+}
+
+// addResourceChangesWithCollapsible adds resource changes with collapsible content to the builder
+func (f *Formatter) addResourceChangesWithCollapsible(builder *output.Builder, changes []ResourceChange) {
+	if len(changes) == 0 {
+		builder.Text("All resources are unchanged.")
+		return
+	}
+
+	// Prepare table data with collapsible formatters
+	tableData := f.prepareResourceTableData(changes)
+	schema := f.getResourceTableSchema()
+
+	builder.Table("Resource Changes", tableData, output.WithSchema(schema...))
+}
+
+// addGroupedResourceChanges adds resource changes grouped by provider with collapsible sections
+func (f *Formatter) addGroupedResourceChanges(builder *output.Builder, summary *PlanSummary, groups map[string][]ResourceChange) {
+	for provider, resources := range groups {
+		if len(resources) == 0 {
+			continue
+		}
+
+		// Prepare table data for this provider's resources
+		tableData := f.prepareResourceTableData(resources)
+		schema := f.getResourceTableSchema()
+
+		// Check if this provider group has high-risk changes for auto-expansion
+		_ = f.hasHighRiskChanges(resources) // For future use with section expansion
+
+		// Add section using builder's Section method
+		builder.Section(
+			fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(provider), len(resources)),
+			func(b *output.Builder) {
+				b.Table(
+					fmt.Sprintf("%s Resources", strings.ToUpper(provider)),
+					tableData,
+					output.WithSchema(schema...),
+				)
+			},
+		)
+	}
+}
+
+// getCollapsibleFormatFromConfig returns collapsible-enabled format based on config
+func (f *Formatter) getCollapsibleFormatFromConfig(format string) output.Format {
+	rendererConfig := f.getRendererConfig()
+
+	switch strings.ToLower(format) {
+	case "json":
+		return output.JSON // JSON doesn't support collapsible content
+	case "csv":
+		return output.Format{
+			Name:     output.CSV.Name,
+			Renderer: output.NewCSVRendererWithCollapsible(rendererConfig),
+		}
+	case "html":
+		return output.Format{
+			Name:     output.HTML.Name,
+			Renderer: output.NewHTMLRendererWithCollapsible(rendererConfig),
+		}
+	case "markdown":
+		return output.Format{
+			Name:     output.Markdown.Name,
+			Renderer: output.NewMarkdownRendererWithCollapsible(rendererConfig),
+		}
+	case formatTable:
+		return output.Format{
+			Name:     output.Table.Name,
+			Renderer: output.NewTableRendererWithCollapsible("Default", rendererConfig),
+		}
+	default:
+		return output.Format{
+			Name:     output.Table.Name,
+			Renderer: output.NewTableRendererWithCollapsible("Default", rendererConfig),
+		}
+	}
+}
+
+// getCollapsibleTableFormat returns collapsible-enabled table format with specific style
+func (f *Formatter) getCollapsibleTableFormat(style string) output.Format {
+	rendererConfig := f.getRendererConfig()
+	return output.Format{
+		Name:     output.Table.Name,
+		Renderer: output.NewTableRendererWithCollapsible(style, rendererConfig),
+	}
+}
+
+// getRendererConfig creates renderer configuration with collapsible settings
+func (f *Formatter) getRendererConfig() output.RendererConfig {
+	return output.RendererConfig{
+		ForceExpansion:       f.config.ExpandAll,
+		MaxDetailLength:      500,
+		TruncateIndicator:    "... [truncated]",
+		TableHiddenIndicator: "[expand for details]",
+		HTMLCSSClasses: map[string]string{
+			"details": "strata-collapsible",
+			"summary": "strata-summary",
+			"content": "strata-details",
+		},
+	}
 }

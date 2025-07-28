@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -376,5 +377,156 @@ func TestGetPerformanceLimitsWithDefaults(t *testing.T) {
 				t.Errorf("MaxResourcesPerGroup = %v, expected %v", limits.MaxResourcesPerGroup, tt.expected.MaxResourcesPerGroup)
 			}
 		})
+	}
+}
+
+func TestValidateConfiguration(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      Config
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid configuration",
+			config: Config{
+				Plan: PlanConfig{
+					Grouping: GroupingConfig{
+						Enabled:   true,
+						Threshold: 10,
+					},
+					PerformanceLimits: PerformanceLimitsConfig{
+						MaxPropertiesPerResource: 100,
+						MaxPropertySize:          1048576,
+						MaxTotalMemory:           104857600,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid grouping threshold",
+			config: Config{
+				Plan: PlanConfig{
+					Grouping: GroupingConfig{
+						Enabled:   true,
+						Threshold: 0,
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "plan.grouping.threshold must be at least 1",
+		},
+		{
+			name: "invalid max properties per resource",
+			config: Config{
+				Plan: PlanConfig{
+					Grouping: GroupingConfig{
+						Enabled:   true,
+						Threshold: 10,
+					},
+					PerformanceLimits: PerformanceLimitsConfig{
+						MaxPropertiesPerResource: -1,
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "plan.performance_limits.max_properties_per_resource must be positive",
+		},
+		{
+			name: "invalid max property size",
+			config: Config{
+				Plan: PlanConfig{
+					Grouping: GroupingConfig{
+						Enabled:   true,
+						Threshold: 10,
+					},
+					PerformanceLimits: PerformanceLimitsConfig{
+						MaxPropertiesPerResource: 100,
+						MaxPropertySize:          500, // Less than 1024
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "plan.performance_limits.max_property_size must be at least 1024 bytes",
+		},
+		{
+			name: "invalid max total memory",
+			config: Config{
+				Plan: PlanConfig{
+					Grouping: GroupingConfig{
+						Enabled:   true,
+						Threshold: 10,
+					},
+					PerformanceLimits: PerformanceLimitsConfig{
+						MaxPropertiesPerResource: 100,
+						MaxPropertySize:          1048576,
+						MaxTotalMemory:           500000, // Less than 1MB
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "plan.performance_limits.max_total_memory must be at least 1MB",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.ValidateConfiguration()
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing %q, got %q", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestGetDefaultConfig(t *testing.T) {
+	config := GetDefaultConfig()
+
+	// Test that all required fields have sensible defaults
+	if config.ExpandAll != false {
+		t.Errorf("Expected ExpandAll to be false, got %v", config.ExpandAll)
+	}
+
+	if !config.Plan.ShowDetails {
+		t.Errorf("Expected ShowDetails to be true")
+	}
+
+	if !config.Plan.HighlightDangers {
+		t.Errorf("Expected HighlightDangers to be true")
+	}
+
+	if !config.Plan.ExpandableSections.Enabled {
+		t.Errorf("Expected ExpandableSections.Enabled to be true")
+	}
+
+	if !config.Plan.ExpandableSections.AutoExpandDangerous {
+		t.Errorf("Expected ExpandableSections.AutoExpandDangerous to be true")
+	}
+
+	if !config.Plan.Grouping.Enabled {
+		t.Errorf("Expected Grouping.Enabled to be true")
+	}
+
+	if config.Plan.Grouping.Threshold != 10 {
+		t.Errorf("Expected Grouping.Threshold to be 10, got %d", config.Plan.Grouping.Threshold)
+	}
+
+	if config.Plan.PerformanceLimits.MaxPropertiesPerResource != 100 {
+		t.Errorf("Expected MaxPropertiesPerResource to be 100, got %d", config.Plan.PerformanceLimits.MaxPropertiesPerResource)
+	}
+
+	// Test that validation passes for default config
+	if err := config.ValidateConfiguration(); err != nil {
+		t.Errorf("Default config should be valid, got error: %v", err)
 	}
 }

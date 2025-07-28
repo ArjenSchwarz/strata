@@ -49,6 +49,27 @@ The summary includes:
 - Statistical overview of changes (additions, modifications, deletions, replacements)
 - Detailed resource changes with IDs and module information
 - Highlighting of potentially dangerous changes
+- Progressive disclosure with collapsible sections for comprehensive details
+- Provider grouping for large plans (when enabled)
+- Risk analysis with automatic expansion of high-risk changes
+
+Progressive Disclosure Features:
+The enhanced summary visualization provides collapsible sections that allow you to:
+- See essential information (resource name, change type, risk level) by default
+- Expand sections to view all property changes (no longer limited to 3)
+- Access detailed risk analysis and mitigation suggestions
+- View resource dependencies and relationships  
+- Group resources by provider when working with large plans
+
+Global Expand Control:
+Use the --expand-all flag to expand all collapsible sections at once:
+  strata plan summary --expand-all terraform.tfplan
+
+Provider Grouping:
+Large plans are automatically grouped by provider for better organization:
+- Only groups when resource count meets threshold (default: 10)  
+- Skips grouping if all resources are from the same provider
+- High-risk provider groups are auto-expanded
 
 File Output:
 The --file and --file-format flags allow you to save output to a file in addition
@@ -62,6 +83,7 @@ Examples:
   strata plan summary terraform.tfplan
   strata plan summary --output json terraform.tfplan
   strata plan summary --show-details terraform.tfplan
+  strata plan summary --expand-all terraform.tfplan
   strata plan summary --file output.json --file-format json terraform.tfplan
   strata plan summary --file "report-$TIMESTAMP-$AWS_REGION.md" --file-format markdown terraform.tfplan
 
@@ -69,6 +91,7 @@ Usage:
   strata plan summary [flags] PLAN_FILE
 
 Flags:
+  -e, --expand-all             Expand all collapsible sections
   -h, --help                   help for summary
       --highlight-dangers      Highlight potentially dangerous changes (default true)
       --show-details           Show detailed resource changes (default true)
@@ -98,7 +121,50 @@ This will analyze the plan file and display a comprehensive summary with the fol
 1. **Plan Information** - Details about the plan file, Terraform version, workspace, and backend
 2. **Statistics Summary** - Counts of resources being added, modified, deleted, or replaced
 3. **Resource Changes** - Detailed table of all resource changes with IDs and module information
-4. **Danger Highlights** - Warning indicators for potentially risky changes
+4. **Progressive Disclosure** - Collapsible sections for property changes, dependencies, and risk analysis
+5. **Provider Grouping** - Smart grouping by provider for large plans (when threshold is met)
+6. **Danger Highlights** - Warning indicators for potentially risky changes with auto-expansion
+
+### Enhanced Summary Features
+
+#### Progressive Disclosure
+The enhanced summary visualization uses collapsible sections to provide comprehensive information without overwhelming the primary view:
+
+- **Clean Overview**: Essential information (resource name, change type, risk level) shown by default
+- **Expandable Details**: Click or configure to expand for complete property changes, dependencies, and risk analysis
+- **No Property Limits**: All property changes are now captured (no longer limited to 3)
+- **Auto-Expansion**: High-risk changes and sensitive properties automatically expand for immediate visibility
+
+#### Provider Grouping
+For large plans with multiple providers, Strata automatically organizes resources:
+
+```shell
+# Example output with provider grouping
+AWS Provider (8 changes)
+  ├── aws_instance.web (replace) - ⚠️ critical
+  ├── aws_security_group.web (update) - low
+  └── aws_rds_db_instance.main (replace) - ⚠️ critical
+
+AZURERM Provider (3 changes)
+  ├── azurerm_virtual_machine.app (create) - low
+  └── azurerm_storage_account.data (update) - medium
+```
+
+- **Smart Thresholds**: Only groups when resource count ≥ 10 and multiple providers present
+- **Auto-Expansion**: Provider groups with high-risk changes expand automatically
+- **Configurable**: Can be disabled or threshold adjusted in `strata.yaml`
+
+#### Global Expand Control
+Use the `--expand-all` flag for complete visibility:
+
+```shell
+# Expand all collapsible sections for full details
+$ strata plan summary --expand-all terraform.tfplan
+
+# Can also be configured in strata.yaml
+$ cat strata.yaml
+expand_all: true
+```
 
 ![](docs/images/strata-plan-summary.jpg)
 
@@ -113,12 +179,26 @@ $ strata plan summary --output json terraform.tfplan
 # Generate HTML report and save to file
 $ strata plan summary --output html --file report.html terraform.tfplan
 
-# Generate markdown output for documentation
+# Generate markdown output for documentation with collapsible sections
 $ strata plan summary --output markdown terraform.tfplan
 
-# Generate table output with danger highlighting
-$ strata plan summary --highlight-dangers terraform.tfplan
+# Generate table output with danger highlighting and expanded details
+$ strata plan summary --highlight-dangers --expand-all terraform.tfplan
+
+# Generate markdown with provider grouping for large plans
+$ strata plan summary --output markdown --expand-all terraform.tfplan
 ```
+
+#### Cross-Format Collapsible Content
+
+The enhanced summary visualization adapts collapsible content to each output format:
+
+| Format   | Collapsible Behavior | Best Use Case |
+|----------|---------------------|---------------|
+| **Markdown** | Uses `<details>` elements for interactive expansion | GitHub PRs, documentation |
+| **HTML** | JavaScript-powered expandable sections | Web reports, dashboards |
+| **Table** | Shows summary with expansion indicators | Terminal output, quick scanning |
+| **JSON** | Full structured data with all details | API integration, programmatic access |
 
 ### File Output
 
@@ -215,13 +295,27 @@ You can customize Strata's behavior using a configuration file. Strata will look
 Example configuration:
 
 ```yaml
+# Global expand control for collapsible sections
+expand_all: false                    # Expand all collapsible sections (default: false)
+
 output: table
 table:
   style: ColoredBlackOnMagentaWhite
+
 plan:
   show-details: true
   highlight-dangers: true
-  always-show-sensitive: true  # Always show sensitive resources even when details are disabled
+  always-show-sensitive: true        # Always show sensitive resources even when details are disabled
+  
+  # Enhanced summary visualization settings
+  expandable_sections:
+    enabled: true                    # Enable collapsible sections (default: true)
+    auto_expand_dangerous: true      # Auto-expand high-risk sections (default: true)
+    show_dependencies: true          # Show dependency information (default: true)
+  
+  grouping:
+    enabled: true                    # Enable provider grouping (default: true)  
+    threshold: 10                    # Minimum resources to trigger grouping (default: 10)
 
 # File output configuration
 output-file: "reports/plan-$TIMESTAMP.json"  # Default file output path with placeholder
@@ -259,6 +353,7 @@ Strata is available as a GitHub Action that can be easily integrated into your C
     output-format: markdown
     show-details: true
     highlight-dangers: true
+    expand-all: false              # Set to true to expand all collapsible sections in PR comments
     config-file: .strata.yaml
     comment-on-pr: true
     update-comment: true
@@ -320,6 +415,7 @@ jobs:
 | `config-file` | Path to custom Strata config file | No | |
 | `highlight-dangers` | Highlight potentially dangerous changes | No | `true` |
 | `show-details` | Show detailed change information | No | `false` |
+| `expand-all` | Expand all collapsible sections | No | `false` |
 | `github-token` | GitHub token for PR comments | No | `${{ github.token }}` |
 | `comment-on-pr` | Whether to comment on PR | No | `true` |
 | `update-comment` | Whether to update existing comment | No | `true` |
@@ -340,8 +436,12 @@ jobs:
 
 - **Step Summary Integration**: Automatically adds rich Markdown summaries to GitHub step summaries
 - **Pull Request Comments**: Posts or updates comments on pull requests with plan analysis
-- **Multiple Output Formats**: Supports table, JSON, and Markdown output formats
+- **Progressive Disclosure**: Uses collapsible sections in PR comments for clean, expandable output
+- **Multiple Output Formats**: Supports table, JSON, and Markdown output formats with cross-format collapsible content
+- **Provider Grouping**: Automatically groups large plans by provider for better organization
+- **Expand-All Control**: Global flag to expand all collapsible sections for complete visibility
 - **Danger Detection**: Highlights potentially risky changes with sensitive resource and property detection
+- **Auto-Expansion**: High-risk changes automatically expand in PR comments for immediate visibility
 - **Caching**: Automatically caches Strata binaries for faster execution
 - **Error Handling**: Graceful error handling with clear messaging
 
@@ -447,17 +547,29 @@ Strata v1.0 represents a major milestone with comprehensive Terraform plan analy
 - **Danger Detection**: Automatic identification of potentially risky changes without manual thresholds
 - **Action Sorting**: Prioritized display of changes by risk level (Remove > Replace > Modify > Add)
 
+### Enhanced Summary Visualization
+- **Progressive Disclosure**: Collapsible sections provide comprehensive information without overwhelming the primary view
+- **No Property Limits**: All property changes are now captured and accessible (no longer limited to 3)
+- **Provider Grouping**: Smart grouping by provider for large plans with configurable thresholds
+- **Global Expand Control**: `--expand-all` flag to expand all collapsible sections at once
+- **Auto-Expansion**: High-risk changes and sensitive properties automatically expand for immediate visibility
+- **Cross-Format Adaptation**: Collapsible content adapts appropriately to each output format (Markdown, HTML, Table, JSON)
+
 ### Advanced Capabilities  
 - **File Output System**: Dual output support with dynamic file naming using placeholders
 - **GitHub Action Integration**: Seamless CI/CD integration with PR comments and step summaries
+- **Enhanced GitHub Actions**: Support for `expand-all` parameter in GitHub Action workflows
 - **Sensitive Resource Detection**: Configurable highlighting of critical infrastructure changes
 - **Enhanced Statistics**: Horizontal statistics layout with comprehensive change tracking
+- **Risk Analysis**: Automated risk assessment with detailed analysis and mitigation suggestions
 
 ### Technical Improvements
-- **Go-Output v2**: Improved performance and thread safety with the latest output library
+- **Go-Output v2**: Leverages latest output library with native collapsible content support
+- **Performance Optimizations**: Memory limits, parallel processing, and efficient property analysis
 - **Cross-Platform Binaries**: Automated releases for Linux, Windows, and macOS (amd64/arm64)
 - **Version Management**: Built-in version information with build-time injection
 - **Modular Architecture**: Clean separation of concerns for better maintainability
+- **Comprehensive Testing**: Extensive test suite with performance benchmarks and edge case coverage
 
 For a complete list of changes, see the [CHANGELOG.md](CHANGELOG.md).
 
