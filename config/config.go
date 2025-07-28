@@ -244,10 +244,8 @@ func (config *Config) MigrateDeprecatedConfig() []string {
 		}
 	}
 
-	// Provide informational messages about new features
-	if !viper.IsSet("expand_all") {
-		warnings = append(warnings, "New feature: Use 'expand_all: true' or --expand-all flag to expand all collapsible sections.")
-	}
+	// Remove the expand_all warning as it's not a deprecated feature but a new one
+	// Users don't need to be warned about features they haven't configured yet
 
 	return warnings
 }

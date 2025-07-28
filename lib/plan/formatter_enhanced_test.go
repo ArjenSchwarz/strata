@@ -12,7 +12,7 @@ import (
 func TestPropertyChangesFormatter(t *testing.T) {
 	cfg := &config.Config{}
 	formatter := NewFormatter(cfg)
-	fn := formatter.propertyChangesFormatter()
+	fn := formatter.propertyChangesFormatterDirect()
 
 	tests := []struct {
 		name          string
@@ -116,7 +116,7 @@ func TestPropertyChangesFormatter(t *testing.T) {
 func TestDependenciesFormatter(t *testing.T) {
 	cfg := &config.Config{}
 	formatter := NewFormatter(cfg)
-	fn := formatter.dependenciesFormatter()
+	fn := formatter.dependenciesFormatterDirect()
 
 	tests := []struct {
 		name         string
@@ -417,7 +417,7 @@ func TestFormatterWithMockedGoOutput(t *testing.T) {
 	}
 
 	// Verify that property formatter respects configuration
-	fn := formatter.propertyChangesFormatter()
+	fn := formatter.propertyChangesFormatterDirect()
 	result := fn(PropertyChangeAnalysis{
 		Changes: []PropertyChange{
 			{Name: "test", Before: "a", After: "b"},
@@ -467,13 +467,13 @@ func TestFormatterErrorHandling(t *testing.T) {
 	}
 
 	// Test with invalid input types
-	propFn := formatter.propertyChangesFormatter()
+	propFn := formatter.propertyChangesFormatterDirect()
 	result := propFn(struct{}{}) // Invalid type
 	if result != struct{}{} {
 		t.Error("Expected unchanged input for invalid type")
 	}
 
-	depFn := formatter.dependenciesFormatter()
+	depFn := formatter.dependenciesFormatterDirect()
 	result = depFn(123) // Invalid type
 	if result != 123 {
 		t.Error("Expected unchanged input for invalid type")
