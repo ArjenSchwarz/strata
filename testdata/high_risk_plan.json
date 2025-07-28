@@ -1,0 +1,700 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.5.0",
+    "planned_changes": {
+        "add": 5,
+        "change": 3,
+        "remove": 4,
+        "replace": 2
+    },
+    "resource_changes": [
+        {
+            "address": "aws_rds_db_instance.legacy_mysql",
+            "mode": "managed",
+            "type": "aws_rds_db_instance",
+            "name": "legacy_mysql",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "allocated_storage": 100,
+                    "auto_minor_version_upgrade": true,
+                    "availability_zone": "us-west-2a",
+                    "backup_retention_period": 7,
+                    "backup_window": "03:00-04:00",
+                    "ca_cert_identifier": "rds-ca-2019",
+                    "copy_tags_to_snapshot": false,
+                    "db_name": "legacy_app",
+                    "db_subnet_group_name": "main-db-subnet-group",
+                    "delete_automated_backups": true,
+                    "deletion_protection": false,
+                    "enabled_cloudwatch_logs_exports": [],
+                    "engine": "mysql",
+                    "engine_version": "5.7.44",
+                    "final_snapshot_identifier": null,
+                    "hosted_zone_id": "Z1D633PJN98FT9",
+                    "iam_database_authentication_enabled": false,
+                    "identifier": "legacy-mysql-db",
+                    "instance_class": "db.t3.micro",
+                    "license_model": "general-public-license",
+                    "maintenance_window": "sun:04:00-sun:05:00",
+                    "monitoring_interval": 0,
+                    "multi_az": false,
+                    "option_group_name": "default:mysql-5-7",
+                    "parameter_group_name": "default.mysql5.7",
+                    "password": "legacy-password-123",
+                    "performance_insights_enabled": false,
+                    "port": 3306,
+                    "publicly_accessible": false,
+                    "skip_final_snapshot": true,
+                    "storage_encrypted": false,
+                    "storage_type": "gp2",
+                    "tags": {
+                        "Environment": "staging",
+                        "Name": "legacy-mysql"
+                    },
+                    "username": "admin",
+                    "vpc_security_group_ids": [
+                        "sg-0123456789abcdef0"
+                    ]
+                },
+                "after": null,
+                "after_sensitive": false,
+                "before_sensitive": {
+                    "password": true
+                }
+            }
+        },
+        {
+            "address": "aws_rds_db_instance.old_postgres",
+            "mode": "managed",
+            "type": "aws_rds_db_instance",
+            "name": "old_postgres",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "allocated_storage": 50,
+                    "auto_minor_version_upgrade": true,
+                    "availability_zone": "us-west-2b",
+                    "backup_retention_period": 5,
+                    "backup_window": "02:00-03:00",
+                    "ca_cert_identifier": "rds-ca-2019",
+                    "copy_tags_to_snapshot": false,
+                    "db_name": "old_app_db",
+                    "db_subnet_group_name": "main-db-subnet-group",
+                    "delete_automated_backups": true,
+                    "deletion_protection": false,
+                    "enabled_cloudwatch_logs_exports": [],
+                    "engine": "postgres",
+                    "engine_version": "12.17",
+                    "final_snapshot_identifier": null,
+                    "hosted_zone_id": "Z1D633PJN98FT9",
+                    "iam_database_authentication_enabled": false,
+                    "identifier": "old-postgres-db",
+                    "instance_class": "db.t3.micro",
+                    "license_model": "postgresql-license",
+                    "maintenance_window": "sun:05:00-sun:06:00",
+                    "monitoring_interval": 0,
+                    "multi_az": false,
+                    "option_group_name": "default:postgres-12",
+                    "parameter_group_name": "default.postgres12",
+                    "password": "old-db-secret-456",
+                    "performance_insights_enabled": false,
+                    "port": 5432,
+                    "publicly_accessible": false,
+                    "skip_final_snapshot": true,
+                    "storage_encrypted": false,
+                    "storage_type": "gp2",
+                    "tags": {
+                        "Environment": "development",
+                        "Name": "old-postgres"
+                    },
+                    "username": "postgres",
+                    "vpc_security_group_ids": [
+                        "sg-0987654321fedcba0"
+                    ]
+                },
+                "after": null,
+                "after_sensitive": false,
+                "before_sensitive": {
+                    "password": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_role.app_role",
+            "mode": "managed",
+            "type": "aws_iam_role",
+            "name": "app_role",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "arn": "arn:aws:iam::123456789012:role/old-app-role",
+                    "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"ec2.amazonaws.com\"\n      }\n    }\n  ]\n}",
+                    "create_date": "2023-01-15T10:30:00Z",
+                    "description": "Old application role",
+                    "force_detach_policies": false,
+                    "id": "old-app-role",
+                    "managed_policy_arns": [
+                        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+                    ],
+                    "max_session_duration": 3600,
+                    "name": "old-app-role",
+                    "path": "/",
+                    "permissions_boundary": null,
+                    "tags": {
+                        "Environment": "staging"
+                    },
+                    "unique_id": "AROABC123DEFGHIJKLMN"
+                },
+                "after": null
+            }
+        },
+        {
+            "address": "aws_secretsmanager_secret.old_api_key",
+            "mode": "managed",
+            "type": "aws_secretsmanager_secret",
+            "name": "old_api_key",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete"
+                ],
+                "before": {
+                    "arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:old-api-key-AbCdEf",
+                    "description": "Legacy API key for external service",
+                    "force_overwrite_replica_secret": false,
+                    "id": "old-api-key",
+                    "kms_key_id": null,
+                    "name": "old-api-key",
+                    "policy": null,
+                    "recovery_window_in_days": 30,
+                    "replica": [],
+                    "rotation_enabled": false,
+                    "tags": {
+                        "Environment": "staging",
+                        "Purpose": "legacy-integration"
+                    }
+                },
+                "after": null
+            }
+        },
+        {
+            "address": "aws_db_instance.main_postgres",
+            "mode": "managed",
+            "type": "aws_db_instance",
+            "name": "main_postgres",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "before": {
+                    "allocated_storage": 100,
+                    "auto_minor_version_upgrade": true,
+                    "availability_zone": "us-west-2a",
+                    "backup_retention_period": 7,
+                    "backup_window": "03:00-04:00",
+                    "ca_cert_identifier": "rds-ca-2019",
+                    "copy_tags_to_snapshot": true,
+                    "db_name": "main_app",
+                    "db_subnet_group_name": "main-db-subnet-group",
+                    "delete_automated_backups": true,
+                    "deletion_protection": false,
+                    "enabled_cloudwatch_logs_exports": [
+                        "postgresql"
+                    ],
+                    "engine": "postgres",
+                    "engine_version": "14.9",
+                    "final_snapshot_identifier": null,
+                    "hosted_zone_id": "Z1D633PJN98FT9",
+                    "iam_database_authentication_enabled": false,
+                    "identifier": "main-postgres-db",
+                    "instance_class": "db.t3.small",
+                    "license_model": "postgresql-license",
+                    "maintenance_window": "sun:04:00-sun:05:00",
+                    "monitoring_interval": 0,
+                    "multi_az": false,
+                    "option_group_name": "default:postgres-14",
+                    "parameter_group_name": "default.postgres14",
+                    "password": "current-secure-password",
+                    "performance_insights_enabled": true,
+                    "port": 5432,
+                    "publicly_accessible": false,
+                    "skip_final_snapshot": false,
+                    "storage_encrypted": true,
+                    "storage_type": "gp3",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "main-postgres"
+                    },
+                    "username": "app_user",
+                    "vpc_security_group_ids": [
+                        "sg-0abcdef123456789"
+                    ]
+                },
+                "after": {
+                    "allocated_storage": 200,
+                    "auto_minor_version_upgrade": true,
+                    "backup_retention_period": 14,
+                    "backup_window": "02:00-03:00",
+                    "ca_cert_identifier": "rds-ca-rsa2048-g1",
+                    "copy_tags_to_snapshot": true,
+                    "db_name": "main_app",
+                    "db_subnet_group_name": "main-db-subnet-group",
+                    "delete_automated_backups": true,
+                    "deletion_protection": true,
+                    "enabled_cloudwatch_logs_exports": [
+                        "postgresql"
+                    ],
+                    "engine": "postgres",
+                    "engine_version": "15.4",
+                    "final_snapshot_identifier": "main-postgres-final-snapshot",
+                    "iam_database_authentication_enabled": true,
+                    "identifier": "main-postgres-db-v2",
+                    "instance_class": "db.t3.medium",
+                    "license_model": "postgresql-license",
+                    "maintenance_window": "sun:03:00-sun:04:00",
+                    "monitoring_interval": 60,
+                    "multi_az": true,
+                    "parameter_group_name": "postgres15-enhanced",
+                    "password": "new-ultra-secure-password-789",
+                    "performance_insights_enabled": true,
+                    "performance_insights_retention_period": 7,
+                    "port": 5432,
+                    "publicly_accessible": false,
+                    "skip_final_snapshot": false,
+                    "storage_encrypted": true,
+                    "storage_type": "gp3",
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "main-postgres-v2",
+                        "Version": "15.4"
+                    },
+                    "username": "app_user"
+                },
+                "after_unknown": {
+                    "address": true,
+                    "arn": true,
+                    "availability_zone": true,
+                    "endpoint": true,
+                    "hosted_zone_id": true,
+                    "id": true,
+                    "latest_restorable_time": true,
+                    "resource_id": true,
+                    "status": true,
+                    "vpc_security_group_ids": true
+                },
+                "after_sensitive": {
+                    "password": true
+                },
+                "before_sensitive": {
+                    "password": true
+                }
+            }
+        },
+        {
+            "address": "aws_security_group.db_sg",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "db_sg",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "before": {
+                    "arn": "arn:aws:ec2:us-west-2:123456789012:security-group/sg-0abcdef123456789",
+                    "description": "Database security group",
+                    "egress": [
+                        {
+                            "cidr_blocks": [
+                                "0.0.0.0/0"
+                            ],
+                            "description": "",
+                            "from_port": 0,
+                            "ipv6_cidr_blocks": [],
+                            "prefix_list_ids": [],
+                            "protocol": "-1",
+                            "security_groups": [],
+                            "self": false,
+                            "to_port": 0
+                        }
+                    ],
+                    "id": "sg-0abcdef123456789",
+                    "ingress": [
+                        {
+                            "cidr_blocks": [
+                                "10.0.0.0/16"
+                            ],
+                            "description": "PostgreSQL access from VPC",
+                            "from_port": 5432,
+                            "ipv6_cidr_blocks": [],
+                            "prefix_list_ids": [],
+                            "protocol": "tcp",
+                            "security_groups": [],
+                            "self": false,
+                            "to_port": 5432
+                        }
+                    ],
+                    "name": "db-security-group",
+                    "owner_id": "123456789012",
+                    "revoke_rules_on_delete": false,
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "db-sg"
+                    },
+                    "vpc_id": "vpc-0123456789abcdef0"
+                },
+                "after": {
+                    "description": "Enhanced database security group with strict access controls",
+                    "name": "db-security-group-v2",
+                    "revoke_rules_on_delete": false,
+                    "tags": {
+                        "Environment": "production",
+                        "Name": "db-sg-v2",
+                        "Version": "2.0"
+                    },
+                    "vpc_id": "vpc-0123456789abcdef0"
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "egress": true,
+                    "id": true,
+                    "ingress": true,
+                    "name_prefix": true,
+                    "owner_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_role.new_app_role",
+            "mode": "managed",
+            "type": "aws_iam_role",
+            "name": "new_app_role",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\"ec2.amazonaws.com\", \"ecs-tasks.amazonaws.com\"]\n      },\n      \"Condition\": {\n        \"StringEquals\": {\n          \"aws:RequestedRegion\": \"us-west-2\"\n        }\n      }\n    }\n  ]\n}",
+                    "description": "Enhanced application role with least privilege access",
+                    "force_detach_policies": false,
+                    "max_session_duration": 7200,
+                    "name": "enhanced-app-role-v2",
+                    "path": "/application/",
+                    "permissions_boundary": "arn:aws:iam::123456789012:policy/DeveloperBoundary",
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "application-access",
+                        "Version": "2.0"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "create_date": true,
+                    "id": true,
+                    "name_prefix": true,
+                    "unique_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_policy.enhanced_s3_policy",
+            "mode": "managed",
+            "type": "aws_iam_policy",
+            "name": "enhanced_s3_policy",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "description": "Enhanced S3 access policy with fine-grained permissions",
+                    "name": "enhanced-s3-access-policy",
+                    "path": "/application/",
+                    "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\",\n        \"s3:PutObject\",\n        \"s3:DeleteObject\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket/*\"\n      ],\n      \"Condition\": {\n        \"StringEquals\": {\n          \"s3:x-amz-server-side-encryption\": \"AES256\"\n        }\n      }\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:ListBucket\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket\"\n      ]\n    }\n  ]\n}",
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "s3-access"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "policy_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_secretsmanager_secret.new_db_credentials",
+            "mode": "managed",
+            "type": "aws_secretsmanager_secret",
+            "name": "new_db_credentials",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "description": "Database credentials for main application",
+                    "force_overwrite_replica_secret": false,
+                    "kms_key_id": "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+                    "name": "prod/db/main-postgres/credentials",
+                    "recovery_window_in_days": 7,
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "database-access"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "replica": true
+                }
+            }
+        },
+        {
+            "address": "aws_secretsmanager_secret_version.db_credentials",
+            "mode": "managed",
+            "type": "aws_secretsmanager_secret_version",
+            "name": "db_credentials",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "secret_string": "{\n  \"username\": \"app_user\",\n  \"password\": \"new-ultra-secure-password-789\",\n  \"host\": \"main-postgres-db-v2.cluster-xyz.us-west-2.rds.amazonaws.com\",\n  \"port\": 5432,\n  \"dbname\": \"main_app\"\n}"
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "secret_id": true,
+                    "version_id": true,
+                    "version_stages": true
+                },
+                "after_sensitive": {
+                    "secret_string": true
+                }
+            }
+        },
+        {
+            "address": "aws_kms_key.secrets_key",
+            "mode": "managed",
+            "type": "aws_kms_key",
+            "name": "secrets_key",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "deletion_window_in_days": 10,
+                    "description": "KMS key for encrypting application secrets",
+                    "enable_key_rotation": true,
+                    "is_enabled": true,
+                    "key_usage": "ENCRYPT_DECRYPT",
+                    "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"Enable IAM policies\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::123456789012:root\"\n      },\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\"\n    },\n    {\n      \"Sid\": \"Allow application role\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::123456789012:role/application/enhanced-app-role-v2\"\n      },\n      \"Action\": [\n        \"kms:Decrypt\",\n        \"kms:GenerateDataKey\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}",
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "secrets-encryption"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "key_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_user.service_user",
+            "mode": "managed",
+            "type": "aws_iam_user",
+            "name": "service_user",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "arn": "arn:aws:iam::123456789012:user/old-service-user",
+                    "force_destroy": false,
+                    "id": "old-service-user",
+                    "name": "old-service-user",
+                    "path": "/",
+                    "permissions_boundary": null,
+                    "tags": {
+                        "Environment": "production"
+                    },
+                    "unique_id": "AIDABC123DEFGHIJKLMN"
+                },
+                "after": {
+                    "force_destroy": true,
+                    "name": "enhanced-service-user",
+                    "path": "/service/",
+                    "permissions_boundary": "arn:aws:iam::123456789012:policy/ServiceUserBoundary",
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "service-integration",
+                        "LastUpdated": "2025-07-28"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "unique_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_access_key.service_user_key",
+            "mode": "managed",
+            "type": "aws_iam_access_key",
+            "name": "service_user_key",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "create_date": "2023-06-15T14:30:00Z",
+                    "encrypted_secret": null,
+                    "encrypted_ses_smtp_password_v4": null,
+                    "id": "AKIABC123DEFGHIJKLMN",
+                    "pgp_key": null,
+                    "secret": "old-secret-access-key-123",
+                    "ses_smtp_password_v4": "old-smtp-password",
+                    "status": "Active",
+                    "user": "old-service-user"
+                },
+                "after": {
+                    "pgp_key": "keybase:devops_team",
+                    "status": "Active",
+                    "user": "enhanced-service-user"
+                },
+                "after_unknown": {
+                    "create_date": true,
+                    "encrypted_secret": true,
+                    "encrypted_ses_smtp_password_v4": true,
+                    "id": true,
+                    "secret": true,
+                    "ses_smtp_password_v4": true
+                },
+                "after_sensitive": {
+                    "encrypted_secret": true,
+                    "encrypted_ses_smtp_password_v4": true,
+                    "secret": true,
+                    "ses_smtp_password_v4": true
+                },
+                "before_sensitive": {
+                    "secret": true,
+                    "ses_smtp_password_v4": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_policy_attachment.service_user_policy",
+            "mode": "managed",
+            "type": "aws_iam_policy_attachment",
+            "name": "service_user_policy",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "groups": [],
+                    "id": "old-service-policy-attachment",
+                    "name": "old-service-policy-attachment",
+                    "policy_arn": "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+                    "roles": [],
+                    "users": [
+                        "old-service-user"
+                    ]
+                },
+                "after": {
+                    "groups": [],
+                    "name": "enhanced-service-policy-attachment",
+                    "policy_arn": "arn:aws:iam::123456789012:policy/application/enhanced-s3-access-policy",
+                    "roles": [],
+                    "users": [
+                        "enhanced-service-user"
+                    ]
+                },
+                "after_unknown": {
+                    "id": true
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "provider_config": {
+            "aws": {
+                "name": "aws",
+                "full_name": "registry.terraform.io/hashicorp/aws",
+                "version_constraint": "~> 5.0"
+            }
+        }
+    },
+    "variables": {
+        "db_password": {
+            "description": "Database password for the main application",
+            "sensitive": true
+        },
+        "kms_key_administrators": {
+            "description": "List of IAM ARNs allowed to administer the KMS key",
+            "type": [
+                "list",
+                "string"
+            ]
+        }
+    },
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_db_instance.main_postgres",
+                    "mode": "managed",
+                    "type": "aws_db_instance",
+                    "name": "main_postgres",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "values": {
+                        "allocated_storage": 200,
+                        "deletion_protection": true,
+                        "engine": "postgres",
+                        "engine_version": "15.4",
+                        "instance_class": "db.t3.medium",
+                        "multi_az": true,
+                        "storage_encrypted": true
+                    },
+                    "sensitive_values": {
+                        "password": true
+                    }
+                }
+            ]
+        }
+    }
+}
