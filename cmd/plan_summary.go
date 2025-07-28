@@ -40,6 +40,24 @@ This command parses Terraform plan files and presents the changes in a
 user-friendly format, highlighting potentially destructive operations
 and providing statistical summaries.
 
+Progressive Disclosure:
+The summary uses collapsible sections to show essential information by default
+while providing access to comprehensive details when needed. Property changes,
+dependencies, and risk analysis are presented in expandable sections that can
+be expanded individually or globally using the --expand-all flag.
+
+Provider Grouping:
+When analyzing plans with many resources, the summary automatically groups
+resources by provider (aws, azurerm, google, etc.) to improve readability.
+Grouping is enabled when resource count exceeds the configured threshold
+(default: 10) and multiple providers are present.
+
+Risk Analysis:
+The summary automatically identifies and highlights potentially risky changes:
+- Deletions and replacements are flagged based on resource sensitivity
+- Sensitive resource types and properties are highlighted with warnings
+- High-risk changes have their detail sections auto-expanded for visibility
+
 File Output:
 The --file and --file-format flags allow you to save output to a file in addition
 to displaying it on stdout. The file format can be different from the stdout format.
@@ -55,8 +73,14 @@ Examples:
   # Generate summary with JSON output
   strata plan summary --output json terraform.tfplan
 
-  # Save output to file while displaying table on stdout
-  strata plan summary --file output.json --file-format json terraform.tfplan
+  # Expand all collapsible sections to see full details
+  strata plan summary --expand-all terraform.tfplan
+
+  # Generate summary with all details expanded in Markdown format
+  strata plan summary --output markdown --expand-all terraform.tfplan
+
+  # Save expanded output to file while displaying collapsed on stdout
+  strata plan summary --file full-report.json --file-format json --expand-all terraform.tfplan
 
   # Use placeholders in filename for dynamic naming
   strata plan summary --file "report-$TIMESTAMP-$AWS_REGION.md" --file-format markdown terraform.tfplan
@@ -65,7 +89,22 @@ Examples:
   strata plan summary --stats-format vertical terraform.tfplan
 
   # Generate summary without statistics table
-  strata plan summary --show-statistics=false terraform.tfplan`,
+  strata plan summary --show-statistics=false terraform.tfplan
+
+Configuration:
+The summary behavior can be customized through the strata.yaml configuration file:
+
+  # Global expand control
+  expand_all: false                    # Expand all collapsible sections
+
+  plan:
+    expandable_sections:
+      enabled: true                    # Enable collapsible sections
+      auto_expand_dangerous: true      # Auto-expand high-risk sections
+      show_dependencies: true          # Show dependency information
+    grouping:
+      enabled: true                    # Enable provider grouping
+      threshold: 10                    # Minimum resources to trigger grouping`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlanSummary,
 }
@@ -92,16 +131,12 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid plan structure: %w", err)
 	}
 
-	// Create config for analyzer
-	cfg := &config.Config{
-		Plan: config.PlanConfig{
-			ShowDetails:             showDetails,
-			HighlightDangers:        highlightDangers,
-			ShowStatisticsSummary:   showStatisticsSummary,
-			StatisticsSummaryFormat: statisticsSummaryFormat,
-			AlwaysShowSensitive:     true, // Always show sensitive resources by default
-		},
-	}
+	// Create config for analyzer with defaults
+	cfg := config.GetDefaultConfig()
+	cfg.Plan.ShowDetails = showDetails
+	cfg.Plan.HighlightDangers = highlightDangers
+	cfg.Plan.ShowStatisticsSummary = showStatisticsSummary
+	cfg.Plan.StatisticsSummaryFormat = statisticsSummaryFormat
 
 	// Read expand-all configuration from Viper (includes CLI flag override)
 	cfg.ExpandAll = viper.GetBool("expand_all")
@@ -138,6 +173,15 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		if err := viper.UnmarshalKey("sensitive_properties", &cfg.SensitiveProperties); err != nil {
 			return fmt.Errorf("failed to parse sensitive_properties config: %w", err)
 		}
+	}
+
+	// Handle configuration migration and show deprecation warnings
+	warnings := cfg.MigrateDeprecatedConfig()
+	config.PrintDeprecationWarnings(warnings)
+
+	// Validate configuration
+	if err := cfg.ValidateConfiguration(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Create analyzer and generate summary

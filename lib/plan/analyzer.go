@@ -10,6 +10,11 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
+const (
+	riskLevelHigh   = "high"
+	riskLevelMedium = "medium"
+)
+
 // Analyzer processes Terraform plan data and generates summaries
 type Analyzer struct {
 	plan          *tfjson.Plan
@@ -656,9 +661,12 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 			beforeVal, beforeExists := beforeMap[key]
 			afterVal, afterExists := afterMap[key]
 
-			newPath := append(path, key)
+			newPath := make([]string, len(path)+1)
+			copy(newPath, path)
+			newPath[len(path)] = key
 
-			if !beforeExists {
+			switch {
+			case !beforeExists:
 				// New property
 				pc := PropertyChange{
 					Name:      strings.Join(newPath, "."),
@@ -670,7 +678,7 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 				if !callback(pc) {
 					return nil // Stop processing
 				}
-			} else if !afterExists {
+			case !afterExists:
 				// Removed property
 				pc := PropertyChange{
 					Name:      strings.Join(newPath, "."),
@@ -682,7 +690,7 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 				if !callback(pc) {
 					return nil
 				}
-			} else {
+			default:
 				// Compare nested values
 				err := a.compareValues(beforeVal, afterVal, newPath, depth+1, maxDepth, callback)
 				if err != nil {
@@ -705,7 +713,9 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 
 		for i := 0; i < maxLen; i++ {
 			var beforeVal, afterVal any
-			indexPath := append(path, strconv.Itoa(i))
+			indexPath := make([]string, len(path)+1)
+			copy(indexPath, path)
+			indexPath[len(path)] = strconv.Itoa(i)
 
 			if i < len(beforeSlice) {
 				beforeVal = beforeSlice[i]
@@ -734,11 +744,8 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 	}
 
 	// Check if this property is sensitive
-	if len(path) > 0 && a.config != nil {
-		// Get root resource type from the context (this would need to be passed in)
-		// For now, we'll skip sensitive property detection in this function
-		// and handle it at a higher level
-	}
+	// For now, we'll skip sensitive property detection in this function
+	// and handle it at a higher level as we need more context
 
 	callback(pc)
 	return nil
@@ -791,18 +798,18 @@ func (a *Analyzer) assessRiskLevel(change *tfjson.ResourceChange) string {
 		if a.IsSensitiveResource(change.Type) {
 			return "critical"
 		}
-		return "high"
+		return riskLevelHigh
 	}
 
 	if changeType == ChangeTypeReplace {
 		if a.IsSensitiveResource(change.Type) {
-			return "high"
+			return riskLevelHigh
 		}
-		return "medium"
+		return riskLevelMedium
 	}
 
 	if a.IsSensitiveResource(change.Type) && changeType == ChangeTypeUpdate {
-		return "medium"
+		return riskLevelMedium
 	}
 
 	return "low"

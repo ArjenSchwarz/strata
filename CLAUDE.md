@@ -8,9 +8,12 @@ Strata is a Go CLI tool that enhances Terraform workflows by providing clear, co
 - Parse and summarize Terraform plan files
 - Highlight potentially destructive changes
 - Generate statistical summaries of resource modifications
-- Support multiple output formats (table, JSON, HTML)
+- Support multiple output formats (table, JSON, HTML, Markdown)
 - Integrate with CI/CD pipelines
 - Danger highlights for sensitive resources and properties
+- Progressive disclosure with collapsible sections
+- Provider grouping for large plans
+- Global expand-all control for comprehensive details
 
 ### Project Status
 The project is currently in active development with the following phases:
@@ -18,14 +21,15 @@ The project is currently in active development with the following phases:
 2. ✅ Terraform Plan Parsing
 3. ✅ Summary Analysis Engine
 4. ✅ Output Integration
-5. 🔄 Future Integration Preparation
+5. ✅ Enhanced Summary Visualization (Progressive Disclosure)
+6. 🔄 Future Integration Preparation
 
 ## Technical Stack
 
 - **Language**: Go 1.24.1
 - **CLI Framework**: [Cobra](https://github.com/spf13/cobra) v1.9.1
 - **Configuration**: [Viper](https://github.com/spf13/viper) v1.20.1
-- **Output Formatting**: [go-output](https://github.com/ArjenSchwarz/go-output) v1.4.0
+- **Output Formatting**: [go-output](https://github.com/ArjenSchwarz/go-output) v2.1.0
 - **Terraform Integration**: [terraform-json](https://github.com/hashicorp/terraform-json) v0.25.0
 
 ## Project Structure
@@ -96,8 +100,8 @@ strata plan summary terraform.tfplan
 # Generate summary with JSON output
 strata plan summary --output json terraform.tfplan
 
-# Generate summary with custom danger threshold
-strata plan summary --danger-threshold 5 terraform.tfplan
+# Generate summary with all collapsible sections expanded
+strata plan summary --expand-all terraform.tfplan
 
 # Use a custom config file
 strata --config custom-config.yaml plan summary terraform.tfplan
@@ -139,12 +143,27 @@ Strata uses a YAML configuration file with the following default locations:
 
 Example configuration:
 ```yaml
+# Global expand control for collapsible sections
+expand_all: false                    # Expand all collapsible sections (default: false)
+
 output: table
 table:
   style: ColoredBlackOnMagentaWhite
+
 plan:
   show-details: true
   highlight-dangers: true
+
+  # Enhanced summary visualization settings
+  expandable_sections:
+    enabled: true                    # Enable collapsible sections (default: true)
+    auto_expand_dangerous: true      # Auto-expand high-risk sections (default: true)
+    show_dependencies: true          # Show dependency information (default: true)
+
+  grouping:
+    enabled: true                    # Enable provider grouping (default: true)
+    threshold: 10                    # Minimum resources to trigger grouping (default: 10)
+
 sensitive_resources:
   - resource_type: AWS::RDS::DBInstance
   - resource_type: AWS::EC2::Instance
@@ -165,11 +184,16 @@ sensitive_properties:
    - Processes plan data to extract meaningful information
    - Categorizes changes and calculates statistics
    - Detects sensitive resources and properties for danger highlights
+   - Performs comprehensive property change analysis
+   - Extracts resource dependencies and relationships
+   - Performs risk assessment with automatic prioritization
 
 3. **Formatter** (`formatter.go`):
    - Formats analysis results for display
-   - Supports multiple output formats
-   - Highlights dangerous changes
+   - Supports multiple output formats with collapsible content
+   - Highlights dangerous changes with auto-expansion
+   - Implements provider grouping for large plans
+   - Uses go-output v2 progressive disclosure features
 
 4. **Models** (`models.go`):
    - Defines data structures used throughout the module
@@ -189,6 +213,38 @@ type ResourceChange struct {
     IsDangerous      bool     `json:"is_dangerous"`
     DangerReason     string   `json:"danger_reason"`
     DangerProperties []string `json:"danger_properties"`
+    // Enhanced summary visualization fields
+    Provider         string           `json:"provider,omitempty"`
+    TopChanges       []string         `json:"top_changes,omitempty"`
+    ReplacementHints []string         `json:"replacement_hints,omitempty"`
+}
+
+type ResourceAnalysis struct {
+    PropertyChanges     PropertyChangeAnalysis `json:"property_changes"`
+    ReplacementReasons  []string              `json:"replacement_reasons"`
+    RiskLevel          string                 `json:"risk_level"`
+    Dependencies       DependencyInfo         `json:"dependencies"`
+}
+
+type PropertyChangeAnalysis struct {
+    Changes    []PropertyChange `json:"changes"`
+    Count      int             `json:"count"`
+    TotalSize  int             `json:"total_size_bytes"`
+    Truncated  bool            `json:"truncated"`
+}
+
+type PropertyChange struct {
+    Name      string      `json:"name"`
+    Path      []string    `json:"path"`
+    Before    interface{} `json:"before"`
+    After     interface{} `json:"after"`
+    Sensitive bool        `json:"sensitive"`
+    Size      int         `json:"size"`
+}
+
+type DependencyInfo struct {
+    DependsOn []string `json:"depends_on"`
+    UsedBy    []string `json:"used_by"`
 }
 
 type PlanSummary struct {
@@ -218,11 +274,32 @@ The project includes automated hooks for quality assurance:
 
 ## Features
 
-### Danger Highlights
+### Enhanced Summary Visualization
+A comprehensive feature set that provides progressive disclosure and enhanced organization of Terraform plan information:
+
+#### Progressive Disclosure
+1. **Collapsible Sections**: Uses go-output v2's collapsible content APIs to provide comprehensive information without overwhelming the primary view
+2. **Property Change Analysis**: All property changes are captured and made available in expandable sections
+3. **Auto-Expansion**: High-risk changes and sensitive properties automatically expand for immediate visibility
+4. **Cross-Format Adaptation**: Collapsible content adapts to each output format (Markdown, HTML, Table, JSON)
+
+#### Provider Grouping
+1. **Smart Grouping**: Automatically groups resources by provider when plans meet configurable thresholds (default: 10 resources)
+2. **Provider Diversity Check**: Only groups when multiple providers are present - skips grouping for single-provider plans
+3. **Risk-Based Expansion**: Provider groups with high-risk changes automatically expand
+
+#### Global Expand Control
+1. **CLI Flag**: `--expand-all` flag to expand all collapsible sections at once
+2. **Configuration Support**: `expand_all` setting in strata.yaml for persistent behavior
+3. **Override Capability**: CLI flag overrides configuration file setting
+
+#### Danger Highlights
 A key feature that allows users to define sensitive resource types and properties in the config file that trigger warnings when modified:
 
 1. **Sensitive Resources**: Warn when sensitive resources are replaced (e.g., RDS instances)
 2. **Sensitive Properties**: Warn when sensitive properties are updated (e.g., EC2 UserData)
+3. **Risk Assessment**: Automated risk level calculation (critical, high, medium, low)
+4. **Auto-Expansion**: High-risk changes automatically expand in collapsible sections
 
 This feature integrates with the existing plan analysis workflow and highlights potential risks in infrastructure deployments.
 

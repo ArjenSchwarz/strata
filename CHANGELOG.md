@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Configuration Migration System**:
+  - Added `MigrateDeprecatedConfig()` function for graceful handling of configuration format changes
+  - Automatic migration of old grouping threshold settings to new nested configuration structure
+  - Default value provisioning for new configuration sections (expandable_sections, grouping)
+  - User-friendly warnings about new features available in updated configuration format
+  - Comprehensive test coverage for migration scenarios including edge cases and validation
+- **Enhanced Documentation and Help Text**:
+  - Expanded plan summary command help with detailed progressive disclosure explanations
+  - Added comprehensive examples for --expand-all flag usage across output formats
+  - Documentation of provider grouping behavior and risk analysis features
+  - File output examples with dynamic naming and format combinations
+  - Updated Claude development guide with latest architectural changes and testing procedures
+  - Task completion tracking for enhanced summary visualization feature implementation
+- **Progressive Disclosure Integration**:
+  - Complete integration of provider grouping with collapsible sections in formatter
+  - Enhanced resource changes formatting with conditional grouping logic based on provider diversity
+  - Intelligent fallback from grouped to standard progressive disclosure for single-provider plans
+  - Sensitive resource filtering with progressive disclosure for always-show-sensitive mode
+  - Updated formatter to use new collapsible document building instead of legacy table-only approach
 - **Comprehensive Test Suite for Enhanced Summary Visualization**:
   - End-to-end integration tests covering complete flow from plan parsing to formatted output with 5 comprehensive test scenarios
   - Error handling tests for malformed Terraform plans, graceful degradation, memory limits, and circular dependency detection
