@@ -50,39 +50,60 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 
 	// Find table rows using regex to match ACTION column patterns
 	lines := strings.Split(content, "\n")
-	var tableStart, tableEnd int
+	var tableStart int = -1
 	var dataRows []string
-	var headerSeparatorIndex int
+	var dataRowIndices []int
+	headerFound := false
+	inResourceTable := false
 
 	for i, line := range lines {
+		// Look for Resource Changes header
 		if strings.Contains(line, "Resource Changes") {
 			tableStart = i
-		}
-		if strings.Contains(line, "ACTION") && strings.Contains(line, "RESOURCE") {
-			headerSeparatorIndex = i + 1 // Skip the header separator line
+			inResourceTable = true
 			continue
 		}
-		// Look for data rows (contain action verbs)
-		if tableStart > 0 && i > headerSeparatorIndex &&
+
+		// Look for table header with ACTION column
+		if inResourceTable && !headerFound && strings.Contains(line, "| action") && strings.Contains(line, "| resource") {
+			headerFound = true
+			continue
+		}
+
+		// Skip separator line (| --- | --- | ...)
+		if inResourceTable && headerFound && strings.Contains(line, "| ---") {
+			continue
+		}
+
+		// Look for data rows in the Resource Changes table
+		if inResourceTable && headerFound && strings.HasPrefix(strings.TrimSpace(line), "|") &&
 			(strings.Contains(line, "Add") || strings.Contains(line, "Remove") ||
 				strings.Contains(line, "Replace") || strings.Contains(line, "Modify")) {
 			dataRows = append(dataRows, line)
+			dataRowIndices = append(dataRowIndices, i)
 		}
-		// Find end of table (empty line or next section)
-		if tableStart > 0 && i > headerSeparatorIndex && strings.TrimSpace(line) == "" && len(dataRows) > 0 {
-			tableEnd = i
-			break
+
+		// Check for end of table (empty line or new section header)
+		if inResourceTable && headerFound && len(dataRows) > 0 {
+			if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "###") {
+				break
+			}
 		}
 	}
 
-	if len(dataRows) == 0 {
+	if len(dataRows) == 0 || tableStart == -1 {
 		return input, nil
 	}
 
 	// Sort the data rows by danger status first, then action priority
-	sort.Slice(dataRows, func(i, j int) bool {
-		dangerI := isDangerousRow(dataRows[i])
-		dangerJ := isDangerousRow(dataRows[j])
+	sortedIndices := make([]int, len(dataRows))
+	for i := range sortedIndices {
+		sortedIndices[i] = i
+	}
+
+	sort.Slice(sortedIndices, func(i, j int) bool {
+		dangerI := isDangerousRow(dataRows[sortedIndices[i]])
+		dangerJ := isDangerousRow(dataRows[sortedIndices[j]])
 
 		// If one is dangerous and the other isn't, dangerous comes first
 		if dangerI != dangerJ {
@@ -90,8 +111,8 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 		}
 
 		// If both have same danger status, sort by action priority
-		actionI := extractActionFromTableRow(dataRows[i])
-		actionJ := extractActionFromTableRow(dataRows[j])
+		actionI := extractActionFromTableRow(dataRows[sortedIndices[i]])
+		actionJ := extractActionFromTableRow(dataRows[sortedIndices[j]])
 
 		priorityI := getActionSortPriority(actionI)
 		priorityJ := getActionSortPriority(actionJ)
@@ -99,15 +120,16 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 		return priorityI < priorityJ
 	})
 
-	// Reconstruct the content with sorted rows
-	var result []string
-	result = append(result, lines[:headerSeparatorIndex+1]...)
-	result = append(result, dataRows...)
-	if tableEnd > 0 {
-		result = append(result, lines[tableEnd:]...)
+	// Create a new lines array with sorted data rows
+	newLines := make([]string, len(lines))
+	copy(newLines, lines)
+
+	// Replace the data rows with sorted versions
+	for i, sortedIdx := range sortedIndices {
+		newLines[dataRowIndices[i]] = dataRows[sortedIdx]
 	}
 
-	return []byte(strings.Join(result, "\n")), nil
+	return []byte(strings.Join(newLines, "\n")), nil
 }
 
 // extractActionFromTableRow extracts the action from a table row
@@ -117,6 +139,12 @@ func extractActionFromTableRow(row string) string {
 	matches := re.FindStringSubmatch(row)
 	if len(matches) > 1 {
 		return matches[1]
+	}
+	// Also check for actions with emoji prefix (like "⚠️ Remove")
+	re2 := regexp.MustCompile(`^\s*\|\s*[^|]*\s*(Add|Remove|Replace|Modify)\s*\|`)
+	matches2 := re2.FindStringSubmatch(row)
+	if len(matches2) > 1 {
+		return matches2[1]
 	}
 	// Fallback: look for action words anywhere in the row
 	actions := []string{"Remove", "Replace", "Modify", "Add"}
@@ -137,7 +165,7 @@ func isDangerousRow(row string) bool {
 		strings.Contains(row, "Dangerous") ||
 		strings.Contains(row, "High Risk") ||
 		// Look for non-empty DANGER column (anything after the last | that's not just whitespace)
-		regexp.MustCompile(`\|\s*[^|\s]+\s*$`).MatchString(strings.TrimSpace(row))
+		regexp.MustCompile(`\|\s*[^|\\s]+\s*$`).MatchString(strings.TrimSpace(row))
 }
 
 // getActionSortPriority returns priority for sorting (lower = higher priority)
