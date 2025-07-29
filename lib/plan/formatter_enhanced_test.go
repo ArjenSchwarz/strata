@@ -10,7 +10,13 @@ import (
 
 // TestPropertyChangesFormatter tests the collapsible property formatter
 func TestPropertyChangesFormatter(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			ExpandableSections: config.ExpandableSectionsConfig{
+				AutoExpandDangerous: true, // Enable auto-expansion for sensitive properties
+			},
+		},
+	}
 	formatter := NewFormatter(cfg)
 	fn := formatter.propertyChangesFormatterDirect()
 
