@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Empty Table Suppression**: Implemented filtering to exclude no-op changes from Resource Changes tables, preventing display of tables that would only contain unchanged resources
+- **Comprehensive Empty Table Tests**: Added extensive test coverage for empty table suppression including no-op filtering, provider grouping behavior, and changed resource counting
+
+### Changed
+- **Provider Grouping Threshold Calculation**: Updated threshold comparison to use changed resource count (excluding no-ops) instead of total resource count for more accurate grouping decisions
+- **Provider Resource Counts**: Modified provider group headers to show only changed resource counts, excluding no-op resources from totals
+- **Table Data Preparation**: Enhanced `prepareResourceTableData` to filter out no-op changes, ensuring Resource Changes tables only display actual modifications
+
+### Added
 - **Terraform-Style Property Change Formatting**: Implemented Terraform diff-style formatting for property changes with `+`, `-`, `~` prefixes for add, remove, and update actions
 - **Enhanced Property Formatters**: Added `propertyChangesFormatterTerraform` and `formatPropertyChange` functions with support for complex value types (maps, arrays, primitives)
 - **Sensitive Value Auto-Expansion**: Property changes with sensitive values automatically expand when `AutoExpandDangerous` is enabled

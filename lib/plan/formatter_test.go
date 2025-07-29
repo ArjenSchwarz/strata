@@ -1857,3 +1857,376 @@ func TestPropertyChangesFormatterTerraform_NonPropertyChangeAnalysis(t *testing.
 		})
 	}
 }
+
+// TestPrepareResourceTableData_EmptyTableSuppression tests requirement 1.1: Empty table suppression
+func TestPrepareResourceTableData_EmptyTableSuppression(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name           string
+		changes        []ResourceChange
+		expectedLength int
+		description    string
+	}{
+		{
+			name: "only no-op changes should return empty data",
+			changes: []ResourceChange{
+				{
+					Address:    "aws_instance.no_change_1",
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeNoOp,
+				},
+				{
+					Address:    "aws_s3_bucket.no_change_2",
+					Type:       "aws_s3_bucket",
+					ChangeType: ChangeTypeNoOp,
+				},
+			},
+			expectedLength: 0,
+			description:    "When a Resource Changes table would only contain no-ops, it should return empty data",
+		},
+		{
+			name: "mixed changes should filter out no-ops",
+			changes: []ResourceChange{
+				{
+					Address:    "aws_instance.changed",
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeUpdate,
+				},
+				{
+					Address:    "aws_s3_bucket.no_change",
+					Type:       "aws_s3_bucket",
+					ChangeType: ChangeTypeNoOp,
+				},
+				{
+					Address:    "aws_rds_instance.created",
+					Type:       "aws_rds_instance",
+					ChangeType: ChangeTypeCreate,
+				},
+			},
+			expectedLength: 2,
+			description:    "Should include only the changed resources, filtering out no-ops",
+		},
+		{
+			name: "all changed resources should be included",
+			changes: []ResourceChange{
+				{
+					Address:    "aws_instance.created",
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeCreate,
+				},
+				{
+					Address:    "aws_s3_bucket.updated",
+					Type:       "aws_s3_bucket",
+					ChangeType: ChangeTypeUpdate,
+				},
+				{
+					Address:    "aws_rds_instance.deleted",
+					Type:       "aws_rds_instance",
+					ChangeType: ChangeTypeDelete,
+				},
+				{
+					Address:    "aws_vpc.replaced",
+					Type:       "aws_vpc",
+					ChangeType: ChangeTypeReplace,
+				},
+			},
+			expectedLength: 4,
+			description:    "All non-no-op changes should be included in the table data",
+		},
+		{
+			name:           "empty input should return empty data",
+			changes:        []ResourceChange{},
+			expectedLength: 0,
+			description:    "Empty resource changes should return empty table data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tableData := formatter.prepareResourceTableData(tt.changes)
+			if len(tableData) != tt.expectedLength {
+				t.Errorf("prepareResourceTableData() returned %d rows, expected %d. %s",
+					len(tableData), tt.expectedLength, tt.description)
+			}
+
+			// Verify that no no-op changes are in the result
+			for _, row := range tableData {
+				if action, ok := row["action"].(string); ok {
+					if action == "No-op" {
+						t.Errorf("Found no-op change in table data, should be filtered out")
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestCountChangedResources tests requirement 1.4: Changed resource counting for thresholds
+func TestCountChangedResources(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name          string
+		changes       []ResourceChange
+		expectedCount int
+		description   string
+	}{
+		{
+			name: "only no-op changes should count as zero",
+			changes: []ResourceChange{
+				{ChangeType: ChangeTypeNoOp},
+				{ChangeType: ChangeTypeNoOp},
+				{ChangeType: ChangeTypeNoOp},
+			},
+			expectedCount: 0,
+			description:   "Only no-op changes should result in zero changed resources",
+		},
+		{
+			name: "mixed changes should count only non-no-ops",
+			changes: []ResourceChange{
+				{ChangeType: ChangeTypeCreate},
+				{ChangeType: ChangeTypeNoOp},
+				{ChangeType: ChangeTypeUpdate},
+				{ChangeType: ChangeTypeNoOp},
+				{ChangeType: ChangeTypeDelete},
+			},
+			expectedCount: 3,
+			description:   "Should count only create, update, and delete changes, excluding no-ops",
+		},
+		{
+			name: "all changed resources should be counted",
+			changes: []ResourceChange{
+				{ChangeType: ChangeTypeCreate},
+				{ChangeType: ChangeTypeUpdate},
+				{ChangeType: ChangeTypeDelete},
+				{ChangeType: ChangeTypeReplace},
+			},
+			expectedCount: 4,
+			description:   "All non-no-op change types should be counted",
+		},
+		{
+			name:          "empty input should count as zero",
+			changes:       []ResourceChange{},
+			expectedCount: 0,
+			description:   "Empty resource changes should count as zero",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count := formatter.countChangedResources(tt.changes)
+			if count != tt.expectedCount {
+				t.Errorf("countChangedResources() returned %d, expected %d. %s",
+					count, tt.expectedCount, tt.description)
+			}
+		})
+	}
+}
+
+// TestGroupResourcesByProvider_ExcludesNoOps tests requirement 1.2: Provider grouping excludes no-ops
+func TestGroupResourcesByProvider_ExcludesNoOps(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name           string
+		changes        []ResourceChange
+		expectedGroups map[string]int // provider -> count of changed resources
+		description    string
+	}{
+		{
+			name: "no-ops should be excluded from provider groups",
+			changes: []ResourceChange{
+				{
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeCreate,
+					Provider:   "aws",
+				},
+				{
+					Type:       "aws_s3_bucket",
+					ChangeType: ChangeTypeNoOp,
+					Provider:   "aws",
+				},
+				{
+					Type:       "azurerm_virtual_machine",
+					ChangeType: ChangeTypeUpdate,
+					Provider:   "azurerm",
+				},
+				{
+					Type:       "azurerm_storage_account",
+					ChangeType: ChangeTypeNoOp,
+					Provider:   "azurerm",
+				},
+			},
+			expectedGroups: map[string]int{
+				"aws":     1, // Only the create, not the no-op
+				"azurerm": 1, // Only the update, not the no-op
+			},
+			description: "Provider groups should exclude no-op changes",
+		},
+		{
+			name: "provider with only no-ops should not appear in groups",
+			changes: []ResourceChange{
+				{
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeCreate,
+					Provider:   "aws",
+				},
+				{
+					Type:       "google_compute_instance",
+					ChangeType: ChangeTypeNoOp,
+					Provider:   "google",
+				},
+				{
+					Type:       "google_storage_bucket",
+					ChangeType: ChangeTypeNoOp,
+					Provider:   "google",
+				},
+			},
+			expectedGroups: map[string]int{
+				"aws": 1,
+				// google should not appear since all changes are no-ops
+			},
+			description: "Providers with only no-op changes should not appear in groups",
+		},
+		{
+			name: "provider extraction from resource type when Provider field is empty",
+			changes: []ResourceChange{
+				{
+					Type:       "aws_instance",
+					ChangeType: ChangeTypeCreate,
+					Provider:   "", // Empty, should extract from type
+				},
+				{
+					Type:       "aws_s3_bucket",
+					ChangeType: ChangeTypeNoOp,
+					Provider:   "", // This should be filtered out anyway
+				},
+				{
+					Type:       "azurerm_virtual_machine",
+					ChangeType: ChangeTypeUpdate,
+					Provider:   "", // Empty, should extract from type
+				},
+			},
+			expectedGroups: map[string]int{
+				"aws":     1, // Extracted from aws_instance, aws_s3_bucket filtered out
+				"azurerm": 1, // Extracted from azurerm_virtual_machine
+			},
+			description: "Should extract provider from resource type when Provider field is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			groups := formatter.groupResourcesByProvider(tt.changes)
+
+			// Check that we have the expected number of groups
+			if len(groups) != len(tt.expectedGroups) {
+				t.Errorf("groupResourcesByProvider() returned %d groups, expected %d. %s",
+					len(groups), len(tt.expectedGroups), tt.description)
+			}
+
+			// Check each expected group and its count
+			for expectedProvider, expectedCount := range tt.expectedGroups {
+				if resources, exists := groups[expectedProvider]; !exists {
+					t.Errorf("Expected provider %s not found in groups. %s", expectedProvider, tt.description)
+				} else if len(resources) != expectedCount {
+					t.Errorf("Provider %s has %d resources, expected %d. %s",
+						expectedProvider, len(resources), expectedCount, tt.description)
+				}
+			}
+
+			// Verify no no-op changes are in any group
+			for provider, resources := range groups {
+				for _, resource := range resources {
+					if resource.ChangeType == ChangeTypeNoOp {
+						t.Errorf("Found no-op change in provider group %s, should be filtered out. %s",
+							provider, tt.description)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestProviderGroupingThreshold_UsesChangedResourceCount tests requirement 1.4: Threshold uses changed resource count
+func TestProviderGroupingThreshold_UsesChangedResourceCount(t *testing.T) {
+	tests := []struct {
+		name                  string
+		threshold             int
+		changes               []ResourceChange
+		shouldTriggerGrouping bool
+		description           string
+	}{
+		{
+			name:      "changed resources below threshold should not trigger grouping",
+			threshold: 10,
+			changes: []ResourceChange{
+				// 5 changed resources
+				{Type: "aws_instance", ChangeType: ChangeTypeCreate},
+				{Type: "aws_s3_bucket", ChangeType: ChangeTypeUpdate},
+				{Type: "aws_rds_instance", ChangeType: ChangeTypeDelete},
+				{Type: "aws_vpc", ChangeType: ChangeTypeReplace},
+				{Type: "aws_subnet", ChangeType: ChangeTypeUpdate},
+				// 10 no-op resources (should not count toward threshold)
+				{Type: "aws_security_group_1", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_2", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_3", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_4", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_5", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_6", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_7", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_8", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_9", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_10", ChangeType: ChangeTypeNoOp},
+			},
+			shouldTriggerGrouping: false,
+			description:           "5 changed + 10 no-ops = only 5 should count toward threshold of 10",
+		},
+		{
+			name:      "changed resources at threshold should trigger grouping",
+			threshold: 5,
+			changes: []ResourceChange{
+				// 5 changed resources (meets threshold)
+				{Type: "aws_instance", ChangeType: ChangeTypeCreate},
+				{Type: "aws_s3_bucket", ChangeType: ChangeTypeUpdate},
+				{Type: "aws_rds_instance", ChangeType: ChangeTypeDelete},
+				{Type: "aws_vpc", ChangeType: ChangeTypeReplace},
+				{Type: "aws_subnet", ChangeType: ChangeTypeUpdate},
+				// 5 no-op resources (should not count)
+				{Type: "aws_security_group_1", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_2", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_3", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_4", ChangeType: ChangeTypeNoOp},
+				{Type: "aws_security_group_5", ChangeType: ChangeTypeNoOp},
+			},
+			shouldTriggerGrouping: true,
+			description:           "5 changed resources should meet threshold of 5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{
+				Plan: config.PlanConfig{
+					Grouping: config.GroupingConfig{
+						Enabled:   true,
+						Threshold: tt.threshold,
+					},
+				},
+			}
+			formatter := NewFormatter(cfg)
+
+			changedCount := formatter.countChangedResources(tt.changes)
+			wouldTriggerGrouping := cfg.Plan.Grouping.Enabled && changedCount >= cfg.Plan.Grouping.Threshold
+
+			if wouldTriggerGrouping != tt.shouldTriggerGrouping {
+				t.Errorf("Grouping trigger result: %v, expected: %v. Changed count: %d, threshold: %d. %s",
+					wouldTriggerGrouping, tt.shouldTriggerGrouping, changedCount, tt.threshold, tt.description)
+			}
+		})
+	}
+}

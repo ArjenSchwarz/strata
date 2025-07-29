@@ -260,33 +260,55 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 
 	// Resource Changes table - UNIFIED TABLE CREATION following go-output example pattern
 	if showDetails && len(summary.ResourceChanges) > 0 {
-		// Check if provider grouping should be used
-		if f.config.Plan.Grouping.Enabled && len(summary.ResourceChanges) >= f.config.Plan.Grouping.Threshold {
+		// Check if provider grouping should be used (requirement 1.4: use changed resource count for threshold)
+		changedResourceCount := f.countChangedResources(summary.ResourceChanges)
+		if f.config.Plan.Grouping.Enabled && changedResourceCount >= f.config.Plan.Grouping.Threshold {
 			groups := f.groupResourcesByProvider(summary.ResourceChanges)
 			if len(groups) > 1 { // Only group if multiple providers
 				// Create provider-grouped sections following go-output collapsible sections pattern
 				for providerName, resources := range groups {
 					groupData := f.prepareResourceTableData(resources)
-					schema := f.getResourceTableSchema()
-
-					// Create table for this provider group
-					providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData, output.WithSchema(schema...))
-					if err == nil {
-						// Create collapsible section for this provider
-						providerSection := output.NewCollapsibleSection(
-							fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), len(resources)),
-							[]output.Content{providerTable},
-							output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
-							output.WithSectionLevel(2),
-						)
-						builder = builder.AddContent(providerSection)
-					} else {
-						fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
+					// Requirement 1.1: Only create table if data exists after filtering no-ops
+					if len(groupData) > 0 {
+						schema := f.getResourceTableSchema()
+						// Create table for this provider group
+						providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData, output.WithSchema(schema...))
+						if err == nil {
+							// Create collapsible section for this provider (requirement 1.3: show only changed resources in count)
+							changedCount := f.countChangedResources(resources)
+							providerSection := output.NewCollapsibleSection(
+								fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), changedCount),
+								[]output.Content{providerTable},
+								output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
+								output.WithSectionLevel(2),
+							)
+							builder = builder.AddContent(providerSection)
+						} else {
+							fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
+						}
 					}
+					// If groupData is empty, table is suppressed (requirement 1.2)
 				}
 			} else {
 				// Single provider, create standard Resource Changes table
 				tableData := f.prepareResourceTableData(summary.ResourceChanges)
+				// Requirement 1.1: Only create table if data exists after filtering no-ops
+				if len(tableData) > 0 {
+					schema := f.getResourceTableSchema()
+					resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
+					if err == nil {
+						builder = builder.AddContent(resourceTable)
+					} else {
+						fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
+					}
+				}
+				// If tableData is empty, table is suppressed (requirement 1.1)
+			}
+		} else {
+			// Standard Resource Changes table without grouping
+			tableData := f.prepareResourceTableData(summary.ResourceChanges)
+			// Requirement 1.1: Only create table if data exists after filtering no-ops
+			if len(tableData) > 0 {
 				schema := f.getResourceTableSchema()
 				resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
 				if err == nil {
@@ -295,16 +317,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 					fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
 				}
 			}
-		} else {
-			// Standard Resource Changes table without grouping
-			tableData := f.prepareResourceTableData(summary.ResourceChanges)
-			schema := f.getResourceTableSchema()
-			resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
-			if err == nil {
-				builder = builder.AddContent(resourceTable)
-			} else {
-				fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
-			}
+			// If tableData is empty, table is suppressed (requirement 1.1)
 		}
 	} else if showDetails && len(summary.ResourceChanges) == 0 {
 		// No resource changes
@@ -670,11 +683,12 @@ func (f *Formatter) hasSensitive(changes []PropertyChange) bool {
 }
 
 // prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
+// This function filters out no-op changes to implement empty table suppression (requirement 1)
 func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[string]any {
 	tableData := make([]map[string]any, 0, len(changes))
 
 	for _, change := range changes {
-		// Skip no-op changes from details
+		// Skip no-op changes from details (requirement 1: Empty Table Suppression)
 		if change.ChangeType == ChangeTypeNoOp {
 			continue
 		}
@@ -758,6 +772,18 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 	}
 
 	return tableData
+}
+
+// countChangedResources counts resources excluding no-ops for provider grouping threshold calculations
+// This implements requirement 1.4: threshold comparison uses total changed resources, not total resources
+func (f *Formatter) countChangedResources(changes []ResourceChange) int {
+	count := 0
+	for _, change := range changes {
+		if change.ChangeType != ChangeTypeNoOp {
+			count++
+		}
+	}
+	return count
 }
 
 // getDisplayID returns the appropriate ID for display based on change type
@@ -1069,9 +1095,15 @@ func (f *Formatter) hasHighRiskChanges(resources []ResourceChange) bool {
 }
 
 // groupResourcesByProvider groups resources by their provider
+// This function excludes no-ops from grouping (requirement 1.2: provider-specific tables don't include no-ops)
 func (f *Formatter) groupResourcesByProvider(changes []ResourceChange) map[string][]ResourceChange {
 	groups := make(map[string][]ResourceChange)
 	for _, change := range changes {
+		// Skip no-ops from grouping (requirement 1.2)
+		if change.ChangeType == ChangeTypeNoOp {
+			continue
+		}
+
 		provider := change.Provider
 		if provider == "" {
 			// Extract provider from resource type (e.g., "aws_instance" -> "aws")
