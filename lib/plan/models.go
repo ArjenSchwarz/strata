@@ -155,12 +155,13 @@ type PropertyChangeAnalysis struct {
 
 // PropertyChange represents a single property that changed between before/after states
 type PropertyChange struct {
-	Name      string   `json:"name"`
-	Path      []string `json:"path"` // For nested properties
-	Before    any      `json:"before"`
-	After     any      `json:"after"`
-	Sensitive bool     `json:"sensitive"`
-	Size      int      `json:"size"` // Size in bytes for memory tracking
+	Name      string   `json:"name"`      // Property name only (no full resource path since we're already at resource level)
+	Path      []string `json:"path"`      // For nested properties
+	Before    any      `json:"before"`    // Actual before value
+	After     any      `json:"after"`     // Actual after value
+	Sensitive bool     `json:"sensitive"` // From sensitive_values
+	Size      int      `json:"size"`      // Size in bytes for memory tracking
+	Action    string   `json:"action"`    // "add", "remove", "update" actions
 }
 
 // DependencyInfo contains resource dependency relationships

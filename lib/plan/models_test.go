@@ -188,6 +188,7 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 							After:     "t3.small",
 							Sensitive: false,
 							Size:      20,
+							Action:    "update",
 						},
 					},
 					Count:     1,
@@ -201,7 +202,7 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 					UsedBy:    []string{"aws_load_balancer.main"},
 				},
 			},
-			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium","dependencies":{"depends_on":["aws_vpc.main"],"used_by":["aws_load_balancer.main"]}}`,
+			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20,"action":"update"}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium","dependencies":{"depends_on":["aws_vpc.main"],"used_by":["aws_load_balancer.main"]}}`,
 		},
 		{
 			name: "analysis with truncated properties",
