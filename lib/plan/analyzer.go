@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +29,295 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 		plan:   plan,
 		config: cfg,
 	}
+}
+
+// compareObjects performs deep object comparison for property change extraction
+func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, analysis *PropertyChangeAnalysis) {
+	// Handle nil cases
+	if before == nil && after == nil {
+		return
+	}
+
+	// Property added
+	if before == nil && after != nil {
+		// If it's a whole object being added and we have a map, iterate through properties
+		if path == "" && after != nil {
+			if afterMap, ok := after.(map[string]any); ok {
+				for key, val := range afterMap {
+					childSensitive := a.extractSensitiveChild(afterSensitive, key)
+					analysis.Changes = append(analysis.Changes, PropertyChange{
+						Name:      key,
+						Path:      []string{key},
+						Before:    nil,
+						After:     val,
+						Action:    "add",
+						Sensitive: a.isSensitive(key, childSensitive),
+					})
+				}
+				return
+			}
+		}
+
+		analysis.Changes = append(analysis.Changes, PropertyChange{
+			Name:      a.extractPropertyName(path),
+			Path:      a.parsePath(path),
+			Before:    nil,
+			After:     after,
+			Action:    "add",
+			Sensitive: a.isSensitive(path, afterSensitive),
+		})
+		return
+	}
+
+	// Property removed
+	if before != nil && after == nil {
+		// If it's a whole object being removed and we have a map, iterate through properties
+		if path == "" && before != nil {
+			if beforeMap, ok := before.(map[string]any); ok {
+				for key, val := range beforeMap {
+					childSensitive := a.extractSensitiveChild(beforeSensitive, key)
+					analysis.Changes = append(analysis.Changes, PropertyChange{
+						Name:      key,
+						Path:      []string{key},
+						Before:    val,
+						After:     nil,
+						Action:    "remove",
+						Sensitive: a.isSensitive(key, childSensitive),
+					})
+				}
+				return
+			}
+		}
+
+		analysis.Changes = append(analysis.Changes, PropertyChange{
+			Name:      a.extractPropertyName(path),
+			Path:      a.parsePath(path),
+			Before:    before,
+			After:     nil,
+			Action:    "remove",
+			Sensitive: a.isSensitive(path, beforeSensitive),
+		})
+		return
+	}
+
+	// Type checking and recursive comparison
+	beforeType := reflect.TypeOf(before)
+	afterType := reflect.TypeOf(after)
+
+	// Type changed
+	if beforeType != afterType {
+		analysis.Changes = append(analysis.Changes, PropertyChange{
+			Name:      a.extractPropertyName(path),
+			Path:      a.parsePath(path),
+			Before:    before,
+			After:     after,
+			Action:    "update",
+			Sensitive: a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+		})
+		return
+	}
+
+	// Compare based on type
+	switch beforeVal := before.(type) {
+	case map[string]any:
+		afterMap := after.(map[string]any)
+		// Compare all keys in both maps
+		allKeys := make(map[string]bool)
+		for k := range beforeVal {
+			allKeys[k] = true
+		}
+		for k := range afterMap {
+			allKeys[k] = true
+		}
+
+		for key := range allKeys {
+			newPath := path + "." + key
+			if path == "" {
+				newPath = key
+			}
+			beforeChild := beforeVal[key]
+			afterChild := afterMap[key]
+			beforeSensChild := a.extractSensitiveChild(beforeSensitive, key)
+			afterSensChild := a.extractSensitiveChild(afterSensitive, key)
+
+			a.compareObjects(newPath, beforeChild, afterChild,
+				beforeSensChild, afterSensChild, analysis)
+		}
+
+	case []any:
+		afterSlice := after.([]any)
+		// Handle slice changes - simplified for arrays of same length
+		if len(beforeVal) != len(afterSlice) {
+			// Entire array changed
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:      a.extractPropertyName(path),
+				Path:      a.parsePath(path),
+				Before:    before,
+				After:     after,
+				Action:    "update",
+				Sensitive: a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+			})
+		} else {
+			// Compare elements
+			for i := 0; i < len(beforeVal); i++ {
+				newPath := fmt.Sprintf("%s[%d]", path, i)
+				a.compareObjects(newPath, beforeVal[i], afterSlice[i],
+					a.extractSensitiveIndex(beforeSensitive, i),
+					a.extractSensitiveIndex(afterSensitive, i), analysis)
+			}
+		}
+
+	default:
+		// Primitive values - direct comparison
+		if !reflect.DeepEqual(before, after) {
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:      a.extractPropertyName(path),
+				Path:      a.parsePath(path),
+				Before:    before,
+				After:     after,
+				Action:    "update",
+				Sensitive: a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+			})
+		}
+	}
+}
+
+// extractPropertyName extracts the final property name from a path
+func (a *Analyzer) extractPropertyName(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	// Handle dot notation first to get the last component
+	parts := strings.Split(path, ".")
+	lastPart := parts[len(parts)-1]
+
+	// Handle array indices in the last part
+	if strings.Contains(lastPart, "[") {
+		// For paths like "tags[0]", return the part before the array index
+		beforeBracket := strings.Split(lastPart, "[")[0]
+		if beforeBracket != "" {
+			return beforeBracket
+		}
+	}
+
+	return lastPart
+}
+
+// parsePath converts a dot-notation path to a slice of path components
+func (a *Analyzer) parsePath(path string) []string {
+	if path == "" {
+		return []string{}
+	}
+
+	// Handle array indices by converting them to path components
+	// e.g., "tags[0].name" becomes ["tags", "0", "name"]
+	// e.g., "matrix[1][2]" becomes ["matrix", "1", "2"]
+	result := []string{}
+	parts := strings.Split(path, ".")
+
+	for _, part := range parts {
+		if strings.Contains(part, "[") {
+			// Handle multiple array indices in one part like "matrix[1][2]"
+			remaining := part
+
+			// Extract the initial property name before any brackets
+			firstBracket := strings.Index(remaining, "[")
+			if firstBracket > 0 {
+				propertyName := remaining[:firstBracket]
+				result = append(result, propertyName)
+				remaining = remaining[firstBracket:]
+			}
+
+			// Extract all array indices
+			for strings.Contains(remaining, "[") {
+				start := strings.Index(remaining, "[")
+				end := strings.Index(remaining, "]")
+				if start != -1 && end != -1 && end > start {
+					index := remaining[start+1 : end]
+					if index != "" {
+						result = append(result, index)
+					}
+					remaining = remaining[end+1:]
+				} else {
+					break
+				}
+			}
+		} else {
+			result = append(result, part)
+		}
+	}
+
+	return result
+}
+
+// isSensitive checks if a property at the given path is marked as sensitive
+func (a *Analyzer) isSensitive(path string, sensitiveValues any) bool {
+	if sensitiveValues == nil {
+		return false
+	}
+
+	// Navigate the sensitive values structure following the path
+	current := sensitiveValues
+	pathParts := a.parsePath(path)
+
+	for _, part := range pathParts {
+		switch curr := current.(type) {
+		case map[string]any:
+			if val, exists := curr[part]; exists {
+				current = val
+			} else {
+				return false
+			}
+		case []any:
+			// Convert part to index
+			if index, err := strconv.Atoi(part); err == nil && index >= 0 && index < len(curr) {
+				current = curr[index]
+			} else {
+				return false
+			}
+		case bool:
+			// If we encounter a boolean, it represents sensitivity for this level
+			return curr
+		default:
+			return false
+		}
+	}
+
+	// Final check - if we've navigated to a boolean, return it
+	if sensitive, ok := current.(bool); ok {
+		return sensitive
+	}
+
+	return false
+}
+
+// extractSensitiveChild extracts the sensitive values for a child property
+func (a *Analyzer) extractSensitiveChild(sensitiveValues any, key string) any {
+	if sensitiveValues == nil {
+		return nil
+	}
+
+	if sensitiveMap, ok := sensitiveValues.(map[string]any); ok {
+		return sensitiveMap[key]
+	}
+
+	return nil
+}
+
+// extractSensitiveIndex extracts the sensitive values for an array element
+func (a *Analyzer) extractSensitiveIndex(sensitiveValues any, index int) any {
+	if sensitiveValues == nil {
+		return nil
+	}
+
+	if sensitiveSlice, ok := sensitiveValues.([]any); ok {
+		if index >= 0 && index < len(sensitiveSlice) {
+			return sensitiveSlice[index]
+		}
+	}
+
+	return nil
 }
 
 // GenerateSummary creates a comprehensive summary of the plan
@@ -590,40 +880,44 @@ func (a *Analyzer) getTopChangedProperties(change *tfjson.ResourceChange, limit 
 	return properties
 }
 
-// analyzePropertyChanges extracts property changes with performance safeguards
-func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange, maxProps int) (PropertyChangeAnalysis, error) {
-	result := PropertyChangeAnalysis{
+// analyzePropertyChanges extracts property changes with performance safeguards using the new compareObjects method
+func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) PropertyChangeAnalysis {
+	analysis := PropertyChangeAnalysis{
 		Changes: []PropertyChange{},
 	}
 
 	if change.Change == nil {
-		return result, nil
+		return analysis
 	}
 
-	const maxTotalSize = 10 * 1024 * 1024 // 10MB limit
+	// Use new deep comparison with sensitive values
+	a.compareObjects("", change.Change.Before, change.Change.After,
+		change.Change.BeforeSensitive, change.Change.AfterSensitive, &analysis)
 
-	// Use recursive comparison with depth limit
-	err := a.compareValues(change.Change.Before, change.Change.After, nil, 0, 5, func(pc PropertyChange) bool {
-		// Calculate approximate size
-		pc.Size = a.estimateValueSize(pc.Before) + a.estimateValueSize(pc.After)
-		result.TotalSize += pc.Size
+	// Set count and calculate sizes
+	analysis.Count = len(analysis.Changes)
+
+	// Calculate total size and apply performance limits
+	const maxTotalSize = 10 * 1024 * 1024 // 10MB limit
+	const maxPropertiesPerResource = 100
+
+	totalSize := 0
+	for i, propertyChange := range analysis.Changes {
+		size := a.estimateValueSize(propertyChange.Before) + a.estimateValueSize(propertyChange.After)
+		analysis.Changes[i].Size = size
+		totalSize += size
 
 		// Apply limits
-		if result.Count >= maxProps || result.TotalSize > maxTotalSize {
-			result.Truncated = true
-			return false // Stop processing
+		if i >= maxPropertiesPerResource || totalSize > maxTotalSize {
+			analysis.Changes = analysis.Changes[:i]
+			analysis.Count = i
+			analysis.Truncated = true
+			break
 		}
-
-		result.Changes = append(result.Changes, pc)
-		result.Count++
-		return true
-	})
-
-	if err != nil {
-		return result, fmt.Errorf("property comparison failed: %w", err)
 	}
 
-	return result, nil
+	analysis.TotalSize = totalSize
+	return analysis
 }
 
 // compareValues recursively compares two values and calls the callback for each difference
@@ -854,14 +1148,8 @@ func (a *Analyzer) extractDependenciesWithLimit(change *tfjson.ResourceChange, m
 func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnalysis, error) {
 	analysis := &ResourceAnalysis{}
 
-	// Get performance limits from config
-	limits := a.config.GetPerformanceLimitsWithDefaults()
-
 	// Extract property changes with limits for performance
-	propAnalysis, err := a.analyzePropertyChanges(change, limits.MaxPropertiesPerResource)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract property changes: %w", err)
-	}
+	propAnalysis := a.analyzePropertyChanges(change)
 	analysis.PropertyChanges = propAnalysis
 
 	// Get replacement reasons (existing functionality)
