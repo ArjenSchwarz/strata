@@ -52,7 +52,7 @@ This document outlines the discrete coding tasks required to implement the plan 
 
 ### 3. Terraform-Style Property Change Formatting
 
-- [ ] **3.1** Create custom CollapsibleFormatter for property changes in formatter.go
+- [x] **3.1** Create custom CollapsibleFormatter for property changes in formatter.go
   - Implement `propertyChangesFormatterTerraform` function returning collapsible content
   - Create `formatPropertyChange` function with `+`, `-`, `~` prefixes for actions
   - Implement `formatValue` function handling different value types (string, map, array, primitives)
@@ -60,13 +60,13 @@ This document outlines the discrete coding tasks required to implement the plan 
   - Use go-output's `NewCollapsibleValue` API for expandable content
   - References requirement 2 (Property Changes Formatting - Terraform diff-style format)
 
-- [ ] **3.2** Implement auto-expansion logic for sensitive changes
+- [x] **3.2** Implement auto-expansion logic for sensitive changes
   - Auto-expand collapsible sections when sensitive properties are detected
   - Respect global expand-all configuration from config
   - Add warning indicators for sensitive content in summary text
   - References requirement 2 (Property Changes Formatting - sensitive values handling)
 
-- [ ] **3.3** Add comprehensive formatter tests
+- [x] **3.3** Add comprehensive formatter tests
   - Test Terraform-style formatting for add, remove, update actions
   - Test sensitive value masking in formatted output
   - Test complex value formatting (maps, arrays, nested objects)

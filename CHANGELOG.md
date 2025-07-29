@@ -8,10 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform-Style Property Change Formatting**: Implemented Terraform diff-style formatting for property changes with `+`, `-`, `~` prefixes for add, remove, and update actions
+- **Enhanced Property Formatters**: Added `propertyChangesFormatterTerraform` and `formatPropertyChange` functions with support for complex value types (maps, arrays, primitives)
+- **Sensitive Value Auto-Expansion**: Property changes with sensitive values automatically expand when `AutoExpandDangerous` is enabled
+- **Comprehensive Terraform Formatter Tests**: Added extensive test coverage for Terraform-style formatting including value formatting, sensitive property handling, and auto-expansion logic
 - **Enhanced Property Analysis Performance Limits**: Added `enforcePropertyLimits` function with configurable constants for MaxPropertiesPerResource (100), MaxPropertyValueSize (10KB), and MaxTotalPropertyMemory (10MB) to prevent excessive memory usage during plan analysis
 - **Comprehensive Unit Tests for Property Analysis**: Added extensive test coverage for enhanced property analysis including deep object comparison tests, performance limit enforcement tests, and property extraction validation
 
 ### Changed
+- **Property Changes Display**: Switched from direct property formatter to Terraform-style formatter in resource table schema for improved readability
+- **Output Format Validation**: Improved case-insensitive validation for output formats
+- **Auto-Expansion Logic**: Updated auto-expansion to respect `AutoExpandDangerous` configuration setting instead of always expanding sensitive properties
 - **Property Analysis Method**: Refactored `analyzePropertyChanges` to use dedicated `enforcePropertyLimits` function for better code organization and maintainability
 
 ### Added

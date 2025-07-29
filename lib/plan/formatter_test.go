@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -373,6 +374,11 @@ func TestFormatter_propertyChangesFormatter_ExpandAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{
 				ExpandAll: tc.expandAll,
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: true, // Enable auto-expansion for sensitive properties
+					},
+				},
 			}
 			formatter := NewFormatter(cfg)
 
@@ -437,6 +443,11 @@ func TestFormatter_dependenciesFormatter_ExpandAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{
 				ExpandAll: tc.expandAll,
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: true, // Enable auto-expansion for dangerous properties
+					},
+				},
 			}
 			formatter := NewFormatter(cfg)
 
@@ -1333,4 +1344,516 @@ func TestEdgeCases(t *testing.T) {
 		}
 		t.Log("Very long names and values handled gracefully")
 	})
+}
+
+// TestFormatPropertyChange tests the Terraform-style property change formatting
+func TestFormatPropertyChange(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name     string
+		change   PropertyChange
+		expected string
+	}{
+		{
+			name: "add action with string value",
+			change: PropertyChange{
+				Name:      "instance_type",
+				Action:    "add",
+				After:     "t2.micro",
+				Sensitive: false,
+			},
+			expected: `  + instance_type = "t2.micro"`,
+		},
+		{
+			name: "remove action with string value",
+			change: PropertyChange{
+				Name:      "old_property",
+				Action:    "remove",
+				Before:    "old_value",
+				Sensitive: false,
+			},
+			expected: `  - old_property = "old_value"`,
+		},
+		{
+			name: "update action with string values",
+			change: PropertyChange{
+				Name:      "instance_type",
+				Action:    "update",
+				Before:    "t2.micro",
+				After:     "t2.small",
+				Sensitive: false,
+			},
+			expected: `  ~ instance_type = "t2.micro" -> "t2.small"`,
+		},
+		{
+			name: "update action with sensitive values",
+			change: PropertyChange{
+				Name:      "password",
+				Action:    "update",
+				Before:    "old_secret",
+				After:     "new_secret",
+				Sensitive: true,
+			},
+			expected: `  ~ password = (sensitive value hidden) -> (sensitive value hidden)`,
+		},
+		{
+			name: "add action with number value",
+			change: PropertyChange{
+				Name:      "port",
+				Action:    "add",
+				After:     8080,
+				Sensitive: false,
+			},
+			expected: `  + port = 8080`,
+		},
+		{
+			name: "update action with nil to value",
+			change: PropertyChange{
+				Name:      "tags",
+				Action:    "update",
+				Before:    nil,
+				After:     map[string]any{"env": "prod"},
+				Sensitive: false,
+			},
+			expected: `  ~ tags = null -> { env = "prod" }`,
+		},
+		{
+			name: "unknown action",
+			change: PropertyChange{
+				Name:   "test",
+				Action: "unknown",
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatter.formatPropertyChange(tt.change)
+			if result != tt.expected {
+				t.Errorf("formatPropertyChange() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestFormatValue tests the value formatting for different types
+func TestFormatValue(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name      string
+		value     any
+		sensitive bool
+		expected  string
+	}{
+		{
+			name:      "sensitive value",
+			value:     "secret",
+			sensitive: true,
+			expected:  "(sensitive value hidden)",
+		},
+		{
+			name:      "string value",
+			value:     "hello world",
+			sensitive: false,
+			expected:  `"hello world"`,
+		},
+		{
+			name:      "number value",
+			value:     42,
+			sensitive: false,
+			expected:  "42",
+		},
+		{
+			name:      "boolean value",
+			value:     true,
+			sensitive: false,
+			expected:  "true",
+		},
+		{
+			name:      "nil value",
+			value:     nil,
+			sensitive: false,
+			expected:  "null",
+		},
+		{
+			name: "small map",
+			value: map[string]any{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			sensitive: false,
+			expected:  `{ key1 = "value1", key2 = "value2" }`,
+		},
+		{
+			name: "large map",
+			value: map[string]any{
+				"key1": "value1",
+				"key2": "value2",
+				"key3": "value3",
+				"key4": "value4",
+			},
+			sensitive: false,
+			expected:  "<map[4]>",
+		},
+		{
+			name:      "small array",
+			value:     []any{"item1", "item2"},
+			sensitive: false,
+			expected:  `[ "item1", "item2" ]`,
+		},
+		{
+			name:      "large array",
+			value:     []any{"item1", "item2", "item3", "item4"},
+			sensitive: false,
+			expected:  "<list[4]>",
+		},
+		{
+			name:      "empty array",
+			value:     []any{},
+			sensitive: false,
+			expected:  `[  ]`,
+		},
+		{
+			name:      "empty map",
+			value:     map[string]any{},
+			sensitive: false,
+			expected:  `{  }`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatter.formatValue(tt.value, tt.sensitive)
+			if result != tt.expected {
+				t.Errorf("formatValue() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestHasSensitive tests the sensitive property detection
+func TestHasSensitive(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	tests := []struct {
+		name     string
+		changes  []PropertyChange
+		expected bool
+	}{
+		{
+			name:     "empty changes",
+			changes:  []PropertyChange{},
+			expected: false,
+		},
+		{
+			name: "no sensitive properties",
+			changes: []PropertyChange{
+				{Name: "prop1", Sensitive: false},
+				{Name: "prop2", Sensitive: false},
+			},
+			expected: false,
+		},
+		{
+			name: "has sensitive properties",
+			changes: []PropertyChange{
+				{Name: "prop1", Sensitive: false},
+				{Name: "password", Sensitive: true},
+			},
+			expected: true,
+		},
+		{
+			name: "all sensitive properties",
+			changes: []PropertyChange{
+				{Name: "password", Sensitive: true},
+				{Name: "api_key", Sensitive: true},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatter.hasSensitive(tt.changes)
+			if result != tt.expected {
+				t.Errorf("hasSensitive() = %v, expected %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestPropertyChangesFormatterTerraform tests the Terraform-style property changes formatter
+func TestPropertyChangesFormatterTerraform(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         *config.Config
+		propAnalysis   PropertyChangeAnalysis
+		expectExpanded bool
+		expectWarning  bool
+	}{
+		{
+			name: "no properties changed",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: true,
+					},
+				},
+			},
+			propAnalysis: PropertyChangeAnalysis{
+				Changes: []PropertyChange{},
+				Count:   0,
+			},
+			expectExpanded: false,
+			expectWarning:  false,
+		},
+		{
+			name: "non-sensitive properties with auto-expand disabled",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: false,
+					},
+				},
+				ExpandAll: false,
+			},
+			propAnalysis: PropertyChangeAnalysis{
+				Changes: []PropertyChange{
+					{Name: "instance_type", Action: "update", Before: "t2.micro", After: "t2.small", Sensitive: false},
+				},
+				Count: 1,
+			},
+			expectExpanded: false,
+			expectWarning:  false,
+		},
+		{
+			name: "sensitive properties with auto-expand enabled",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: true,
+					},
+				},
+				ExpandAll: false,
+			},
+			propAnalysis: PropertyChangeAnalysis{
+				Changes: []PropertyChange{
+					{Name: "password", Action: "update", Before: "old", After: "new", Sensitive: true},
+					{Name: "instance_type", Action: "update", Before: "t2.micro", After: "t2.small", Sensitive: false},
+				},
+				Count: 2,
+			},
+			expectExpanded: true,
+			expectWarning:  true,
+		},
+		{
+			name: "expand all overrides auto-expand",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: false,
+					},
+				},
+				ExpandAll: true,
+			},
+			propAnalysis: PropertyChangeAnalysis{
+				Changes: []PropertyChange{
+					{Name: "instance_type", Action: "update", Before: "t2.micro", After: "t2.small", Sensitive: false},
+				},
+				Count: 1,
+			},
+			expectExpanded: true,
+			expectWarning:  false,
+		},
+		{
+			name: "truncated properties",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					ExpandableSections: config.ExpandableSectionsConfig{
+						AutoExpandDangerous: true,
+					},
+				},
+				ExpandAll: false,
+			},
+			propAnalysis: PropertyChangeAnalysis{
+				Changes: []PropertyChange{
+					{Name: "prop1", Action: "add", After: "value1", Sensitive: false},
+				},
+				Count:     1,
+				Truncated: true,
+			},
+			expectExpanded: false,
+			expectWarning:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			formatter := NewFormatter(tt.config)
+			formatterFunc := formatter.propertyChangesFormatterTerraform()
+			result := formatterFunc(tt.propAnalysis)
+
+			if tt.propAnalysis.Count == 0 {
+				// Expect simple string for no changes
+				if strResult, ok := result.(string); ok {
+					if strResult != "No properties changed" {
+						t.Errorf("Expected 'No properties changed', got %q", strResult)
+					}
+				} else {
+					t.Errorf("Expected string result for no changes, got %T", result)
+				}
+				return
+			}
+
+			// Check if result is a CollapsibleValue
+			collapsibleValue, ok := result.(output.CollapsibleValue)
+			if !ok {
+				t.Errorf("Expected CollapsibleValue, got %T", result)
+				return
+			}
+
+			// Check expansion state
+			if collapsibleValue.IsExpanded() != tt.expectExpanded {
+				t.Errorf("Expected expansion %v, got %v", tt.expectExpanded, collapsibleValue.IsExpanded())
+			}
+
+			// Check warning indicator in summary
+			summary := collapsibleValue.Summary()
+			hasWarning := strings.Contains(summary, "⚠️")
+			if hasWarning != tt.expectWarning {
+				t.Errorf("Expected warning indicator %v, got %v in summary: %q", tt.expectWarning, hasWarning, summary)
+			}
+
+			// Check that truncated indicator appears when expected
+			if tt.propAnalysis.Truncated && !strings.Contains(summary, "[truncated]") {
+				t.Errorf("Expected [truncated] indicator in summary: %q", summary)
+			}
+
+			// Check that details are formatted in Terraform style
+			details := collapsibleValue.Details()
+			if tt.propAnalysis.Count > 0 {
+				// Details should be a string containing Terraform diff prefixes
+				if detailsStr, ok := details.(string); ok {
+					hasTerraformPrefix := strings.Contains(detailsStr, "  +") ||
+						strings.Contains(detailsStr, "  -") ||
+						strings.Contains(detailsStr, "  ~")
+					if !hasTerraformPrefix {
+						t.Errorf("Expected Terraform diff-style formatting in details: %q", detailsStr)
+					}
+				} else {
+					t.Errorf("Expected details to be string, got %T", details)
+				}
+			}
+		})
+	}
+}
+
+// TestPropertyChangesFormatterTerraform_WithDifferentActions tests Terraform formatter with different property actions
+func TestPropertyChangesFormatterTerraform_WithDifferentActions(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			ExpandableSections: config.ExpandableSectionsConfig{
+				AutoExpandDangerous: true,
+			},
+		},
+		ExpandAll: false,
+	}
+	formatter := NewFormatter(cfg)
+
+	propAnalysis := PropertyChangeAnalysis{
+		Changes: []PropertyChange{
+			{Name: "new_property", Action: "add", After: "new_value", Sensitive: false},
+			{Name: "removed_property", Action: "remove", Before: "old_value", Sensitive: false},
+			{Name: "updated_property", Action: "update", Before: "old_value", After: "new_value", Sensitive: false},
+		},
+		Count: 3,
+	}
+
+	formatterFunc := formatter.propertyChangesFormatterTerraform()
+	result := formatterFunc(propAnalysis)
+
+	collapsibleValue, ok := result.(output.CollapsibleValue)
+	if !ok {
+		t.Fatalf("Expected CollapsibleValue, got %T", result)
+	}
+
+	details := collapsibleValue.Details()
+
+	// Check for all three Terraform diff prefixes
+	if detailsStr, ok := details.(string); ok {
+		if !strings.Contains(detailsStr, "  + new_property = \"new_value\"") {
+			t.Errorf("Expected add prefix in details: %q", detailsStr)
+		}
+		if !strings.Contains(detailsStr, "  - removed_property = \"old_value\"") {
+			t.Errorf("Expected remove prefix in details: %q", detailsStr)
+		}
+		if !strings.Contains(detailsStr, "  ~ updated_property = \"old_value\" -> \"new_value\"") {
+			t.Errorf("Expected update prefix in details: %q", detailsStr)
+		}
+	} else {
+		t.Errorf("Expected details to be string, got %T", details)
+	}
+}
+
+// TestPropertyChangesFormatterTerraform_NonPropertyChangeAnalysis tests formatter with non-PropertyChangeAnalysis input
+func TestPropertyChangesFormatterTerraform_NonPropertyChangeAnalysis(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	formatterFunc := formatter.propertyChangesFormatterTerraform()
+
+	// Test with different input types
+	testInputs := []any{
+		"string input",
+		42,
+		[]string{"array", "input"},
+		map[string]string{"map": "input"},
+		nil,
+	}
+
+	for _, input := range testInputs {
+		t.Run(fmt.Sprintf("input_type_%T", input), func(t *testing.T) {
+			result := formatterFunc(input)
+			// Use deep comparison for complex types like slices/maps
+			switch v := input.(type) {
+			case []string:
+				if resultSlice, ok := result.([]string); ok {
+					if len(resultSlice) != len(v) {
+						t.Errorf("Expected slice lengths to match, got %d instead of %d", len(resultSlice), len(v))
+						return
+					}
+					for i, item := range v {
+						if resultSlice[i] != item {
+							t.Errorf("Expected slice item %d to be %q, got %q", i, item, resultSlice[i])
+						}
+					}
+				} else {
+					t.Errorf("Expected result to be []string, got %T", result)
+				}
+			case map[string]string:
+				if resultMap, ok := result.(map[string]string); ok {
+					if len(resultMap) != len(v) {
+						t.Errorf("Expected map lengths to match, got %d instead of %d", len(resultMap), len(v))
+						return
+					}
+					for key, value := range v {
+						if resultValue, exists := resultMap[key]; !exists || resultValue != value {
+							t.Errorf("Expected map[%q] to be %q, got %q (exists: %v)", key, value, resultValue, exists)
+						}
+					}
+				} else {
+					t.Errorf("Expected result to be map[string]string, got %T", result)
+				}
+			default:
+				if result != input {
+					t.Errorf("Expected input to be returned unchanged, got %v instead of %v", result, input)
+				}
+			}
+		})
+	}
 }

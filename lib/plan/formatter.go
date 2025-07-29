@@ -194,8 +194,9 @@ func NewFormatter(cfg *config.Config) *Formatter {
 // ValidateOutputFormat validates that the output format is supported
 func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
 	supportedFormats := []string{formatTable, "json", "html", "markdown"}
+	lowercaseFormat := strings.ToLower(outputFormat)
 	for _, format := range supportedFormats {
-		if strings.ToLower(outputFormat) == format {
+		if lowercaseFormat == format {
 			return nil
 		}
 	}
@@ -564,6 +565,110 @@ func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string
 	return strings.Join(details, "\n")
 }
 
+// propertyChangesFormatterTerraform creates a collapsible formatter that displays property changes in Terraform's diff-style format
+func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
+	return func(val any) any {
+		if propAnalysis, ok := val.(PropertyChangeAnalysis); ok {
+			if propAnalysis.Count == 0 {
+				return "No properties changed"
+			}
+
+			// Create summary
+			summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
+			if f.hasSensitive(propAnalysis.Changes) {
+				summary = fmt.Sprintf("⚠️ %s (includes sensitive)", summary)
+			}
+			if propAnalysis.Truncated {
+				summary += " [truncated]"
+			}
+
+			// Format details in Terraform style
+			var details []string
+			for _, change := range propAnalysis.Changes {
+				line := f.formatPropertyChange(change)
+				details = append(details, line)
+			}
+
+			shouldExpand := (f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasSensitive(propAnalysis.Changes)) ||
+				f.config.ExpandAll
+
+			return output.NewCollapsibleValue(summary,
+				strings.Join(details, "\n"),
+				output.WithExpanded(shouldExpand))
+		}
+		return val
+	}
+}
+
+// formatPropertyChange formats a single property change in Terraform's diff-style format
+func (f *Formatter) formatPropertyChange(change PropertyChange) string {
+	// Format based on action and handle complex values
+	switch change.Action {
+	case "add":
+		return fmt.Sprintf("  + %s = %s",
+			change.Name, f.formatValue(change.After, change.Sensitive))
+	case "remove":
+		return fmt.Sprintf("  - %s = %s",
+			change.Name, f.formatValue(change.Before, change.Sensitive))
+	case "update":
+		return fmt.Sprintf("  ~ %s = %s -> %s",
+			change.Name,
+			f.formatValue(change.Before, change.Sensitive),
+			f.formatValue(change.After, change.Sensitive))
+	default:
+		return ""
+	}
+}
+
+// formatValue formats a property value according to Terraform's formatting conventions
+func (f *Formatter) formatValue(val any, sensitive bool) string {
+	if sensitive {
+		return "(sensitive value hidden)"
+	}
+
+	// Handle different value types
+	switch v := val.(type) {
+	case string:
+		return fmt.Sprintf("%q", v)
+	case map[string]any:
+		// Format as { key = value, ... } or <map[N]> for large maps
+		if len(v) > 3 {
+			return fmt.Sprintf("<map[%d]>", len(v))
+		}
+		// Format small maps inline
+		var pairs []string
+		for key, value := range v {
+			pairs = append(pairs, fmt.Sprintf("%s = %s", key, f.formatValue(value, false)))
+		}
+		return fmt.Sprintf("{ %s }", strings.Join(pairs, ", "))
+	case []any:
+		// Format as [ item, ... ] or <list[N]> for large lists
+		if len(v) > 3 {
+			return fmt.Sprintf("<list[%d]>", len(v))
+		}
+		// Format small lists inline
+		var items []string
+		for _, item := range v {
+			items = append(items, f.formatValue(item, false))
+		}
+		return fmt.Sprintf("[ %s ]", strings.Join(items, ", "))
+	case nil:
+		return "null"
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// hasSensitive checks if any changes in the list contain sensitive properties
+func (f *Formatter) hasSensitive(changes []PropertyChange) bool {
+	for _, change := range changes {
+		if change.Sensitive {
+			return true
+		}
+	}
+	return false
+}
+
 // prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
 func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[string]any {
 	tableData := make([]map[string]any, 0, len(changes))
@@ -858,7 +963,7 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 		{
 			Name:      "property_changes",
 			Type:      "object",
-			Formatter: f.propertyChangesFormatterDirect(),
+			Formatter: f.propertyChangesFormatterTerraform(),
 		},
 		{
 			Name:      "dependencies",
@@ -896,9 +1001,9 @@ func (f *Formatter) propertyChangesFormatterDirect() func(any) any {
 				// Create detailed content
 				details := f.formatPropertyChangeDetails(propAnalysis.Changes)
 
-				// Auto-expand if sensitive properties are present
+				// Auto-expand if sensitive properties are present and AutoExpandDangerous is enabled
 				// Note: ExpandAll is handled by renderer's ForceExpansion, not here
-				shouldExpand := sensitiveCount > 0
+				shouldExpand := f.config.Plan.ExpandableSections.AutoExpandDangerous && sensitiveCount > 0
 
 				return output.NewCollapsibleValue(summary, details, output.WithExpanded(shouldExpand))
 			} else {
