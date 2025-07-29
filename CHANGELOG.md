@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Enhanced Property Analysis Performance Limits**: Added `enforcePropertyLimits` function with configurable constants for MaxPropertiesPerResource (100), MaxPropertyValueSize (10KB), and MaxTotalPropertyMemory (10MB) to prevent excessive memory usage during plan analysis
+- **Comprehensive Unit Tests for Property Analysis**: Added extensive test coverage for enhanced property analysis including deep object comparison tests, performance limit enforcement tests, and property extraction validation
+
+### Changed
+- **Property Analysis Method**: Refactored `analyzePropertyChanges` to use dedicated `enforcePropertyLimits` function for better code organization and maintainability
+
+### Added
 - **Property Change Extraction Infrastructure**: Deep object comparison algorithm in analyzer.go with recursive comparison logic for maps, slices, and primitives
 - **Property Analysis Helper Functions**: Added `extractPropertyName`, `parsePath`, `isSensitive`, `extractSensitiveChild`, `extractSensitiveIndex` for comprehensive property change extraction
 - **Action Tracking for Property Changes**: Action field to PropertyChange struct to track "add", "remove", "update" operations
