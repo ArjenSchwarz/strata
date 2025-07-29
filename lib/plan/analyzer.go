@@ -14,6 +14,11 @@ import (
 const (
 	riskLevelHigh   = "high"
 	riskLevelMedium = "medium"
+
+	// Performance limits for property extraction
+	MaxPropertiesPerResource = 100      // Maximum properties per resource to prevent runaway extraction
+	MaxPropertyValueSize     = 10240    // 10KB per property value
+	MaxTotalPropertyMemory   = 10485760 // 10MB total for all properties
 )
 
 // Analyzer processes Terraform plan data and generates summaries
@@ -180,6 +185,36 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			})
 		}
 	}
+}
+
+// enforcePropertyLimits enforces performance limits on property analysis to prevent excessive memory usage
+func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
+	// Limit the number of properties per resource
+	if len(analysis.Changes) > MaxPropertiesPerResource {
+		analysis.Changes = analysis.Changes[:MaxPropertiesPerResource]
+		analysis.Truncated = true
+	}
+
+	// Calculate total size and enforce memory limits
+	totalSize := 0
+	for i, change := range analysis.Changes {
+		size := a.estimateValueSize(change.Before) + a.estimateValueSize(change.After)
+		if size > MaxPropertyValueSize {
+			size = MaxPropertyValueSize // Cap individual property size
+		}
+		analysis.Changes[i].Size = size
+
+		if totalSize+size > MaxTotalPropertyMemory {
+			// Truncate at this point to stay within memory limits
+			analysis.Changes = analysis.Changes[:i]
+			analysis.Truncated = true
+			break
+		}
+		totalSize += size
+	}
+
+	analysis.TotalSize = totalSize
+	analysis.Count = len(analysis.Changes)
 }
 
 // extractPropertyName extracts the final property name from a path
@@ -894,29 +929,8 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 	a.compareObjects("", change.Change.Before, change.Change.After,
 		change.Change.BeforeSensitive, change.Change.AfterSensitive, &analysis)
 
-	// Set count and calculate sizes
-	analysis.Count = len(analysis.Changes)
-
-	// Calculate total size and apply performance limits
-	const maxTotalSize = 10 * 1024 * 1024 // 10MB limit
-	const maxPropertiesPerResource = 100
-
-	totalSize := 0
-	for i, propertyChange := range analysis.Changes {
-		size := a.estimateValueSize(propertyChange.Before) + a.estimateValueSize(propertyChange.After)
-		analysis.Changes[i].Size = size
-		totalSize += size
-
-		// Apply limits
-		if i >= maxPropertiesPerResource || totalSize > maxTotalSize {
-			analysis.Changes = analysis.Changes[:i]
-			analysis.Count = i
-			analysis.Truncated = true
-			break
-		}
-	}
-
-	analysis.TotalSize = totalSize
+	// Apply performance limits using the new dedicated function
+	a.enforcePropertyLimits(&analysis)
 	return analysis
 }
 

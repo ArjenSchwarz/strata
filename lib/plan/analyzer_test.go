@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -2453,6 +2454,246 @@ func TestAnalyzePropertyChangesWithNewCompareObjects(t *testing.T) {
 				assert.NotEmpty(t, change.Action, "Change %d should have an action", i)
 				assert.Contains(t, []string{"add", "remove", "update"}, change.Action, "Change %d should have valid action", i)
 				assert.NotEmpty(t, change.Name, "Change %d should have a name", i)
+			}
+		})
+	}
+}
+
+// TestCompareObjectsEnhanced tests the deep object comparison algorithm with specific scenarios
+func TestCompareObjectsEnhanced(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	tests := []struct {
+		name     string
+		before   any
+		after    any
+		expected []PropertyChange
+	}{
+		{
+			name:   "simple string change",
+			before: map[string]any{"name": "old"},
+			after:  map[string]any{"name": "new"},
+			expected: []PropertyChange{{
+				Name:   "name",
+				Path:   []string{"name"},
+				Action: "update",
+				Before: "old",
+				After:  "new",
+			}},
+		},
+		{
+			name: "nested object change",
+			before: map[string]any{
+				"tags": map[string]any{"env": "dev"},
+			},
+			after: map[string]any{
+				"tags": map[string]any{"env": "prod"},
+			},
+			expected: []PropertyChange{{
+				Name:   "env",
+				Path:   []string{"tags", "env"},
+				Action: "update",
+				Before: "dev",
+				After:  "prod",
+			}},
+		},
+		{
+			name:   "array length change",
+			before: map[string]any{"items": []any{1, 2}},
+			after:  map[string]any{"items": []any{1, 2, 3}},
+			expected: []PropertyChange{{
+				Name:   "items",
+				Path:   []string{"items"},
+				Action: "update",
+				Before: []any{1, 2},
+				After:  []any{1, 2, 3},
+			}},
+		},
+		{
+			name:   "property removal",
+			before: map[string]any{"a": 1, "b": 2},
+			after:  map[string]any{"a": 1},
+			expected: []PropertyChange{{
+				Name:   "b",
+				Path:   []string{"b"},
+				Action: "remove",
+				Before: 2,
+				After:  nil,
+			}},
+		},
+		{
+			name:   "property addition",
+			before: map[string]any{"a": 1},
+			after:  map[string]any{"a": 1, "b": 2},
+			expected: []PropertyChange{{
+				Name:   "b",
+				Path:   []string{"b"},
+				Action: "add",
+				Before: nil,
+				After:  2,
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			analysis := PropertyChangeAnalysis{
+				Changes: []PropertyChange{},
+			}
+
+			analyzer.compareObjects("", tt.before, tt.after, nil, nil, &analysis)
+
+			assert.Equal(t, len(tt.expected), len(analysis.Changes), "Expected number of changes should match")
+
+			for i, expectedChange := range tt.expected {
+				if i < len(analysis.Changes) {
+					actual := analysis.Changes[i]
+					assert.Equal(t, expectedChange.Name, actual.Name, "Change %d name should match", i)
+					assert.Equal(t, expectedChange.Path, actual.Path, "Change %d path should match", i)
+					assert.Equal(t, expectedChange.Action, actual.Action, "Change %d action should match", i)
+					assert.Equal(t, expectedChange.Before, actual.Before, "Change %d before value should match", i)
+					assert.Equal(t, expectedChange.After, actual.After, "Change %d after value should match", i)
+				}
+			}
+		})
+	}
+}
+
+// TestEnforcePropertyLimits tests the performance limit enforcement
+func TestEnforcePropertyLimits(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	tests := []struct {
+		name              string
+		initialChanges    []PropertyChange
+		expectedCount     int
+		expectedTruncated bool
+		expectedTotalSize int
+		testType          string
+	}{
+		{
+			name: "under limits should not truncate",
+			initialChanges: []PropertyChange{
+				{Name: "prop1", Before: "small", After: "value", Action: "update"},
+				{Name: "prop2", Before: "another", After: "small", Action: "update"},
+			},
+			expectedCount:     2,
+			expectedTruncated: false,
+			testType:          "normal",
+		},
+		{
+			name: "property count limit should truncate",
+			initialChanges: func() []PropertyChange {
+				changes := make([]PropertyChange, MaxPropertiesPerResource+5)
+				for i := range changes {
+					changes[i] = PropertyChange{
+						Name:   fmt.Sprintf("prop%d", i),
+						Before: "value",
+						After:  "new",
+						Action: "update",
+					}
+				}
+				return changes
+			}(),
+			expectedCount:     MaxPropertiesPerResource,
+			expectedTruncated: true,
+			testType:          "count_limit",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			analysis := PropertyChangeAnalysis{
+				Changes: tt.initialChanges,
+			}
+
+			analyzer.enforcePropertyLimits(&analysis)
+
+			assert.Equal(t, tt.expectedCount, analysis.Count, "Count should match expected")
+			assert.Equal(t, tt.expectedCount, len(analysis.Changes), "Changes length should match count")
+			assert.Equal(t, tt.expectedTruncated, analysis.Truncated, "Truncated status should match expected")
+
+			// Verify all remaining changes have Size set
+			for i, change := range analysis.Changes {
+				assert.GreaterOrEqual(t, change.Size, 0, "Change %d should have non-negative size", i)
+			}
+		})
+	}
+}
+
+// TestAnalyzePropertyChangesWithLimits tests the complete property analysis with performance limits
+func TestAnalyzePropertyChangesWithLimits(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	tests := []struct {
+		name              string
+		change            *tfjson.ResourceChange
+		expectedTruncated bool
+		description       string
+	}{
+		{
+			name: "normal change should not truncate",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]any{
+						"name":    "old-name",
+						"size":    10,
+						"enabled": false,
+					},
+					After: map[string]any{
+						"name":    "new-name",
+						"size":    20,
+						"enabled": true,
+					},
+				},
+			},
+			expectedTruncated: false,
+			description:       "Small changes should not trigger truncation",
+		},
+		{
+			name: "many properties should apply count limits",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: func() map[string]any {
+						result := make(map[string]any)
+						// Create more properties than the limit
+						for i := 0; i < MaxPropertiesPerResource+10; i++ {
+							result[fmt.Sprintf("prop_%d", i)] = fmt.Sprintf("value_%d", i)
+						}
+						return result
+					}(),
+					After: func() map[string]any {
+						result := make(map[string]any)
+						// Create more properties than the limit
+						for i := 0; i < MaxPropertiesPerResource+10; i++ {
+							result[fmt.Sprintf("prop_%d", i)] = fmt.Sprintf("new_value_%d", i)
+						}
+						return result
+					}(),
+				},
+			},
+			expectedTruncated: true,
+			description:       "Many properties should trigger count limit truncation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := analyzer.analyzePropertyChanges(tt.change)
+
+			assert.Equal(t, tt.expectedTruncated, result.Truncated, tt.description)
+			assert.Equal(t, len(result.Changes), result.Count, "Count should match changes length")
+
+			// Verify all changes have required fields
+			for i, change := range result.Changes {
+				assert.NotEmpty(t, change.Action, "Change %d should have action", i)
+				assert.NotEmpty(t, change.Name, "Change %d should have name", i)
+				assert.NotNil(t, change.Path, "Change %d should have path", i)
+				assert.GreaterOrEqual(t, change.Size, 0, "Change %d should have non-negative size", i)
+			}
+
+			if tt.expectedTruncated {
+				assert.LessOrEqual(t, result.TotalSize, MaxTotalPropertyMemory, "Total size should not exceed limit")
 			}
 		})
 	}
