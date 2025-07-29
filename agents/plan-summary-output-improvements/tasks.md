@@ -76,20 +76,20 @@ This document outlines the discrete coding tasks required to implement the plan 
 
 ### 4. Empty Table Suppression Logic
 
-- [ ] **4.1** Implement empty table detection in formatter.go
+- [x] **4.1** Implement empty table detection in formatter.go
   - Create `prepareResourceTableData` function that filters out no-op changes
   - Update `OutputSummary` method to check for empty table data before creating tables
   - Suppress entire table creation when no changed resources exist after filtering
   - References requirement 1 (Empty Table Suppression - no-op filtering)
 
-- [ ] **4.2** Update provider grouping logic for changed resources only
+- [x] **4.2** Update provider grouping logic for changed resources only
   - Create `countChangedResources` function excluding no-ops from counts
   - Update `shouldGroupByProvider` to use changed resource count for threshold comparison
   - Modify `groupResourcesByProvider` to exclude no-ops from grouping
   - Update provider count displays to show only changed resources
   - References requirement 1 (Empty Table Suppression - changed resource counting)
 
-- [ ] **4.3** Add unit tests for empty table suppression
+- [x] **4.3** Add unit tests for empty table suppression
   - Test table suppression when only no-op changes exist
   - Test provider grouping threshold calculations with changed resources only
   - Test provider count accuracy excluding no-ops
