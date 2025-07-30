@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Property Change Details Display**: Fixed missing property change details in collapsible sections by properly integrating PropertyChanges field into ResourceChange model and ensuring the analyzer populates it with detailed change information
+- **Map Formatting Consistency**: Fixed non-deterministic map key ordering in formatValue function by sorting keys alphabetically for consistent output across test runs
+
 ### Added
 - **Comprehensive Integration Testing for Plan Summary Output Improvements**: Complete end-to-end integration test suite covering all output improvements including danger highlighting, property change formatting, and empty table suppression
 - **Performance Testing Infrastructure**: Large-scale performance and memory testing with artificial plan generation supporting up to 1000+ resources with configurable property counts and truncation validation
