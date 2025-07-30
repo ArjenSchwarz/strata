@@ -507,7 +507,6 @@ func getBenchmarkConfig() *config.Config {
 			ExpandableSections: config.ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,
-				ShowDependencies:    true,
 			},
 			Grouping: config.GroupingConfig{
 				Enabled:   true,

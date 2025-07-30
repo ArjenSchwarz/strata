@@ -223,14 +223,12 @@ func TestExpandableSectionsConfig_Loading(t *testing.T) {
 					"expandable_sections": map[string]any{
 						"enabled":               true,
 						"auto_expand_dangerous": true,
-						"show_dependencies":     true,
 					},
 				},
 			},
 			expectedESC: ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,
-				ShowDependencies:    true,
 			},
 		},
 		{
@@ -245,7 +243,6 @@ func TestExpandableSectionsConfig_Loading(t *testing.T) {
 			expectedESC: ExpandableSectionsConfig{
 				Enabled:             false,
 				AutoExpandDangerous: false,
-				ShowDependencies:    false,
 			},
 		},
 		{
@@ -254,7 +251,6 @@ func TestExpandableSectionsConfig_Loading(t *testing.T) {
 			expectedESC: ExpandableSectionsConfig{
 				Enabled:             false,
 				AutoExpandDangerous: false,
-				ShowDependencies:    false,
 			},
 		},
 	}
@@ -279,9 +275,6 @@ func TestExpandableSectionsConfig_Loading(t *testing.T) {
 			}
 			if esc.AutoExpandDangerous != tt.expectedESC.AutoExpandDangerous {
 				t.Errorf("ExpandableSections.AutoExpandDangerous = %v, expected %v", esc.AutoExpandDangerous, tt.expectedESC.AutoExpandDangerous)
-			}
-			if esc.ShowDependencies != tt.expectedESC.ShowDependencies {
-				t.Errorf("ExpandableSections.ShowDependencies = %v, expected %v", esc.ShowDependencies, tt.expectedESC.ShowDependencies)
 			}
 		})
 	}

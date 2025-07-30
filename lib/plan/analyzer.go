@@ -48,7 +48,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	// Property added
 	if before == nil && after != nil {
 		// If it's a whole object being added and we have a map, iterate through properties
-		if path == "" && after != nil {
+		if path == "" {
 			if afterMap, ok := after.(map[string]any); ok {
 				for key, val := range afterMap {
 					childSensitive := a.extractSensitiveChild(afterSensitive, key)
@@ -79,7 +79,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	// Property removed
 	if before != nil && after == nil {
 		// If it's a whole object being removed and we have a map, iterate through properties
-		if path == "" && before != nil {
+		if path == "" {
 			if beforeMap, ok := before.(map[string]any); ok {
 				for key, val := range beforeMap {
 					childSensitive := a.extractSensitiveChild(beforeSensitive, key)
@@ -465,18 +465,51 @@ func (a *Analyzer) analyzeOutputChanges() []OutputChange {
 	for name, oc := range a.plan.OutputChanges {
 		changeType := FromTerraformAction(oc.Actions)
 
+		// Detect if output is sensitive by checking the sensitive flags
+		// For outputs, if either BeforeSensitive or AfterSensitive is true, the output is sensitive
+		isSensitive := a.isOutputSensitive(oc)
+
 		change := OutputChange{
 			Name:       name,
 			ChangeType: changeType,
-			Sensitive:  false, // Default to false, will be updated when we find the correct field
+			Sensitive:  isSensitive,
 			Before:     oc.Before,
 			After:      oc.After,
+		}
+
+		// Mask sensitive values
+		if isSensitive {
+			if change.Before != nil {
+				change.Before = nil // Don't expose sensitive before values
+			}
+			if change.After != nil {
+				change.After = nil // Don't expose sensitive after values
+			}
 		}
 
 		changes = append(changes, change)
 	}
 
 	return changes
+}
+
+// isOutputSensitive checks if an output change contains sensitive values
+func (a *Analyzer) isOutputSensitive(oc *tfjson.Change) bool {
+	// Check if BeforeSensitive or AfterSensitive indicate sensitive values
+	// For outputs, these will be boolean values (true/false) if the output is sensitive
+	if oc.BeforeSensitive != nil {
+		if sensitive, ok := oc.BeforeSensitive.(bool); ok && sensitive {
+			return true
+		}
+	}
+
+	if oc.AfterSensitive != nil {
+		if sensitive, ok := oc.AfterSensitive.(bool); ok && sensitive {
+			return true
+		}
+	}
+
+	return false
 }
 
 // calculateStatistics generates statistics from the resource changes

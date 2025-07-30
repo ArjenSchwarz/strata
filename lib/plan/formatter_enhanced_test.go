@@ -287,7 +287,7 @@ func TestPropertyChangeDetailsFormatting(t *testing.T) {
 	}
 
 	// Check sensitive property masking
-	if !strings.Contains(details, "• password: [sensitive value hidden] → [sensitive value hidden]") {
+	if !strings.Contains(details, "• password: (sensitive value) → (sensitive value)") {
 		t.Errorf("Expected masked password in details, got: %s", details)
 	}
 

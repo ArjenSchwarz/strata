@@ -35,6 +35,9 @@ type Config struct {
 	// Global expand control for collapsible sections
 	ExpandAll bool `mapstructure:"expand_all"`
 
+	// Use emoji in output
+	UseEmoji bool `mapstructure:"use_emoji"`
+
 	// Plan-specific configuration
 	Plan PlanConfig `mapstructure:"plan"`
 
@@ -120,7 +123,7 @@ func (config *Config) NewOutputConfiguration() *OutputConfiguration {
 		Format:           format,
 		OutputFile:       outputFile,
 		OutputFileFormat: outputFileFormat,
-		UseEmoji:         true,
+		UseEmoji:         config.UseEmoji,
 		UseColors:        useColors,
 		TableStyle:       config.GetString("table.style"),
 		MaxColumnWidth:   config.GetInt("table.max-column-width"),
@@ -176,7 +179,7 @@ func (config *Config) getAWSAccountID() string {
 type ExpandableSectionsConfig struct {
 	Enabled             bool `mapstructure:"enabled"`               // Enable collapsible sections
 	AutoExpandDangerous bool `mapstructure:"auto_expand_dangerous"` // Auto-expand high-risk sections
-	ShowDependencies    bool `mapstructure:"show_dependencies"`     // Show dependency sections
+	MaxDetailLength     int  `mapstructure:"max_detail_length"`     // Maximum characters for collapsible details (default: 10240)
 }
 
 // GroupingConfig controls enhanced grouping behavior
@@ -227,8 +230,13 @@ func (config *Config) MigrateDeprecatedConfig() []string {
 		config.Plan.ExpandableSections = ExpandableSectionsConfig{
 			Enabled:             true,
 			AutoExpandDangerous: true,
-			ShowDependencies:    true,
+			MaxDetailLength:     10240, // 10KB default
 		}
+	}
+
+	// Ensure MaxDetailLength has a default value if not set
+	if config.Plan.ExpandableSections.MaxDetailLength == 0 {
+		config.Plan.ExpandableSections.MaxDetailLength = 10240 // 10KB default
 	}
 
 	if !viper.IsSet("plan.grouping") {
@@ -287,6 +295,7 @@ func PrintDeprecationWarnings(warnings []string) {
 func GetDefaultConfig() *Config {
 	return &Config{
 		ExpandAll: false,
+		UseEmoji:  false,
 		Plan: PlanConfig{
 			ShowDetails:             true,
 			HighlightDangers:        true,
@@ -296,7 +305,7 @@ func GetDefaultConfig() *Config {
 			ExpandableSections: ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,
-				ShowDependencies:    true,
+				MaxDetailLength:     10240, // 10KB default
 			},
 			Grouping: GroupingConfig{
 				Enabled:   true,
@@ -311,7 +320,7 @@ func GetDefaultConfig() *Config {
 			},
 		},
 		Table: TableConfig{
-			Style:          "ColoredBlackOnMagentaWhite",
+			Style:          "default",
 			MaxColumnWidth: 50,
 		},
 	}

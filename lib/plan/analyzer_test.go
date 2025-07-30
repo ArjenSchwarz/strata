@@ -2162,6 +2162,68 @@ func TestIsSensitive(t *testing.T) {
 	}
 }
 
+// TestIsOutputSensitive tests output sensitivity detection
+func TestIsOutputSensitive(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	tests := []struct {
+		name              string
+		beforeSensitive   any
+		afterSensitive    any
+		expectedSensitive bool
+	}{
+		{
+			name:              "non-sensitive output",
+			beforeSensitive:   false,
+			afterSensitive:    false,
+			expectedSensitive: false,
+		},
+		{
+			name:              "sensitive before value",
+			beforeSensitive:   true,
+			afterSensitive:    false,
+			expectedSensitive: true,
+		},
+		{
+			name:              "sensitive after value",
+			beforeSensitive:   false,
+			afterSensitive:    true,
+			expectedSensitive: true,
+		},
+		{
+			name:              "both sensitive",
+			beforeSensitive:   true,
+			afterSensitive:    true,
+			expectedSensitive: true,
+		},
+		{
+			name:              "nil values",
+			beforeSensitive:   nil,
+			afterSensitive:    nil,
+			expectedSensitive: false,
+		},
+		{
+			name:              "non-boolean sensitive values",
+			beforeSensitive:   "not_boolean",
+			afterSensitive:    123,
+			expectedSensitive: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			change := &tfjson.Change{
+				BeforeSensitive: tt.beforeSensitive,
+				AfterSensitive:  tt.afterSensitive,
+			}
+			result := analyzer.isOutputSensitive(change)
+			if result != tt.expectedSensitive {
+				t.Errorf("isOutputSensitive() = %v, expected %v", result, tt.expectedSensitive)
+			}
+		})
+	}
+}
+
 // TestExtractSensitiveChild tests sensitive child extraction
 func TestExtractSensitiveChild(t *testing.T) {
 	analyzer := &Analyzer{}

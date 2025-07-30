@@ -491,7 +491,7 @@ func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string
 	for _, change := range changes {
 		if change.Sensitive {
 			// Mask sensitive values
-			details = append(details, fmt.Sprintf("• %s: [sensitive value hidden] → [sensitive value hidden]", change.Name))
+			details = append(details, fmt.Sprintf("• %s: (sensitive value) → (sensitive value)", change.Name))
 		} else {
 			// Show actual values for non-sensitive properties
 			details = append(details, fmt.Sprintf("• %s: %v → %v", change.Name, change.Before, change.After))
@@ -529,7 +529,8 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 
 			return output.NewCollapsibleValue(summary,
 				strings.Join(details, "\n"),
-				output.WithExpanded(shouldExpand))
+				output.WithExpanded(shouldExpand),
+				output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 		}
 		return val
 	}
@@ -558,7 +559,7 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 // formatValue formats a property value according to Terraform's formatting conventions
 func (f *Formatter) formatValue(val any, sensitive bool) string {
 	if sensitive {
-		return "(sensitive value hidden)"
+		return "(sensitive value)"
 	}
 
 	// Handle different value types
@@ -709,16 +710,6 @@ func (f *Formatter) getDangerDisplay(change ResourceChange) string {
 		dangerInfo += ": " + strings.Join(change.DangerProperties, ", ")
 	}
 	return dangerInfo
-}
-
-// isPropertySensitive checks if a property is sensitive based on configuration
-func (f *Formatter) isPropertySensitive(resourceType, property string) bool {
-	for _, sensitiveProp := range f.config.SensitiveProperties {
-		if sensitiveProp.ResourceType == resourceType && sensitiveProp.Property == property {
-			return true
-		}
-	}
-	return false
 }
 
 // addResourceChangesWithProgressiveDisclosure adds resource changes with collapsible features to existing builder
@@ -918,7 +909,9 @@ func (f *Formatter) propertyChangesFormatterDirect() func(any) any {
 				// Note: ExpandAll is handled by renderer's ForceExpansion, not here
 				shouldExpand := f.config.Plan.ExpandableSections.AutoExpandDangerous && sensitiveCount > 0
 
-				return output.NewCollapsibleValue(summary, details, output.WithExpanded(shouldExpand))
+				return output.NewCollapsibleValue(summary, details,
+					output.WithExpanded(shouldExpand),
+					output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 			} else {
 				// No properties changed - return simple string
 				return "No properties changed"
@@ -1000,7 +993,7 @@ func (f *Formatter) getCollapsibleTableFormat(style string) output.Format {
 func (f *Formatter) getRendererConfig() output.RendererConfig {
 	return output.RendererConfig{
 		ForceExpansion:       f.config.ExpandAll,
-		MaxDetailLength:      500,
+		MaxDetailLength:      f.config.Plan.ExpandableSections.MaxDetailLength,
 		TruncateIndicator:    "... [truncated]",
 		TableHiddenIndicator: "[expand for details]",
 		HTMLCSSClasses: map[string]string{

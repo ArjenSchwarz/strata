@@ -67,7 +67,6 @@ func TestEnhancedSummaryVisualization_EndToEnd(t *testing.T) {
 			planFile: "dependencies_plan.json",
 			configOverride: func(c *config.Config) {
 				c.Plan.ExpandableSections.Enabled = true
-				c.Plan.ExpandableSections.ShowDependencies = true
 				c.ExpandAll = false
 			},
 			expectedOutputs: []string{
@@ -229,7 +228,6 @@ func TestCollapsibleFormatters_Integration(t *testing.T) {
 
 	cfg := getTestConfig()
 	cfg.Plan.ExpandableSections.Enabled = true
-	cfg.Plan.ExpandableSections.ShowDependencies = true
 
 	// Test with expand-all disabled
 	cfg.ExpandAll = false
@@ -507,7 +505,6 @@ func getTestConfig() *config.Config {
 			ExpandableSections: config.ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,
-				ShowDependencies:    true,
 			},
 			Grouping: config.GroupingConfig{
 				Enabled:   true,

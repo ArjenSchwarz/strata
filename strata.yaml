@@ -4,6 +4,12 @@ table:
 plan:
   show-details: true
   highlight-dangers: true
+  
+  # Collapsible sections configuration
+  expandable_sections:
+    enabled: true                    # Enable collapsible sections
+    auto_expand_dangerous: true      # Auto-expand high-risk sections
+    max_detail_length: 10240        # Maximum characters for collapsible details (default: 10240 = 10KB)
 
 # Sensitive resources and properties configuration
 sensitive_resources:

@@ -7,73 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Code Organization and Maintainability**: Refactored complex resource table display logic in formatter.go by extracting monolithic method into focused helper functions (addResourceChangesTable, addGroupedResourceTables, addProviderGroupTable, addStandardResourceTable, handleResourceDisplay, handleSensitiveResourceDisplay) for improved readability and maintainability
-- **Code Style Improvements**: Enhanced comment documentation in analyzer.go constants and fixed Go variable declaration style to use modern syntax
-
-### Fixed
-- **Property Change Details Display**: Fixed missing property change details in collapsible sections by properly integrating PropertyChanges field into ResourceChange model and ensuring the analyzer populates it with detailed change information
-- **Map Formatting Consistency**: Fixed non-deterministic map key ordering in formatValue function by sorting keys alphabetically for consistent output across test runs
+## [1.1.3] - 2025-07-30
 
 ### Added
-- **Comprehensive Integration Testing for Plan Summary Output Improvements**: Complete end-to-end integration test suite covering all output improvements including danger highlighting, property change formatting, and empty table suppression
-- **Performance Testing Infrastructure**: Large-scale performance and memory testing with artificial plan generation supporting up to 1000+ resources with configurable property counts and truncation validation
-- **Complex Properties Sample Data**: New test fixture `samples/complex-properties-sample.json` with comprehensive property change scenarios for testing enhanced property analysis
-- **Backward Compatibility Validation**: Complete test coverage ensuring JSON output structure consistency and table formatting compatibility for existing parsers
+- **Configuration Enhancements**:
+  - Added `use_emoji` configuration option to allow users to control emoji usage in output
+  - Added `max_detail_length` configuration for collapsible sections with default 10KB limit to prevent excessive content
+  - Enhanced collapsible content with proper truncation limits based on configuration
+- **Terraform-Style Property Change Formatting**:
+  - Implemented Terraform diff-style formatting for property changes with `+`, `-`, `~` prefixes for add, remove, and update actions
+  - Added `propertyChangesFormatterTerraform` and `formatPropertyChange` functions with support for complex value types (maps, arrays, primitives)
+  - Property changes with sensitive values automatically expand when `AutoExpandDangerous` is enabled
+- **Enhanced Property Analysis**:
+  - Deep object comparison algorithm in analyzer.go with recursive comparison logic for maps, slices, and primitives
+  - Property analysis helper functions: `extractPropertyName`, `parsePath`, `isSensitive`, `extractSensitiveChild`, `extractSensitiveIndex`
+  - Action tracking for property changes to track "add", "remove", "update" operations
+  - Array index path parsing with support for complex paths (e.g., matrix[1][2])
+  - Performance limits: 100 properties max per resource, 10KB per property value, 10MB total memory
+- **Empty Table Suppression**:
+  - Implemented filtering to exclude no-op changes from Resource Changes tables
+  - Enhanced provider grouping to use changed resource count (excluding no-ops) for threshold calculations
+- **Comprehensive Testing Infrastructure**:
+  - Complete end-to-end integration test suite covering all output improvements
+  - Performance testing with artificial plan generation supporting up to 1000+ resources
+  - New test fixture `samples/complex-properties-sample.json` for property change scenarios
+  - Backward compatibility validation for JSON output structure consistency
+
+### Changed
+- **Output and Formatting Improvements**:
+  - Updated sensitive value masking to use consistent "(sensitive value)" format across all output modes
+  - Changed default table style from "ColoredBlackOnMagentaWhite" to "default" for better accessibility
+  - Switched from direct property formatter to Terraform-style formatter for improved readability
+  - Enhanced auto-expansion to respect `AutoExpandDangerous` configuration setting
+- **Configuration Structure**:
+  - Replaced `show_dependencies` field with `max_detail_length` in expandable sections configuration
+  - Improved case-insensitive validation for output formats
+- **Code Organization and Architecture**:
+  - Refactored complex resource table display logic by extracting monolithic methods into focused helper functions
+  - Enhanced comment documentation and fixed Go variable declaration style to use modern syntax
+  - Unified table creation pattern using single `output.New().AddContent().Build()` document building pattern
+  - Limited ActionSortTransformer to table/JSON/CSV formats only, excluding markdown/HTML
+  - Adjusted collapsible formatting performance threshold from 3x to 6x slower
+- **Resource Analysis and Display**:
+  - Updated `analyzePropertyChanges` method to use new deep comparison algorithm
+  - Enhanced PropertyChange struct with Action field and improved documentation
+  - Modified provider group headers to show only changed resource counts, excluding no-op resources
+
+### Fixed
+- **Output Sensitivity Handling**:
+  - Fixed output sensitivity detection to properly check boolean values from Terraform's BeforeSensitive/AfterSensitive fields
+  - Enhanced output change analysis to properly detect and mask sensitive output values
+- **Property Change Processing**:
+  - Fixed missing property change details in collapsible sections by properly integrating PropertyChanges field
+  - Improved null value handling in property comparison to avoid redundant checks
+  - Fixed non-deterministic map key ordering in formatValue function by sorting keys alphabetically
+- **Multi-table Rendering**:
+  - Resolved critical bug where Plan Information and Summary Statistics tables were missing in markdown/HTML output
+  - Simplified plan rendering architecture using `output.NewTableContent()` pattern
+  - Enhanced provider-based resource grouping to use proper collapsible sections with auto-expansion
 
 ### Removed
-- **Dependencies Column and Functionality**: Removed dependencies column from resource table display, `dependenciesFormatterDirect()` function, and `DependencyInfo` data structure from models
-- **Dependency-Related Test Coverage**: Removed test cases for dependency extraction, circular dependency detection, and dependency formatter functions
-
-### Changed
-- **Resource Table Schema**: Simplified resource table schema by removing dependencies field and related formatting logic
-- **Resource Analysis**: Updated `ResourceAnalysis` struct to remove `Dependencies` field, streamlining the analysis model
-- **Test Data Preparation**: Updated `prepareResourceTableData()` to exclude dependency information from table row data
-
-### Added
-- **Empty Table Suppression**: Implemented filtering to exclude no-op changes from Resource Changes tables, preventing display of tables that would only contain unchanged resources
-- **Comprehensive Empty Table Tests**: Added extensive test coverage for empty table suppression including no-op filtering, provider grouping behavior, and changed resource counting
-
-### Changed
-- **Provider Grouping Threshold Calculation**: Updated threshold comparison to use changed resource count (excluding no-ops) instead of total resource count for more accurate grouping decisions
-- **Provider Resource Counts**: Modified provider group headers to show only changed resource counts, excluding no-op resources from totals
-- **Table Data Preparation**: Enhanced `prepareResourceTableData` to filter out no-op changes, ensuring Resource Changes tables only display actual modifications
-
-### Added
-- **Terraform-Style Property Change Formatting**: Implemented Terraform diff-style formatting for property changes with `+`, `-`, `~` prefixes for add, remove, and update actions
-- **Enhanced Property Formatters**: Added `propertyChangesFormatterTerraform` and `formatPropertyChange` functions with support for complex value types (maps, arrays, primitives)
-- **Sensitive Value Auto-Expansion**: Property changes with sensitive values automatically expand when `AutoExpandDangerous` is enabled
-- **Comprehensive Terraform Formatter Tests**: Added extensive test coverage for Terraform-style formatting including value formatting, sensitive property handling, and auto-expansion logic
-- **Enhanced Property Analysis Performance Limits**: Added `enforcePropertyLimits` function with configurable constants for MaxPropertiesPerResource (100), MaxPropertyValueSize (10KB), and MaxTotalPropertyMemory (10MB) to prevent excessive memory usage during plan analysis
-- **Comprehensive Unit Tests for Property Analysis**: Added extensive test coverage for enhanced property analysis including deep object comparison tests, performance limit enforcement tests, and property extraction validation
-
-### Changed
-- **Property Changes Display**: Switched from direct property formatter to Terraform-style formatter in resource table schema for improved readability
-- **Output Format Validation**: Improved case-insensitive validation for output formats
-- **Auto-Expansion Logic**: Updated auto-expansion to respect `AutoExpandDangerous` configuration setting instead of always expanding sensitive properties
-- **Property Analysis Method**: Refactored `analyzePropertyChanges` to use dedicated `enforcePropertyLimits` function for better code organization and maintainability
-
-### Added
-- **Property Change Extraction Infrastructure**: Deep object comparison algorithm in analyzer.go with recursive comparison logic for maps, slices, and primitives
-- **Property Analysis Helper Functions**: Added `extractPropertyName`, `parsePath`, `isSensitive`, `extractSensitiveChild`, `extractSensitiveIndex` for comprehensive property change extraction
-- **Action Tracking for Property Changes**: Action field to PropertyChange struct to track "add", "remove", "update" operations
-- **Comprehensive Property Comparison Tests**: Added 10+ test cases for property comparison functionality with order-independent assertions
-- **Sensitive Value Detection**: Support for detecting sensitive values using Terraform's BeforeSensitive/AfterSensitive data
-- **Array Index Path Parsing**: Property path parsing with array index support (e.g., matrix[1][2])
-- **Performance Limits for Property Analysis**: Added limits of 100 properties max and 10MB total size for property analysis
-- **Plan Summary Output Improvements Feature Documentation**: Complete feature documentation including requirements, design, decision log, and tasks for improving plan summary output with empty table suppression, enhanced property change formatting, and risk-based sorting
-
-### Changed
-- **Property Change Analysis Method**: Updated `analyzePropertyChanges` method to use new deep comparison algorithm instead of callback-based approach
-- **PropertyChange Struct Enhancement**: Enhanced PropertyChange struct with Action field and improved documentation for clarity
-- **Unified table creation pattern**: All tables now created consistently in `OutputSummary()` method using single `output.New().AddContent().Build()` document building pattern
-- **ActionSortTransformer scope**: Limited ActionSortTransformer to table/JSON/CSV formats only, excluding markdown/HTML to prevent rendering conflicts
-- **Performance test threshold**: Adjusted collapsible formatting performance threshold from 3x to 6x slower to accommodate multi-table rendering complexity
-
-### Fixed
-- **Multi-table rendering in Markdown and HTML formats**: Resolved critical bug where Plan Information and Summary Statistics tables were missing in markdown/HTML output due to ActionSortTransformer interference with multi-table rendering
-- **Simplified plan rendering architecture**: Unified all table creation using `output.NewTableContent()` pattern following go-output v2 best practices, eliminating architectural complexity and mixed rendering approaches
-- **Provider grouping with collapsible sections**: Enhanced provider-based resource grouping to use proper collapsible sections with auto-expansion for high-risk changes
+- **Dependencies Column and Functionality**:
+  - Removed dependencies column from resource table display
+  - Removed `dependenciesFormatterDirect()` function and `DependencyInfo` data structure from models
+  - Removed test cases for dependency extraction, circular dependency detection, and dependency formatter functions
+  - Updated `ResourceAnalysis` struct to remove `Dependencies` field, streamlining the analysis model
 
 ## [1.1.0] - 2025-07-28
 

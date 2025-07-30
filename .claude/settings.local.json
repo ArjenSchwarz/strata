@@ -36,7 +36,8 @@
       "Bash(./strata:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "WebFetch(domain:developer.hashicorp.com)"
     ],
     "deny": []
   }

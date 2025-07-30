@@ -629,7 +629,6 @@ func TestCollapsibleContentInSupportedFormats(t *testing.T) {
 			ExpandableSections: config.ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,
-				ShowDependencies:    true,
 			},
 		},
 		ExpandAll: false, // Test with expand-all disabled first
@@ -731,7 +730,6 @@ func TestCollapsibleContentInSupportedFormats(t *testing.T) {
 				ExpandableSections: config.ExpandableSectionsConfig{
 					Enabled:             true,
 					AutoExpandDangerous: true,
-					ShowDependencies:    true,
 				},
 			},
 			ExpandAll: true, // Enable expand-all
@@ -1343,7 +1341,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     "new_secret",
 				Sensitive: true,
 			},
-			expected: `  ~ password = (sensitive value hidden) -> (sensitive value hidden)`,
+			expected: `  ~ password = (sensitive value) -> (sensitive value)`,
 		},
 		{
 			name: "add action with number value",
@@ -1401,7 +1399,7 @@ func TestFormatValue(t *testing.T) {
 			name:      "sensitive value",
 			value:     "secret",
 			sensitive: true,
-			expected:  "(sensitive value hidden)",
+			expected:  "(sensitive value)",
 		},
 		{
 			name:      "string value",
