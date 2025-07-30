@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Code Organization and Maintainability**: Refactored complex resource table display logic in formatter.go by extracting monolithic method into focused helper functions (addResourceChangesTable, addGroupedResourceTables, addProviderGroupTable, addStandardResourceTable, handleResourceDisplay, handleSensitiveResourceDisplay) for improved readability and maintainability
+- **Code Style Improvements**: Enhanced comment documentation in analyzer.go constants and fixed Go variable declaration style to use modern syntax
+
 ### Fixed
 - **Property Change Details Display**: Fixed missing property change details in collapsible sections by properly integrating PropertyChanges field into ResourceChange model and ensuring the analyzer populates it with detailed change information
 - **Map Formatting Consistency**: Fixed non-deterministic map key ordering in formatValue function by sorting keys alphabetically for consistent output across test runs
