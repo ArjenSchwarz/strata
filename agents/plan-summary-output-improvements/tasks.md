@@ -113,13 +113,13 @@ This document outlines the discrete coding tasks required to implement the plan 
 
 ### 6. Risk-Based Sorting Implementation
 
-- [ ] **6.1** Re-enable ActionSortTransformer in rendering pipeline
+- [x] **6.1** Re-enable ActionSortTransformer in rendering pipeline
   - Add ActionSortTransformer back to stdoutOptions in `OutputSummary` method
   - Ensure transformer is added after emoji transformer but before output
   - Verify transformer only applies to supported formats (table, markdown, HTML, CSV)
   - References requirement 5 (Custom Risk-Based Sorting - transformer re-enablement)
 
-- [ ] **6.2** Add integration tests for risk-based sorting
+- [x] **6.2** Add integration tests for risk-based sorting
   - Test sorting order: dangerous items first, then by action type (delete, replace, update, add)
   - Test alphabetical tertiary sorting by resource address
   - Test sorting consistency across different output formats

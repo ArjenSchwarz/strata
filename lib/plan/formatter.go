@@ -365,9 +365,10 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	if outputConfig.UseColors {
 		stdoutOptions = append(stdoutOptions, output.WithTransformer(output.NewColorTransformer()))
 	}
-	// Add action sorting transformer for supported formats (not markdown due to rendering conflicts)
-	if outputConfig.Format != "markdown" && outputConfig.Format != "html" {
-		stdoutOptions = append(stdoutOptions, output.WithTransformer(&ActionSortTransformer{}))
+	// Add action sorting transformer for supported formats
+	actionSortTransformer := &ActionSortTransformer{}
+	if actionSortTransformer.CanTransform(stdoutFormat.Name) {
+		stdoutOptions = append(stdoutOptions, output.WithTransformer(actionSortTransformer))
 	}
 
 	stdoutOut := output.NewOutput(stdoutOptions...)
@@ -398,9 +399,10 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		if outputConfig.UseColors {
 			fileOptions = append(fileOptions, output.WithTransformer(output.NewColorTransformer()))
 		}
-		// Add action sorting transformer for supported formats (not markdown/html due to rendering conflicts)
-		if outputConfig.OutputFileFormat != "markdown" && outputConfig.OutputFileFormat != "html" {
-			fileOptions = append(fileOptions, output.WithTransformer(&ActionSortTransformer{}))
+		// Add action sorting transformer for supported formats
+		actionSortTransformer := &ActionSortTransformer{}
+		if actionSortTransformer.CanTransform(fileFormat.Name) {
+			fileOptions = append(fileOptions, output.WithTransformer(actionSortTransformer))
 		}
 
 		fileOut := output.NewOutput(fileOptions...)
