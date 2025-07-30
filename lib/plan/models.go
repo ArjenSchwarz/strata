@@ -46,9 +46,10 @@ type ResourceChange struct {
 	DangerReason     string   `json:"danger_reason"`     // Reason why this change is dangerous
 	DangerProperties []string `json:"danger_properties"` // List of dangerous property changes
 	// Enhanced summary visualization fields
-	Provider         string   `json:"provider,omitempty"`          // Provider name extracted from resource type (e.g., "aws", "azurerm")
-	TopChanges       []string `json:"top_changes,omitempty"`       // First 3 changed properties for updates (only shown if show_context=true)
-	ReplacementHints []string `json:"replacement_hints,omitempty"` // Human-readable replacement reasons (always shown)
+	Provider         string                 `json:"provider,omitempty"`          // Provider name extracted from resource type (e.g., "aws", "azurerm")
+	TopChanges       []string               `json:"top_changes,omitempty"`       // First 3 changed properties for updates (only shown if show_context=true)
+	ReplacementHints []string               `json:"replacement_hints,omitempty"` // Human-readable replacement reasons (always shown)
+	PropertyChanges  PropertyChangeAnalysis `json:"property_changes,omitempty"`  // Detailed property change analysis
 }
 
 // PlanSummary contains the summarised information from a Terraform plan

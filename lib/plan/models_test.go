@@ -26,7 +26,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 				TopChanges:       []string{"bucket", "versioning", "encryption"},
 				ReplacementHints: []string{"Bucket name changes require replacement"},
 			},
-			wantJSON: `{"address":"aws_s3_bucket.example","type":"aws_s3_bucket","name":"example","change_type":"create","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"aws","top_changes":["bucket","versioning","encryption"],"replacement_hints":["Bucket name changes require replacement"]}`,
+			wantJSON: `{"address":"aws_s3_bucket.example","type":"aws_s3_bucket","name":"example","change_type":"create","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"aws","top_changes":["bucket","versioning","encryption"],"replacement_hints":["Bucket name changes require replacement"],"property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false}}`,
 		},
 		{
 			name: "resource change with empty enhanced fields",
@@ -39,7 +39,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 				ReplacementType: ReplacementNever,
 				Provider:        "azurerm",
 			},
-			wantJSON: `{"address":"azurerm_resource_group.example","type":"azurerm_resource_group","name":"example","change_type":"update","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"azurerm"}`,
+			wantJSON: `{"address":"azurerm_resource_group.example","type":"azurerm_resource_group","name":"example","change_type":"update","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"azurerm","property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false}}`,
 		},
 	}
 

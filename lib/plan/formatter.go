@@ -650,10 +650,16 @@ func (f *Formatter) formatValue(val any, sensitive bool) string {
 		if len(v) > 3 {
 			return fmt.Sprintf("<map[%d]>", len(v))
 		}
-		// Format small maps inline
+		// Format small maps inline with sorted keys for consistent output
+		var keys []string
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
 		var pairs []string
-		for key, value := range v {
-			pairs = append(pairs, fmt.Sprintf("%s = %s", key, f.formatValue(value, false)))
+		for _, key := range keys {
+			pairs = append(pairs, fmt.Sprintf("%s = %s", key, f.formatValue(v[key], false)))
 		}
 		return fmt.Sprintf("{ %s }", strings.Join(pairs, ", "))
 	case []any:
@@ -695,37 +701,8 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			continue
 		}
 
-		// Create property changes from available data
-		propChanges := PropertyChangeAnalysis{
-			Changes: []PropertyChange{},
-			Count:   len(change.ChangeAttributes),
-		}
-
-		// Use ChangeAttributes for property changes
-		for _, attr := range change.ChangeAttributes {
-			propChange := PropertyChange{
-				Name:      attr,
-				Before:    change.Before,
-				After:     change.After,
-				Sensitive: f.isPropertySensitive(change.Type, attr),
-			}
-			propChanges.Changes = append(propChanges.Changes, propChange)
-		}
-
-		// If TopChanges is available, use it as well for better display
-		if len(change.TopChanges) > 0 {
-			propChanges.Count = len(change.TopChanges)
-			propChanges.Changes = []PropertyChange{} // Reset and use TopChanges
-			for _, topChange := range change.TopChanges {
-				propChange := PropertyChange{
-					Name:      topChange,
-					Before:    change.Before,
-					After:     change.After,
-					Sensitive: f.isPropertySensitive(change.Type, topChange),
-				}
-				propChanges.Changes = append(propChanges.Changes, propChange)
-			}
-		}
+		// Use the property changes from the analyzer
+		propChanges := change.PropertyChanges
 
 		// Determine risk level based on existing danger flags
 		riskLevel := "low"

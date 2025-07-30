@@ -399,6 +399,9 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 		changeType := FromTerraformAction(rc.Change.Actions)
 		replacementType := a.analyzeReplacementNecessity(rc)
 
+		// Analyze property changes
+		propertyChanges := a.analyzePropertyChanges(rc)
+
 		change := ResourceChange{
 			Address:          rc.Address,
 			Type:             rc.Type,
@@ -420,6 +423,7 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			Provider:         a.extractProvider(rc.Type),
 			ReplacementHints: a.extractReplacementHints(rc),
 			TopChanges:       a.getTopChangedProperties(rc, 3),
+			PropertyChanges:  propertyChanges,
 		}
 
 		// Enhanced danger reason logic
