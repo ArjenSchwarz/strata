@@ -1123,41 +1123,6 @@ func (a *Analyzer) assessRiskLevel(change *tfjson.ResourceChange) string {
 	return "low"
 }
 
-// extractDependenciesWithLimit extracts resource dependencies with cycle detection
-func (a *Analyzer) extractDependenciesWithLimit(change *tfjson.ResourceChange, maxDeps int) (*DependencyInfo, error) {
-	deps := &DependencyInfo{
-		DependsOn: []string{},
-		UsedBy:    []string{},
-	}
-
-	// For now, implement basic dependency extraction
-	// This would need access to the full plan to analyze dependencies
-	// We'll extract what we can from the change itself
-
-	// Extract explicit dependencies from depends_on if available
-	if change.Change != nil && change.Change.After != nil {
-		if afterMap, ok := change.Change.After.(map[string]any); ok {
-			if dependsOn, exists := afterMap["depends_on"]; exists {
-				if depList, ok := dependsOn.([]any); ok {
-					for _, dep := range depList {
-						if depStr, ok := dep.(string); ok && len(deps.DependsOn) < maxDeps {
-							deps.DependsOn = append(deps.DependsOn, depStr)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// For a complete implementation, we would need to:
-	// 1. Analyze resource references in the plan
-	// 2. Look for resource attributes that reference other resources
-	// 3. Build a dependency graph and traverse it with cycle detection
-	// This requires access to the full plan and is a complex operation
-
-	return deps, nil
-}
-
 // AnalyzeResource performs comprehensive analysis with performance limits
 func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnalysis, error) {
 	analysis := &ResourceAnalysis{}
@@ -1171,15 +1136,6 @@ func (a *Analyzer) AnalyzeResource(change *tfjson.ResourceChange) (*ResourceAnal
 
 	// Perform simple risk assessment
 	analysis.RiskLevel = a.assessRiskLevel(change)
-
-	// Extract dependencies with limit
-	deps, err := a.extractDependenciesWithLimit(change, 100)
-	if err != nil {
-		// Log but don't fail - dependencies are supplementary
-		// For now we'll just create empty dependencies
-		deps = &DependencyInfo{}
-	}
-	analysis.Dependencies = *deps
 
 	return analysis, nil
 }
