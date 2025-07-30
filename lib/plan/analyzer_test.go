@@ -1312,14 +1312,9 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := analyzer.analyzePropertyChanges(tc.change)
-
-			if tc.expectedError {
-				// Skip error assertions since method no longer returns error
-			} else {
-				assert.Equal(t, tc.expectedCount, result.Count, "Property count mismatch")
-				assert.Equal(t, tc.expectedTrunc, result.Truncated, "Truncation flag mismatch")
-				assert.Len(t, result.Changes, result.Count, "Changes slice length should match count")
-			}
+			assert.Equal(t, tc.expectedCount, result.Count, "Property count mismatch")
+			assert.Equal(t, tc.expectedTrunc, result.Truncated, "Truncation flag mismatch")
+			assert.Len(t, result.Changes, result.Count, "Changes slice length should match count")
 		})
 	}
 

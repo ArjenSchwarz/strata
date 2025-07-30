@@ -165,7 +165,7 @@ func isDangerousRow(row string) bool {
 		strings.Contains(row, "Dangerous") ||
 		strings.Contains(row, "High Risk") ||
 		// Look for non-empty DANGER column (anything after the last | that's not just whitespace)
-		regexp.MustCompile(`\|\s*[^|\\s]+\s*$`).MatchString(strings.TrimSpace(row))
+		regexp.MustCompile(`\|\s*[^|\s]+\s*$`).MatchString(strings.TrimSpace(row))
 }
 
 // getActionSortPriority returns priority for sorting (lower = higher priority)
