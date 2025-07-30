@@ -1,0 +1,135 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.8.5",
+    "variables": {},
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.test",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "test",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "instance_type": "t3.medium",
+                        "tags": {
+                            "Name": "Test Instance",
+                            "Environment": "production"
+                        },
+                        "security_groups": ["sg-123", "sg-456"],
+                        "user_data": "#!/bin/bash\necho 'Hello World'"
+                    },
+                    "sensitive_values": {
+                        "user_data": true
+                    }
+                }
+            ]
+        }
+    },
+    "resource_changes": [
+        {
+            "address": "aws_instance.test",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "test",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["update"],
+                "before": {
+                    "instance_type": "t3.small",
+                    "tags": {
+                        "Name": "Test Instance",
+                        "Environment": "development"
+                    },
+                    "security_groups": ["sg-123"],
+                    "user_data": "#!/bin/bash\necho 'Old Script'"
+                },
+                "after": {
+                    "instance_type": "t3.medium",
+                    "tags": {
+                        "Name": "Test Instance", 
+                        "Environment": "production"
+                    },
+                    "security_groups": ["sg-123", "sg-456"],
+                    "user_data": "#!/bin/bash\necho 'Hello World'"
+                },
+                "before_sensitive": {
+                    "user_data": true
+                },
+                "after_sensitive": {
+                    "user_data": true
+                }
+            }
+        },
+        {
+            "address": "aws_s3_bucket.data",
+            "mode": "managed", 
+            "type": "aws_s3_bucket",
+            "name": "data",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["create"],
+                "before": null,
+                "after": {
+                    "bucket": "my-test-bucket-2024",
+                    "versioning": {
+                        "enabled": true,
+                        "mfa_delete": false
+                    },
+                    "server_side_encryption_configuration": {
+                        "rule": {
+                            "apply_server_side_encryption_by_default": {
+                                "sse_algorithm": "AES256"
+                            },
+                            "bucket_key_enabled": true
+                        }
+                    }
+                },
+                "before_sensitive": null,
+                "after_sensitive": {}
+            }
+        },
+        {
+            "address": "aws_instance.delete_me",
+            "mode": "managed",
+            "type": "aws_instance", 
+            "name": "delete_me",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["delete"],
+                "before": {
+                    "instance_type": "t2.micro",
+                    "tags": {
+                        "Name": "To Be Deleted",
+                        "Environment": "test"
+                    }
+                },
+                "after": null,
+                "before_sensitive": {},
+                "after_sensitive": null
+            }
+        }
+    ],
+    "configuration": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.test",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "test",
+                    "provider_config_key": "aws"
+                },
+                {
+                    "address": "aws_s3_bucket.data",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket", 
+                    "name": "data",
+                    "provider_config_key": "aws"
+                }
+            ]
+        }
+    }
+}

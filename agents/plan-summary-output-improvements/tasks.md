@@ -128,21 +128,21 @@ This document outlines the discrete coding tasks required to implement the plan 
 
 ### 7. Integration and End-to-End Testing
 
-- [ ] **7.1** Create end-to-end tests with sample data
+- [x] **7.1** Create end-to-end tests with sample data
   - Test all improvements using `samples/danger-sample.json`
   - Test empty table suppression with `samples/nochange-sample.json`
   - Create new test data for complex property change scenarios
   - Verify output improvements across all supported formats (table, JSON, HTML, Markdown)
   - References requirement 6 (General Applicability - cross-format consistency)
 
-- [ ] **7.2** Add performance and memory tests
+- [x] **7.2** Add performance and memory tests
   - Test with large plans (1000+ resources) to verify performance limits work
   - Test with resources having many property changes
   - Verify memory usage stays within defined limits
   - Test truncation behavior under load
   - References technical implementation notes (performance testing)
 
-- [ ] **7.3** Validate backward compatibility
+- [x] **7.3** Validate backward compatibility
   - Ensure JSON output structure remains unchanged (only values in property_changes field differ)
   - Verify table column names and order remain consistent
   - Test that existing parsers can still process the output
