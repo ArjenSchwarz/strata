@@ -15,10 +15,12 @@ const (
 	riskLevelHigh   = "high"
 	riskLevelMedium = "medium"
 
-	// Performance limits for property extraction
-	MaxPropertiesPerResource = 100      // Maximum properties per resource to prevent runaway extraction
-	MaxPropertyValueSize     = 10240    // 10KB per property value
-	MaxTotalPropertyMemory   = 10485760 // 10MB total for all properties
+	// MaxPropertiesPerResource limits the number of properties extracted per resource to prevent runaway extraction
+	MaxPropertiesPerResource = 100
+	// MaxPropertyValueSize limits individual property values to 10KB
+	MaxPropertyValueSize = 10240
+	// MaxTotalPropertyMemory limits total memory usage for all properties to 10MB
+	MaxTotalPropertyMemory = 10485760
 )
 
 // Analyzer processes Terraform plan data and generates summaries

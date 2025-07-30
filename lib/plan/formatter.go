@@ -50,7 +50,7 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 
 	// Find table rows using regex to match ACTION column patterns
 	lines := strings.Split(content, "\n")
-	var tableStart int = -1
+	var tableStart = -1
 	var dataRows []string
 	var dataRowIndices []int
 	headerFound := false
@@ -259,88 +259,8 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	}
 
 	// Resource Changes table - UNIFIED TABLE CREATION following go-output example pattern
-	if showDetails && len(summary.ResourceChanges) > 0 {
-		// Check if provider grouping should be used (requirement 1.4: use changed resource count for threshold)
-		changedResourceCount := f.countChangedResources(summary.ResourceChanges)
-		if f.config.Plan.Grouping.Enabled && changedResourceCount >= f.config.Plan.Grouping.Threshold {
-			groups := f.groupResourcesByProvider(summary.ResourceChanges)
-			if len(groups) > 1 { // Only group if multiple providers
-				// Create provider-grouped sections following go-output collapsible sections pattern
-				for providerName, resources := range groups {
-					groupData := f.prepareResourceTableData(resources)
-					// Requirement 1.1: Only create table if data exists after filtering no-ops
-					if len(groupData) > 0 {
-						schema := f.getResourceTableSchema()
-						// Create table for this provider group
-						providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData, output.WithSchema(schema...))
-						if err == nil {
-							// Create collapsible section for this provider (requirement 1.3: show only changed resources in count)
-							changedCount := f.countChangedResources(resources)
-							providerSection := output.NewCollapsibleSection(
-								fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), changedCount),
-								[]output.Content{providerTable},
-								output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
-								output.WithSectionLevel(2),
-							)
-							builder = builder.AddContent(providerSection)
-						} else {
-							fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
-						}
-					}
-					// If groupData is empty, table is suppressed (requirement 1.2)
-				}
-			} else {
-				// Single provider, create standard Resource Changes table
-				tableData := f.prepareResourceTableData(summary.ResourceChanges)
-				// Requirement 1.1: Only create table if data exists after filtering no-ops
-				if len(tableData) > 0 {
-					schema := f.getResourceTableSchema()
-					resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
-					if err == nil {
-						builder = builder.AddContent(resourceTable)
-					} else {
-						fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
-					}
-				}
-				// If tableData is empty, table is suppressed (requirement 1.1)
-			}
-		} else {
-			// Standard Resource Changes table without grouping
-			tableData := f.prepareResourceTableData(summary.ResourceChanges)
-			// Requirement 1.1: Only create table if data exists after filtering no-ops
-			if len(tableData) > 0 {
-				schema := f.getResourceTableSchema()
-				resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
-				if err == nil {
-					builder = builder.AddContent(resourceTable)
-				} else {
-					fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
-				}
-			}
-			// If tableData is empty, table is suppressed (requirement 1.1)
-		}
-	} else if showDetails && len(summary.ResourceChanges) == 0 {
-		// No resource changes
-		builder = builder.Text("All resources are unchanged.")
-	} else if f.config.Plan.AlwaysShowSensitive {
-		// When details are disabled but AlwaysShowSensitive is enabled, show sensitive changes only
-		sensitiveChanges := f.filterSensitiveChanges(summary.ResourceChanges)
-		if len(sensitiveChanges) > 0 {
-			sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
-			if err != nil {
-				return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
-			}
-			sensitiveTable, err := output.NewTableContent("Sensitive Resource Changes", sensitiveData,
-				output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
-			if err == nil {
-				builder = builder.AddContent(sensitiveTable)
-			} else {
-				// Log warning but continue operation - conservative error handling
-				fmt.Printf("Warning: Failed to create sensitive resource changes table: %v\n", err)
-			}
-		} else if outputConfig.OutputFile == "" {
-			builder = builder.Text("No sensitive resource changes detected.")
-		}
+	if err := f.handleResourceDisplay(summary, showDetails, outputConfig, builder); err != nil {
+		return err
 	}
 	// If no conditions above are met, we show only Plan Information and Summary Statistics tables
 
@@ -1089,4 +1009,134 @@ func (f *Formatter) getRendererConfig() output.RendererConfig {
 			"content": "strata-details",
 		},
 	}
+}
+
+// addResourceChangesTable handles the creation of resource changes tables with proper grouping logic
+func (f *Formatter) addResourceChangesTable(summary *PlanSummary, builder *output.Builder) {
+	// Check if provider grouping should be used (requirement 1.4: use changed resource count for threshold)
+	changedResourceCount := f.countChangedResources(summary.ResourceChanges)
+	shouldGroup := f.config.Plan.Grouping.Enabled && changedResourceCount >= f.config.Plan.Grouping.Threshold
+
+	switch {
+	case shouldGroup:
+		f.addGroupedResourceTables(summary, builder)
+	default:
+		f.addStandardResourceTable(summary, builder)
+	}
+}
+
+// addGroupedResourceTables creates provider-grouped resource tables
+func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *output.Builder) {
+	groups := f.groupResourcesByProvider(summary.ResourceChanges)
+	if len(groups) > 1 {
+		// Multiple providers: create provider-grouped sections
+		for providerName, resources := range groups {
+			f.addProviderGroupTable(providerName, resources, builder)
+		}
+	} else {
+		// Single provider: create standard table
+		f.addStandardResourceTable(summary, builder)
+	}
+}
+
+// addProviderGroupTable creates a table for a specific provider group
+func (f *Formatter) addProviderGroupTable(providerName string, resources []ResourceChange, builder *output.Builder) {
+	groupData := f.prepareResourceTableData(resources)
+	// Requirement 1.1: Only create table if data exists after filtering no-ops
+	if len(groupData) > 0 {
+		schema := f.getResourceTableSchema()
+		// Create table for this provider group
+		providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData, output.WithSchema(schema...))
+		if err == nil {
+			// Create collapsible section for this provider (requirement 1.3: show only changed resources in count)
+			changedCount := f.countChangedResources(resources)
+			providerSection := output.NewCollapsibleSection(
+				fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), changedCount),
+				[]output.Content{providerTable},
+				output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
+				output.WithSectionLevel(2),
+			)
+			builder.AddContent(providerSection)
+		} else {
+			fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
+		}
+	}
+	// If groupData is empty, table is suppressed (requirement 1.2)
+}
+
+// addStandardResourceTable creates a standard resource changes table without grouping
+func (f *Formatter) addStandardResourceTable(summary *PlanSummary, builder *output.Builder) {
+	tableData := f.prepareResourceTableData(summary.ResourceChanges)
+	// Requirement 1.1: Only create table if data exists after filtering no-ops
+	if len(tableData) > 0 {
+		schema := f.getResourceTableSchema()
+		resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
+		if err == nil {
+			builder.AddContent(resourceTable)
+		} else {
+			fmt.Printf("Warning: Failed to create resource changes table: %v\n", err)
+		}
+	}
+	// If tableData is empty, table is suppressed (requirement 1.1)
+}
+
+// handleResourceDisplay handles the different resource display scenarios based on showDetails and config
+func (f *Formatter) handleResourceDisplay(summary *PlanSummary, showDetails bool, outputConfig *config.OutputConfiguration, builder *output.Builder) error {
+	type displayMode int
+	const (
+		showAllResources displayMode = iota
+		showNoChangesMessage
+		showSensitiveOnly
+		showNothing
+	)
+
+	// Determine which display mode to use
+	mode := func() displayMode {
+		switch {
+		case showDetails && len(summary.ResourceChanges) > 0:
+			return showAllResources
+		case showDetails && len(summary.ResourceChanges) == 0:
+			return showNoChangesMessage
+		case f.config.Plan.AlwaysShowSensitive:
+			return showSensitiveOnly
+		default:
+			return showNothing
+		}
+	}()
+
+	// Handle the selected display mode
+	switch mode {
+	case showAllResources:
+		f.addResourceChangesTable(summary, builder)
+	case showNoChangesMessage:
+		builder.Text("All resources are unchanged.")
+	case showSensitiveOnly:
+		return f.handleSensitiveResourceDisplay(summary, outputConfig, builder)
+	case showNothing:
+		// Show only Plan Information and Summary Statistics tables
+	}
+
+	return nil
+}
+
+// handleSensitiveResourceDisplay handles the display of sensitive resources when details are disabled
+func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, outputConfig *config.OutputConfiguration, builder *output.Builder) error {
+	sensitiveChanges := f.filterSensitiveChanges(summary.ResourceChanges)
+	if len(sensitiveChanges) > 0 {
+		sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
+		if err != nil {
+			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
+		}
+		sensitiveTable, err := output.NewTableContent("Sensitive Resource Changes", sensitiveData,
+			output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
+		if err == nil {
+			builder.AddContent(sensitiveTable)
+		} else {
+			// Log warning but continue operation - conservative error handling
+			fmt.Printf("Warning: Failed to create sensitive resource changes table: %v\n", err)
+		}
+	} else if outputConfig.OutputFile == "" {
+		builder.Text("No sensitive resource changes detected.")
+	}
+	return nil
 }
