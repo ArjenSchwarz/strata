@@ -142,7 +142,6 @@ type ResourceAnalysis struct {
 	PropertyChanges    PropertyChangeAnalysis `json:"property_changes"`
 	ReplacementReasons []string               `json:"replacement_reasons"`
 	RiskLevel          string                 `json:"risk_level"` // "low", "medium", "high", "critical"
-	Dependencies       DependencyInfo         `json:"dependencies"`
 }
 
 // PropertyChangeAnalysis focuses on detailed property change information
@@ -162,12 +161,6 @@ type PropertyChange struct {
 	Sensitive bool     `json:"sensitive"` // From sensitive_values
 	Size      int      `json:"size"`      // Size in bytes for memory tracking
 	Action    string   `json:"action"`    // "add", "remove", "update" actions
-}
-
-// DependencyInfo contains resource dependency relationships
-type DependencyInfo struct {
-	DependsOn []string `json:"depends_on"` // Resources this change depends on
-	UsedBy    []string `json:"used_by"`    // Resources that depend on this change
 }
 
 // PerformanceLimits defines memory and processing limits for analysis

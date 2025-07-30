@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Dependencies Column and Functionality**: Removed dependencies column from resource table display, `dependenciesFormatterDirect()` function, and `DependencyInfo` data structure from models
+- **Dependency-Related Test Coverage**: Removed test cases for dependency extraction, circular dependency detection, and dependency formatter functions
+
+### Changed
+- **Resource Table Schema**: Simplified resource table schema by removing dependencies field and related formatting logic
+- **Resource Analysis**: Updated `ResourceAnalysis` struct to remove `Dependencies` field, streamlining the analysis model
+- **Test Data Preparation**: Updated `prepareResourceTableData()` to exclude dependency information from table row data
+
 ### Added
 - **Empty Table Suppression**: Implemented filtering to exclude no-op changes from Resource Changes tables, preventing display of tables that would only contain unchanged resources
 - **Comprehensive Empty Table Tests**: Added extensive test coverage for empty table suppression including no-op filtering, provider grouping behavior, and changed resource counting

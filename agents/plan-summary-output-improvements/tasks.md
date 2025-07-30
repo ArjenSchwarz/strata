@@ -98,14 +98,14 @@ This document outlines the discrete coding tasks required to implement the plan 
 
 ### 5. Dependencies Column Removal and Cleanup
 
-- [ ] **5.1** Remove dependencies functionality from formatter.go
+- [x] **5.1** Remove dependencies functionality from formatter.go
   - Remove `dependencies` field from `getResourceTableSchema()` function
   - Remove dependencies row data from `prepareResourceTableData()` function
   - Remove `dependenciesFormatterDirect()` function entirely
   - Update table column definitions to exclude dependencies
   - References requirement 4 removal (Dependencies functionality removed per decision log)
 
-- [ ] **5.2** Clean up dependency-related data structures
+- [x] **5.2** Clean up dependency-related data structures
   - Remove `DependencyInfo` struct from models.go if not used elsewhere
   - Remove any dependency-related analyzer code that's no longer needed
   - Update tests to remove dependency-related test cases

@@ -118,107 +118,6 @@ func TestPropertyChangesFormatter(t *testing.T) {
 	}
 }
 
-// TestDependenciesFormatter tests the collapsible dependencies formatter
-func TestDependenciesFormatter(t *testing.T) {
-	cfg := &config.Config{}
-	formatter := NewFormatter(cfg)
-	fn := formatter.dependenciesFormatterDirect()
-
-	tests := []struct {
-		name         string
-		input        any
-		wantSummary  string
-		wantExpanded bool
-	}{
-		{
-			name:        "nil dependencies",
-			input:       nil,
-			wantSummary: "",
-		},
-		{
-			name: "no dependencies",
-			input: &DependencyInfo{
-				DependsOn: []string{},
-				UsedBy:    []string{},
-			},
-			wantSummary: "No dependencies",
-		},
-		{
-			name: "only depends on",
-			input: &DependencyInfo{
-				DependsOn: []string{"aws_vpc.main", "aws_subnet.private"},
-				UsedBy:    []string{},
-			},
-			wantSummary:  "2 dependencies",
-			wantExpanded: false,
-		},
-		{
-			name: "only used by",
-			input: &DependencyInfo{
-				DependsOn: []string{},
-				UsedBy:    []string{"aws_instance.web", "aws_instance.app"},
-			},
-			wantSummary:  "2 dependencies",
-			wantExpanded: false,
-		},
-		{
-			name: "both depends on and used by",
-			input: &DependencyInfo{
-				DependsOn: []string{"aws_vpc.main"},
-				UsedBy:    []string{"aws_instance.web", "aws_instance.app"},
-			},
-			wantSummary:  "3 dependencies",
-			wantExpanded: false,
-		},
-		{
-			name:        "non-DependencyInfo input",
-			input:       "not a dependency info",
-			wantSummary: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := fn(tt.input)
-
-			if tt.wantSummary != "" {
-				if tt.wantSummary == "No dependencies" {
-					// Special case: "No dependencies" returns a string
-					if str, ok := result.(string); ok {
-						if str != tt.wantSummary {
-							t.Errorf("String = %q, want %q", str, tt.wantSummary)
-						}
-					} else {
-						t.Errorf("Expected string for 'No dependencies', got %T", result)
-					}
-				} else {
-					// Normal case: returns CollapsibleValue
-					cv, ok := result.(output.CollapsibleValue)
-					if !ok {
-						t.Errorf("Expected CollapsibleValue, got %T", result)
-						return
-					}
-
-					if cv.Summary() != tt.wantSummary {
-						t.Errorf("Summary = %q, want %q", cv.Summary(), tt.wantSummary)
-					}
-
-					if cv.IsExpanded() != tt.wantExpanded {
-						t.Errorf("Expanded = %v, want %v", cv.IsExpanded(), tt.wantExpanded)
-					}
-				}
-			} else {
-				// Should return input unchanged for non-DependencyInfo types
-				if _, isDep := tt.input.(*DependencyInfo); !isDep {
-					if result != tt.input {
-						t.Errorf("Expected unchanged input, got %v", result)
-					}
-				}
-			}
-		})
-	}
-}
-
 // TestPrepareResourceTableData tests the table data preparation function
 func TestPrepareResourceTableData(t *testing.T) {
 	cfg := &config.Config{
@@ -479,9 +378,4 @@ func TestFormatterErrorHandling(t *testing.T) {
 		t.Error("Expected unchanged input for invalid type")
 	}
 
-	depFn := formatter.dependenciesFormatterDirect()
-	result = depFn(123) // Invalid type
-	if result != 123 {
-		t.Error("Expected unchanged input for invalid type")
-	}
 }

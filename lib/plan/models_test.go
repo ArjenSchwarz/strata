@@ -197,12 +197,8 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 				},
 				ReplacementReasons: []string{"Instance type changes require replacement"},
 				RiskLevel:          "medium",
-				Dependencies: DependencyInfo{
-					DependsOn: []string{"aws_vpc.main"},
-					UsedBy:    []string{"aws_load_balancer.main"},
-				},
 			},
-			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20,"action":"update"}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium","dependencies":{"depends_on":["aws_vpc.main"],"used_by":["aws_load_balancer.main"]}}`,
+			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20,"action":"update"}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium"}`,
 		},
 		{
 			name: "analysis with truncated properties",
@@ -215,12 +211,8 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 				},
 				ReplacementReasons: []string{},
 				RiskLevel:          "high",
-				Dependencies: DependencyInfo{
-					DependsOn: []string{},
-					UsedBy:    []string{},
-				},
 			},
-			wantJSON: `{"property_changes":{"changes":[],"count":150,"total_size_bytes":2097152,"truncated":true},"replacement_reasons":[],"risk_level":"high","dependencies":{"depends_on":[],"used_by":[]}}`,
+			wantJSON: `{"property_changes":{"changes":[],"count":150,"total_size_bytes":2097152,"truncated":true},"replacement_reasons":[],"risk_level":"high"}`,
 		},
 	}
 
@@ -291,16 +283,5 @@ func TestPropertyChange_SensitiveData(t *testing.T) {
 				t.Errorf("Sensitive flag = %v, expected %v", tt.change.Sensitive, tt.expected)
 			}
 		})
-	}
-}
-
-func TestDependencyInfo_Empty(t *testing.T) {
-	deps := DependencyInfo{}
-
-	if len(deps.DependsOn) != 0 {
-		t.Errorf("Empty DependencyInfo should have no DependsOn, got %d", len(deps.DependsOn))
-	}
-	if len(deps.UsedBy) != 0 {
-		t.Errorf("Empty DependencyInfo should have no UsedBy, got %d", len(deps.UsedBy))
 	}
 }

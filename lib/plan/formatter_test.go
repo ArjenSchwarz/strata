@@ -421,59 +421,6 @@ func TestFormatter_propertyChangesFormatter_ExpandAll(t *testing.T) {
 	}
 }
 
-func TestFormatter_dependenciesFormatter_ExpandAll(t *testing.T) {
-	testCases := []struct {
-		name      string
-		expandAll bool
-		expected  bool // expected expansion state
-	}{
-		{
-			name:      "ExpandAll false",
-			expandAll: false,
-			expected:  false,
-		},
-		{
-			name:      "ExpandAll true",
-			expandAll: true,
-			expected:  false, // Individual formatter doesn't expand, ForceExpansion will handle it
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := &config.Config{
-				ExpandAll: tc.expandAll,
-				Plan: config.PlanConfig{
-					ExpandableSections: config.ExpandableSectionsConfig{
-						AutoExpandDangerous: true, // Enable auto-expansion for dangerous properties
-					},
-				},
-			}
-			formatter := NewFormatter(cfg)
-
-			// Create test dependency info
-			deps := &DependencyInfo{
-				DependsOn: []string{"resource1", "resource2"},
-				UsedBy:    []string{"resource3"},
-			}
-
-			// Get the formatter function and apply it
-			formatterFunc := formatter.dependenciesFormatterDirect()
-			result := formatterFunc(deps)
-
-			// Check if result is a CollapsibleValue
-			if collapsibleValue, ok := result.(output.CollapsibleValue); ok {
-				if collapsibleValue.IsExpanded() != tc.expected {
-					t.Errorf("dependenciesFormatter() expansion = %v, expected %v",
-						collapsibleValue.IsExpanded(), tc.expected)
-				}
-			} else {
-				t.Errorf("dependenciesFormatter() did not return CollapsibleValue, got %T", result)
-			}
-		})
-	}
-}
-
 // TestMarkdownMultiTableRendering validates that all three tables (Plan Information, Summary Statistics, Resource Changes)
 // render correctly in markdown format, addressing the core bug this feature aims to fix
 func TestMarkdownMultiTableRendering(t *testing.T) {

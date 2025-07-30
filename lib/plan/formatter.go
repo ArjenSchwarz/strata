@@ -725,12 +725,6 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			}
 		}
 
-		// Create basic dependency info (will be enhanced later with actual dependency analysis)
-		deps := &DependencyInfo{
-			DependsOn: []string{},
-			UsedBy:    []string{},
-		}
-
 		// Determine risk level based on existing danger flags
 		riskLevel := "low"
 		if change.IsDangerous {
@@ -760,7 +754,6 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			"danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
 			"property_changes": propChanges, // Will be formatted by collapsible formatter
-			"dependencies":     deps,        // Will be formatted by collapsible formatter
 		}
 
 		// Add replacement reasons if available
@@ -991,11 +984,6 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 			Type:      "object",
 			Formatter: f.propertyChangesFormatterTerraform(),
 		},
-		{
-			Name:      "dependencies",
-			Type:      "object",
-			Formatter: f.dependenciesFormatterDirect(),
-		},
 	}
 }
 
@@ -1038,47 +1026,6 @@ func (f *Formatter) propertyChangesFormatterDirect() func(any) any {
 			}
 		}
 		// Return input unchanged for non-PropertyChangeAnalysis types (required for test compatibility)
-		return val
-	}
-}
-
-// dependenciesFormatterDirect creates a collapsible formatter that returns NewCollapsibleValue directly
-//
-// DESIGN DECISION: Consolidated from duplicate formatter functions during simplified plan rendering.
-// This version correctly handles f.config.ExpandAll and integrates seamlessly with NewTableContent.
-func (f *Formatter) dependenciesFormatterDirect() func(any) any {
-	return func(val any) any {
-		if deps, ok := val.(*DependencyInfo); ok && deps != nil {
-			total := len(deps.DependsOn) + len(deps.UsedBy)
-			if total == 0 {
-				return "No dependencies"
-			}
-
-			summary := fmt.Sprintf("%d dependencies", total)
-			var details []string
-
-			if len(deps.DependsOn) > 0 {
-				details = append(details, "Depends On:")
-				for _, dep := range deps.DependsOn {
-					details = append(details, fmt.Sprintf("  - %s", dep))
-				}
-			}
-
-			if len(deps.UsedBy) > 0 {
-				if len(details) > 0 {
-					details = append(details, "")
-				}
-				details = append(details, "Used By:")
-				for _, dep := range deps.UsedBy {
-					details = append(details, fmt.Sprintf("  - %s", dep))
-				}
-			}
-
-			// Note: ExpandAll is handled by renderer's ForceExpansion, not here
-			shouldExpand := false
-			return output.NewCollapsibleValue(summary, strings.Join(details, "\n"), output.WithExpanded(shouldExpand))
-		}
-		// Return input unchanged for non-DependencyInfo types (required for test compatibility)
 		return val
 	}
 }
