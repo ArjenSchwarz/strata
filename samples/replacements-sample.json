@@ -1,0 +1,644 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.5.0",
+    "planned_changes": {
+        "add": 2,
+        "change": 1,
+        "remove": 0,
+        "replace": 5
+    },
+    "resource_changes": [
+        {
+            "address": "aws_instance.web_server",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web_server",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "replace_paths": [
+                    [
+                        "ami"
+                    ],
+                    [
+                        "instance_type"
+                    ],
+                    [
+                        "key_name"
+                    ],
+                    [
+                        "user_data"
+                    ]
+                ],
+                "before": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "arn": "arn:aws:ec2:us-west-2:123456789012:instance/i-0123456789abcdef0",
+                    "associate_public_ip_address": true,
+                    "availability_zone": "us-west-2a",
+                    "cpu_core_count": 1,
+                    "cpu_threads_per_core": 1,
+                    "disable_api_stop": false,
+                    "disable_api_termination": false,
+                    "ebs_optimized": false,
+                    "get_password_data": false,
+                    "hibernation": false,
+                    "host_id": null,
+                    "iam_instance_profile": null,
+                    "id": "i-0123456789abcdef0",
+                    "instance_initiated_shutdown_behavior": "stop",
+                    "instance_state": "running",
+                    "instance_type": "t3.micro",
+                    "ipv6_address_count": 0,
+                    "ipv6_addresses": [],
+                    "key_name": "old-keypair",
+                    "monitoring": false,
+                    "outpost_arn": null,
+                    "password_data": null,
+                    "placement_group": null,
+                    "placement_partition_number": null,
+                    "primary_network_interface_id": "eni-0abcdef123456789",
+                    "private_dns": "ip-10-0-1-100.us-west-2.compute.internal",
+                    "private_ip": "10.0.1.100",
+                    "public_dns": "ec2-54-123-45-67.us-west-2.compute.amazonaws.com",
+                    "public_ip": "54.123.45.67",
+                    "secondary_private_ips": [],
+                    "security_groups": [
+                        "sg-0123456789abcdef0"
+                    ],
+                    "source_dest_check": true,
+                    "subnet_id": "subnet-0123456789abcdef0",
+                    "tags": {
+                        "Name": "web-server",
+                        "Environment": "production"
+                    },
+                    "tenancy": "default",
+                    "user_data": null,
+                    "user_data_base64": null,
+                    "vpc_security_group_ids": [
+                        "sg-0123456789abcdef0"
+                    ]
+                },
+                "after": {
+                    "ami": "ami-0abcdef123456789c",
+                    "associate_public_ip_address": true,
+                    "availability_zone": "us-west-2a",
+                    "disable_api_stop": false,
+                    "disable_api_termination": false,
+                    "ebs_optimized": true,
+                    "get_password_data": false,
+                    "hibernation": false,
+                    "iam_instance_profile": null,
+                    "instance_initiated_shutdown_behavior": "stop",
+                    "instance_type": "t3.small",
+                    "ipv6_address_count": 0,
+                    "ipv6_addresses": [],
+                    "key_name": "new-keypair-2025",
+                    "monitoring": true,
+                    "outpost_arn": null,
+                    "password_data": null,
+                    "placement_group": null,
+                    "placement_partition_number": null,
+                    "secondary_private_ips": [],
+                    "source_dest_check": true,
+                    "subnet_id": "subnet-0123456789abcdef0",
+                    "tags": {
+                        "Name": "web-server-v2",
+                        "Environment": "production",
+                        "Version": "2.0"
+                    },
+                    "tenancy": "default",
+                    "user_data": "IyEvYmluL2Jhc2gKZWNobyAiTmV3IHVzZXIgZGF0YSBzY3JpcHQi",
+                    "user_data_base64": "IyEvYmluL2Jhc2gKZWNobyAiTmV3IHVzZXIgZGF0YSBzY3JpcHQi",
+                    "vpc_security_group_ids": [
+                        "sg-0987654321fedcba0"
+                    ]
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "cpu_core_count": true,
+                    "cpu_threads_per_core": true,
+                    "host_id": true,
+                    "id": true,
+                    "instance_state": true,
+                    "primary_network_interface_id": true,
+                    "private_dns": true,
+                    "private_ip": true,
+                    "public_dns": true,
+                    "public_ip": true,
+                    "security_groups": true
+                }
+            }
+        },
+        {
+            "address": "aws_launch_configuration.web",
+            "mode": "managed",
+            "type": "aws_launch_configuration",
+            "name": "web",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "replace_paths": [
+                    [
+                        "image_id"
+                    ],
+                    [
+                        "name"
+                    ],
+                    [
+                        "root_block_device",
+                        "volume_type"
+                    ],
+                    [
+                        "root_block_device",
+                        "encrypted"
+                    ]
+                ],
+                "before": {
+                    "arn": "arn:aws:autoscaling:us-west-2:123456789012:launchConfiguration:12345678-1234-1234-1234-123456789012:launchConfigurationName/web-lc-old",
+                    "associate_public_ip_address": false,
+                    "ebs_block_device": [],
+                    "ebs_optimized": false,
+                    "enable_monitoring": true,
+                    "ephemeral_block_device": [],
+                    "iam_instance_profile": null,
+                    "id": "web-lc-old",
+                    "image_id": "ami-0c02fb55956c7d316",
+                    "instance_type": "t2.micro",
+                    "key_name": "old-keypair",
+                    "name": "web-lc-old",
+                    "name_prefix": null,
+                    "placement_tenancy": null,
+                    "root_block_device": [
+                        {
+                            "delete_on_termination": true,
+                            "encrypted": false,
+                            "iops": 100,
+                            "throughput": 0,
+                            "volume_size": 8,
+                            "volume_type": "gp2"
+                        }
+                    ],
+                    "security_groups": [
+                        "sg-0123456789abcdef0"
+                    ],
+                    "spot_price": null,
+                    "user_data": null,
+                    "user_data_base64": null
+                },
+                "after": {
+                    "associate_public_ip_address": false,
+                    "ebs_optimized": true,
+                    "enable_monitoring": true,
+                    "iam_instance_profile": "web-server-profile",
+                    "image_id": "ami-0abcdef123456789c",
+                    "instance_type": "t3.micro",
+                    "key_name": "new-keypair-2025",
+                    "name_prefix": "web-lc-new-",
+                    "placement_tenancy": null,
+                    "root_block_device": [
+                        {
+                            "delete_on_termination": true,
+                            "encrypted": true,
+                            "iops": 3000,
+                            "throughput": 125,
+                            "volume_size": 20,
+                            "volume_type": "gp3"
+                        }
+                    ],
+                    "security_groups": [
+                        "sg-0987654321fedcba0"
+                    ],
+                    "spot_price": null,
+                    "user_data_base64": "IyEvYmluL2Jhc2gKYXB0IHVwZGF0ZSAteQphcHQgaW5zdGFsbCAteSBuZ2lueAo="
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "ebs_block_device": true,
+                    "ephemeral_block_device": true,
+                    "id": true,
+                    "name": true,
+                    "user_data": true
+                }
+            }
+        },
+        {
+            "address": "aws_security_group.database",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "database",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "replace_paths": [
+                    [
+                        "name"
+                    ]
+                ],
+                "before": {
+                    "arn": "arn:aws:ec2:us-west-2:123456789012:security-group/sg-0abcdef123456789",
+                    "description": "Database security group",
+                    "egress": [
+                        {
+                            "cidr_blocks": [
+                                "0.0.0.0/0"
+                            ],
+                            "description": "",
+                            "from_port": 0,
+                            "ipv6_cidr_blocks": [],
+                            "prefix_list_ids": [],
+                            "protocol": "-1",
+                            "security_groups": [],
+                            "self": false,
+                            "to_port": 0
+                        }
+                    ],
+                    "id": "sg-0abcdef123456789",
+                    "ingress": [
+                        {
+                            "cidr_blocks": [
+                                "10.0.0.0/16"
+                            ],
+                            "description": "MySQL access",
+                            "from_port": 3306,
+                            "ipv6_cidr_blocks": [],
+                            "prefix_list_ids": [],
+                            "protocol": "tcp",
+                            "security_groups": [],
+                            "self": false,
+                            "to_port": 3306
+                        }
+                    ],
+                    "name": "database-sg",
+                    "owner_id": "123456789012",
+                    "revoke_rules_on_delete": false,
+                    "tags": {
+                        "Name": "database-sg",
+                        "Environment": "production"
+                    },
+                    "vpc_id": "vpc-0123456789abcdef0"
+                },
+                "after": {
+                    "description": "PostgreSQL database security group with enhanced rules",
+                    "name": "database-sg-postgres",
+                    "revoke_rules_on_delete": false,
+                    "tags": {
+                        "Name": "database-sg-postgres",
+                        "Environment": "production",
+                        "Database": "postgresql"
+                    },
+                    "vpc_id": "vpc-0123456789abcdef0"
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "egress": true,
+                    "id": true,
+                    "ingress": true,
+                    "name_prefix": true,
+                    "owner_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_db_subnet_group.main",
+            "mode": "managed",
+            "type": "aws_db_subnet_group",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "replace_paths": [
+                    [
+                        "name"
+                    ],
+                    [
+                        "subnet_ids"
+                    ]
+                ],
+                "before": {
+                    "arn": "arn:aws:rds:us-west-2:123456789012:subgrp:main-db-subnet-group",
+                    "description": "Main DB subnet group",
+                    "id": "main-db-subnet-group",
+                    "name": "main-db-subnet-group",
+                    "subnet_ids": [
+                        "subnet-0123456789abcdef0",
+                        "subnet-0fedcba987654321"
+                    ],
+                    "tags": {
+                        "Name": "main-db-subnet-group",
+                        "Environment": "production"
+                    }
+                },
+                "after": {
+                    "description": "Enhanced DB subnet group with additional subnets",
+                    "name": "enhanced-db-subnet-group",
+                    "subnet_ids": [
+                        "subnet-0123456789abcdef0",
+                        "subnet-0fedcba987654321",
+                        "subnet-0987654321abcdef0"
+                    ],
+                    "tags": {
+                        "Name": "enhanced-db-subnet-group",
+                        "Environment": "production",
+                        "Version": "2.0"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "id": true,
+                    "name_prefix": true
+                }
+            }
+        },
+        {
+            "address": "aws_elasticache_subnet_group.main",
+            "mode": "managed",
+            "type": "aws_elasticache_subnet_group",
+            "name": "main",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "delete",
+                    "create"
+                ],
+                "replace_paths": [
+                    [
+                        "subnet_ids"
+                    ]
+                ],
+                "before": {
+                    "description": "ElastiCache subnet group",
+                    "id": "cache-subnet-group",
+                    "name": "cache-subnet-group",
+                    "subnet_ids": [
+                        "subnet-0123456789abcdef0",
+                        "subnet-0fedcba987654321"
+                    ]
+                },
+                "after": {
+                    "description": "Enhanced ElastiCache subnet group with multi-AZ support",
+                    "name": "enhanced-cache-subnet-group",
+                    "subnet_ids": [
+                        "subnet-0123456789abcdef0",
+                        "subnet-0fedcba987654321",
+                        "subnet-0987654321abcdef0",
+                        "subnet-0abcdef987654321"
+                    ]
+                },
+                "after_unknown": {
+                    "id": true
+                }
+            }
+        },
+        {
+            "address": "aws_s3_bucket.logs",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "logs",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "update"
+                ],
+                "before": {
+                    "acceleration_status": "",
+                    "acl": null,
+                    "arn": "arn:aws:s3:::my-app-logs-bucket-12345",
+                    "bucket": "my-app-logs-bucket-12345",
+                    "bucket_domain_name": "my-app-logs-bucket-12345.s3.amazonaws.com",
+                    "bucket_regional_domain_name": "my-app-logs-bucket-12345.s3.us-west-2.amazonaws.com",
+                    "cors_rule": [],
+                    "grant": [
+                        {
+                            "id": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567",
+                            "permissions": [
+                                "FULL_CONTROL"
+                            ],
+                            "type": "CanonicalUser",
+                            "uri": ""
+                        }
+                    ],
+                    "hosted_zone_id": "Z3BJ6K6RIION7M",
+                    "id": "my-app-logs-bucket-12345",
+                    "lifecycle_rule": [],
+                    "logging": [],
+                    "notification": [],
+                    "object_lock_configuration": [],
+                    "policy": null,
+                    "region": "us-west-2",
+                    "replication_configuration": [],
+                    "request_payer": "BucketOwner",
+                    "server_side_encryption_configuration": [],
+                    "tags": {
+                        "Environment": "production",
+                        "Purpose": "logging"
+                    },
+                    "versioning": [
+                        {
+                            "enabled": false,
+                            "mfa_delete": false
+                        }
+                    ],
+                    "website": [],
+                    "website_domain": null,
+                    "website_endpoint": null
+                },
+                "after": {
+                    "tags": {
+                        "Environment": "production",
+                        "Purpose": "logging",
+                        "RetentionPolicy": "7-years",
+                        "Compliance": "SOX-compliant"
+                    }
+                },
+                "after_unknown": {
+                    "acceleration_status": true,
+                    "acl": true,
+                    "arn": true,
+                    "bucket_domain_name": true,
+                    "bucket_regional_domain_name": true,
+                    "cors_rule": true,
+                    "grant": true,
+                    "hosted_zone_id": true,
+                    "lifecycle_rule": true,
+                    "logging": true,
+                    "notification": true,
+                    "object_lock_configuration": true,
+                    "policy": true,
+                    "replication_configuration": true,
+                    "request_payer": true,
+                    "server_side_encryption_configuration": true,
+                    "versioning": true,
+                    "website": true,
+                    "website_domain": true,
+                    "website_endpoint": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_instance_profile.web_server_profile",
+            "mode": "managed",
+            "type": "aws_iam_instance_profile",
+            "name": "web_server_profile",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "name": "web-server-profile",
+                    "path": "/",
+                    "role": "enhanced-web-server-role",
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "create_date": true,
+                    "id": true,
+                    "name_prefix": true,
+                    "unique_id": true
+                }
+            }
+        },
+        {
+            "address": "aws_iam_role.web_server_role",
+            "mode": "managed",
+            "type": "aws_iam_role",
+            "name": "web_server_role",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": [
+                    "create"
+                ],
+                "before": null,
+                "after": {
+                    "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"ec2.amazonaws.com\"\n      }\n    }\n  ]\n}",
+                    "description": "Enhanced IAM role for web servers",
+                    "force_detach_policies": false,
+                    "max_session_duration": 3600,
+                    "name": "enhanced-web-server-role",
+                    "path": "/",
+                    "permissions_boundary": null,
+                    "tags": {
+                        "Environment": "production",
+                        "ManagedBy": "terraform",
+                        "Purpose": "web-server-access"
+                    }
+                },
+                "after_unknown": {
+                    "arn": true,
+                    "create_date": true,
+                    "id": true,
+                    "name_prefix": true,
+                    "unique_id": true
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "provider_config": {
+            "aws": {
+                "name": "aws",
+                "full_name": "registry.terraform.io/hashicorp/aws",
+                "version_constraint": "~> 5.0",
+                "expressions": {
+                    "region": {
+                        "constant_value": "us-west-2"
+                    }
+                }
+            }
+        },
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.web_server",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web_server",
+                    "provider_config_key": "aws",
+                    "expressions": {
+                        "ami": {
+                            "constant_value": "ami-0abcdef123456789c"
+                        },
+                        "instance_type": {
+                            "constant_value": "t3.small"
+                        },
+                        "key_name": {
+                            "constant_value": "new-keypair-2025"
+                        },
+                        "user_data": {
+                            "constant_value": "#!/bin/bash\necho \"New user data script\""
+                        }
+                    }
+                },
+                {
+                    "address": "aws_launch_configuration.web",
+                    "mode": "managed",
+                    "type": "aws_launch_configuration",
+                    "name": "web",
+                    "provider_config_key": "aws",
+                    "expressions": {
+                        "image_id": {
+                            "constant_value": "ami-0abcdef123456789c"
+                        },
+                        "instance_type": {
+                            "constant_value": "t3.micro"
+                        },
+                        "name_prefix": {
+                            "constant_value": "web-lc-new-"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "variables": {
+        "ami_id": {
+            "description": "AMI ID for EC2 instances",
+            "default": "ami-0abcdef123456789c"
+        },
+        "instance_type": {
+            "description": "EC2 instance type",
+            "default": "t3.small"
+        }
+    },
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.web_server",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web_server",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "values": {
+                        "ami": "ami-0abcdef123456789c",
+                        "instance_type": "t3.small",
+                        "key_name": "new-keypair-2025"
+                    }
+                }
+            ]
+        }
+    },
+    "resource_changes_summary": {
+        "add": 2,
+        "change": 1,
+        "remove": 0,
+        "replace": 5
+    }
+}

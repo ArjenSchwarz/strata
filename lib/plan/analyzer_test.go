@@ -494,6 +494,16 @@ func TestExtractModulePath(t *testing.T) {
 			address:  "module.infrastructure.module.vpc.module.subnets.aws_subnet.private",
 			expected: "infrastructure/vpc/subnets",
 		},
+		{
+			name:     "Module with iterator should strip iterator",
+			address:  "module.s3_module[0].aws_s3_bucket.logs",
+			expected: "s3_module",
+		},
+		{
+			name:     "Nested modules with iterators should strip iterators",
+			address:  "module.app[1].module.storage[0].aws_s3_bucket.data",
+			expected: "app/storage",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1312,6 +1322,16 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := analyzer.analyzePropertyChanges(tc.change)
+
+			// Debug output for failing tests
+			if result.Count != tc.expectedCount {
+				t.Logf("Expected %d changes, got %d changes:", tc.expectedCount, result.Count)
+				for i, c := range result.Changes {
+					t.Logf("  %d. Name: '%s', Action: %s, Before: %v, After: %v, Triggers: %v",
+						i+1, c.Name, c.Action, c.Before, c.After, c.TriggersReplacement)
+				}
+			}
+
 			assert.Equal(t, tc.expectedCount, result.Count, "Property count mismatch")
 			assert.Equal(t, tc.expectedTrunc, result.Truncated, "Truncation flag mismatch")
 			assert.Len(t, result.Changes, result.Count, "Changes slice length should match count")

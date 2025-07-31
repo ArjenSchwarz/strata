@@ -1443,7 +1443,7 @@ func TestFormatValue(t *testing.T) {
 				"key4": "value4",
 			},
 			sensitive: false,
-			expected:  "<map[4]>",
+			expected:  "{ key1 = \"value1\", key2 = \"value2\", key3 = \"value3\", key4 = \"value4\" }",
 		},
 		{
 			name:      "small array",
@@ -1455,7 +1455,7 @@ func TestFormatValue(t *testing.T) {
 			name:      "large array",
 			value:     []any{"item1", "item2", "item3", "item4"},
 			sensitive: false,
-			expected:  "<list[4]>",
+			expected:  "[ \"item1\", \"item2\", \"item3\", \"item4\" ]",
 		},
 		{
 			name:      "empty array",

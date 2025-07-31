@@ -38,8 +38,10 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 	}
 }
 
-// compareObjects performs deep object comparison for property change extraction
+// compareObjects performs deep object comparison for property change extraction (DEPRECATED - use compareObjectsWithReplacePaths)
 func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, analysis *PropertyChangeAnalysis) {
+	// This function is deprecated but kept for existing tests
+	// New code should use compareObjectsWithReplacePaths instead
 	// Handle nil cases
 	if before == nil && after == nil {
 		return
@@ -217,6 +219,14 @@ func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
 
 	analysis.TotalSize = totalSize
 	analysis.Count = len(analysis.Changes)
+}
+
+// buildPath constructs a dot-notation path from a base path and key
+func (a *Analyzer) buildPath(basePath, key string) string {
+	if basePath == "" {
+		return key
+	}
+	return fmt.Sprintf("%s.%s", basePath, key)
 }
 
 // extractPropertyName extracts the final property name from a path
@@ -653,7 +663,12 @@ func (a *Analyzer) extractModulePath(address string) string {
 
 	for i, part := range parts {
 		if part == "module" && i+1 < len(parts) {
-			moduleParts = append(moduleParts, parts[i+1])
+			moduleName := parts[i+1]
+			// Strip iterator brackets if present (e.g., "s3_module[0]" -> "s3_module")
+			if idx := strings.Index(moduleName, "["); idx != -1 {
+				moduleName = moduleName[:idx]
+			}
+			moduleParts = append(moduleParts, moduleName)
 		}
 	}
 
@@ -954,6 +969,11 @@ func (a *Analyzer) getTopChangedProperties(change *tfjson.ResourceChange, limit 
 	return properties
 }
 
+// AnalyzePropertyChanges extracts property changes with performance safeguards using the new compareObjects method (exported for testing)
+func (a *Analyzer) AnalyzePropertyChanges(change *tfjson.ResourceChange) PropertyChangeAnalysis {
+	return a.analyzePropertyChanges(change)
+}
+
 // analyzePropertyChanges extracts property changes with performance safeguards using the new compareObjects method
 func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) PropertyChangeAnalysis {
 	analysis := PropertyChangeAnalysis{
@@ -964,13 +984,259 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 		return analysis
 	}
 
-	// Use new deep comparison with sensitive values
-	a.compareObjects("", change.Change.Before, change.Change.After,
-		change.Change.BeforeSensitive, change.Change.AfterSensitive, &analysis)
+	// Extract replacement paths for cross-reference
+	var replacePaths [][]string
+	if change.Change.ReplacePaths != nil {
+		for _, replacePath := range change.Change.ReplacePaths {
+			if pathSlice := a.convertReplacePathToSlice(replacePath); pathSlice != nil {
+				replacePaths = append(replacePaths, pathSlice)
+			}
+		}
+	}
+
+	// Use new deep comparison with sensitive values and replacement paths
+	a.compareObjectsWithReplacePaths("", change.Change.Before, change.Change.After,
+		change.Change.BeforeSensitive, change.Change.AfterSensitive, replacePaths, &analysis)
+
+	// Deduplicate changes before applying limits
+	a.deduplicatePropertyChanges(&analysis)
 
 	// Apply performance limits using the new dedicated function
 	a.enforcePropertyLimits(&analysis)
 	return analysis
+}
+
+// deduplicatePropertyChanges removes duplicate property changes from the analysis
+func (a *Analyzer) deduplicatePropertyChanges(analysis *PropertyChangeAnalysis) {
+	if len(analysis.Changes) <= 1 {
+		return
+	}
+
+	// Create a map to track unique changes
+	seen := make(map[string]PropertyChange)
+	var uniqueChanges []PropertyChange
+
+	for _, change := range analysis.Changes {
+		// Create a unique key for this change
+		key := fmt.Sprintf("%s|%s|%v|%v|%v",
+			change.Name, change.Action, change.Before, change.After, change.TriggersReplacement)
+
+		// Only add if we haven't seen this exact change before
+		if _, exists := seen[key]; !exists {
+			seen[key] = change
+			uniqueChanges = append(uniqueChanges, change)
+		}
+	}
+
+	// Update the analysis with deduplicated changes
+	analysis.Changes = uniqueChanges
+	analysis.Count = len(uniqueChanges)
+}
+
+// convertReplacePathToSlice converts a replacement path from Terraform to a string slice
+func (a *Analyzer) convertReplacePathToSlice(replacePath any) []string {
+	switch p := replacePath.(type) {
+	case []any:
+		var pathSlice []string
+		for _, part := range p {
+			switch partValue := part.(type) {
+			case string:
+				pathSlice = append(pathSlice, partValue)
+			case int:
+				pathSlice = append(pathSlice, strconv.Itoa(partValue))
+			case float64:
+				pathSlice = append(pathSlice, strconv.Itoa(int(partValue)))
+			}
+		}
+		return pathSlice
+	case string:
+		return []string{p}
+	}
+	return nil
+}
+
+// pathMatchesReplacePath checks if a property path matches any of the replacement paths
+func (a *Analyzer) pathMatchesReplacePath(propertyPath []string, replacePaths [][]string) bool {
+	for _, replacePath := range replacePaths {
+		if len(propertyPath) >= len(replacePath) {
+			match := true
+			for i, part := range replacePath {
+				if i < len(propertyPath) && propertyPath[i] != part {
+					match = false
+					break
+				}
+			}
+			if match {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// compareObjectsWithReplacePaths performs deep object comparison with replacement path checking
+func (a *Analyzer) compareObjectsWithReplacePaths(path string, before, after, beforeSensitive, afterSensitive any, replacePaths [][]string, analysis *PropertyChangeAnalysis) {
+	// Handle nil cases
+	if before == nil && after == nil {
+		return
+	}
+
+	// Property added
+	if before == nil && after != nil {
+		// Only record this as a change if it's a leaf value, not a complex object
+		switch after.(type) {
+		case map[string]any, []any:
+			// For complex types, don't record them here - they'll be handled by recursion
+			// Just fall through to the recursion logic
+		default:
+			// For leaf values, record the addition
+			propertyPath := a.parsePath(path)
+			triggersReplacement := a.pathMatchesReplacePath(propertyPath, replacePaths)
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              nil,
+				After:               after,
+				Action:              "add",
+				TriggersReplacement: triggersReplacement,
+			})
+			return
+		}
+	}
+
+	// Property removed
+	if before != nil && after == nil {
+		// Only record this as a change if it's a leaf value, not a complex object
+		switch before.(type) {
+		case map[string]any, []any:
+			// For complex types, don't record them here - they'll be handled by recursion
+			// Just fall through to the recursion logic
+		default:
+			// For leaf values, record the removal
+			propertyPath := a.parsePath(path)
+			triggersReplacement := a.pathMatchesReplacePath(propertyPath, replacePaths)
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               nil,
+				Action:              "remove",
+				TriggersReplacement: triggersReplacement,
+			})
+			return
+		}
+	}
+
+	// Both values exist - only add a change record for leaf values, not for complex objects
+	if !reflect.DeepEqual(before, after) {
+		// Only record changes for leaf values (not complex objects that will be recursed into)
+		switch before.(type) {
+		case map[string]any, []any:
+			// For complex types, don't record the change here - let recursion handle individual properties
+		default:
+			// For leaf values, record the change
+			propertyPath := a.parsePath(path)
+			triggersReplacement := a.pathMatchesReplacePath(propertyPath, replacePaths)
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               after,
+				Action:              "update",
+				TriggersReplacement: triggersReplacement,
+			})
+		}
+	}
+
+	// Handle nested objects
+	switch beforeVal := before.(type) {
+	case map[string]any:
+		afterMap, ok := after.(map[string]any)
+		if !ok || afterMap == nil {
+			// after is not a map or is nil, handle as a complete change
+			return
+		}
+
+		// Get all unique keys from both maps
+		allKeys := make(map[string]bool)
+		for key := range beforeVal {
+			allKeys[key] = true
+		}
+		for key := range afterMap {
+			allKeys[key] = true
+		}
+
+		// Recursively compare each key
+		for key := range allKeys {
+			newPath := a.buildPath(path, key)
+			beforeChild := beforeVal[key]
+			afterChild := afterMap[key]
+
+			var beforeSensChild, afterSensChild any
+			if beforeSensitive != nil {
+				if beforeSensMap, ok := beforeSensitive.(map[string]any); ok {
+					beforeSensChild = beforeSensMap[key]
+				}
+			}
+			if afterSensitive != nil {
+				if afterSensMap, ok := afterSensitive.(map[string]any); ok {
+					afterSensChild = afterSensMap[key]
+				}
+			}
+
+			a.compareObjectsWithReplacePaths(newPath, beforeChild, afterChild,
+				beforeSensChild, afterSensChild, replacePaths, analysis)
+		}
+
+	case []any:
+		afterSlice, ok := after.([]any)
+		if !ok || afterSlice == nil {
+			// after is not a slice or is nil, handle as a complete change
+			return
+		}
+
+		// For different sized slices, treat as a single change
+		if len(beforeVal) != len(afterSlice) {
+			propertyPath := a.parsePath(path)
+			triggersReplacement := a.pathMatchesReplacePath(propertyPath, replacePaths)
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               after,
+				Action:              "update",
+				TriggersReplacement: triggersReplacement,
+			})
+		} else {
+			// Compare each element
+			for i := 0; i < len(beforeVal) && i < len(afterSlice); i++ {
+				newPath := fmt.Sprintf("%s[%d]", path, i)
+				a.compareObjectsWithReplacePaths(newPath, beforeVal[i], afterSlice[i],
+					a.extractSensitiveIndex(beforeSensitive, i),
+					a.extractSensitiveIndex(afterSensitive, i), replacePaths, analysis)
+			}
+		}
+
+	default:
+		// Basic value comparison was already done above
+		if !reflect.DeepEqual(before, after) {
+			propertyPath := a.parsePath(path)
+			triggersReplacement := a.pathMatchesReplacePath(propertyPath, replacePaths)
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               after,
+				Action:              "update",
+				TriggersReplacement: triggersReplacement,
+			})
+		}
+	}
 }
 
 // compareValues recursively compares two values and calls the callback for each difference
