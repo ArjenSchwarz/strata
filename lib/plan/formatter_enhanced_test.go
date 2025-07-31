@@ -172,9 +172,16 @@ func TestPrepareResourceTableData(t *testing.T) {
 		t.Errorf("Expected risk_level 'low', got %v", row1["risk_level"])
 	}
 
-	// Verify property_changes exists and is PropertyChangesWithContext
-	if _, ok := row1["property_changes"].(PropertyChangesWithContext); !ok {
-		t.Errorf("Expected property_changes to be PropertyChangesWithContext, got %T", row1["property_changes"])
+	// Verify property_changes exists and is a map with analysis and change_type
+	if propData, ok := row1["property_changes"].(map[string]any); !ok {
+		t.Errorf("Expected property_changes to be map[string]any, got %T", row1["property_changes"])
+	} else {
+		if _, hasAnalysis := propData["analysis"]; !hasAnalysis {
+			t.Errorf("Expected property_changes to contain 'analysis' key")
+		}
+		if _, hasChangeType := propData["change_type"]; !hasChangeType {
+			t.Errorf("Expected property_changes to contain 'change_type' key")
+		}
 	}
 
 	// Check second resource (sensitive RDS)

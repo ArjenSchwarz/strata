@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Property Change Analysis Improvements**:
+  - Refactored property comparison logic in analyzer.go to eliminate duplicate property change detection
+  - Unified compareObjects function to handle replacement path checking and sensitive value processing in a single pass
+  - Improved property change formatter to handle context-aware formatting with proper data structure mapping
+  - Enhanced replacement path handling using simplified string-based matching for better performance
+
+### Changed
+- **Code Simplification**:
+  - Simplified replacement path handling from complex slice operations to string-based matching
+  - Streamlined property change detection by removing redundant comparison functions
+  - Enhanced formatter data structure to use map-based context passing instead of wrapper types
+
+### Removed
+- **Deprecated Functions**:
+  - Removed deprecated compareObjectsWithReplacePaths function in favor of unified compareObjects
+  - Eliminated deduplicatePropertyChanges function as improved comparison logic prevents duplicates at source
+  - Removed PropertyChangesWithContext wrapper type in favor of direct map-based data passing
+
 ## [1.1.3] - 2025-07-30
 
 ### Added

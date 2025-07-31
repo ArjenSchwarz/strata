@@ -1992,7 +1992,7 @@ func TestCompareObjects(t *testing.T) {
 				Changes: []PropertyChange{},
 			}
 
-			analyzer.compareObjects("", tt.before, tt.after, tt.beforeSensitive, tt.afterSensitive, analysis)
+			analyzer.compareObjects("", tt.before, tt.after, tt.beforeSensitive, tt.afterSensitive, nil, analysis)
 
 			assert.Equal(t, tt.expectedChanges, len(analysis.Changes), "Expected number of changes")
 
@@ -2528,7 +2528,7 @@ func TestCompareObjectsEnhanced(t *testing.T) {
 				Changes: []PropertyChange{},
 			}
 
-			analyzer.compareObjects("", tt.before, tt.after, nil, nil, &analysis)
+			analyzer.compareObjects("", tt.before, tt.after, nil, nil, nil, &analysis)
 
 			assert.Equal(t, len(tt.expected), len(analysis.Changes), "Expected number of changes should match")
 
