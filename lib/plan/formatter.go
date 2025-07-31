@@ -21,6 +21,13 @@ type Formatter struct {
 	config *config.Config
 }
 
+// PropertyChangesWithContext wraps property changes with the resource change type
+// to enable context-aware formatting (e.g., create actions show only new values)
+type PropertyChangesWithContext struct {
+	PropertyChangeAnalysis
+	ResourceChangeType ChangeType
+}
+
 // ActionSortTransformer sorts table data based on Terraform action priority
 type ActionSortTransformer struct{}
 
@@ -503,6 +510,41 @@ func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string
 // propertyChangesFormatterTerraform creates a collapsible formatter that displays property changes in Terraform's diff-style format
 func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 	return func(val any) any {
+		// Handle the wrapper type that includes change type context
+		if wrapped, ok := val.(PropertyChangesWithContext); ok {
+			propAnalysis := wrapped.PropertyChangeAnalysis
+			changeType := wrapped.ResourceChangeType
+
+			if propAnalysis.Count == 0 {
+				return "No properties changed"
+			}
+
+			// Create summary
+			summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
+			if f.hasSensitive(propAnalysis.Changes) {
+				summary = fmt.Sprintf("⚠️ %s (includes sensitive)", summary)
+			}
+			if propAnalysis.Truncated {
+				summary += " [truncated]"
+			}
+
+			// Format details in Terraform style
+			var details []string
+			for _, change := range propAnalysis.Changes {
+				line := f.formatPropertyChangeWithContext(change, changeType)
+				details = append(details, line)
+			}
+
+			shouldExpand := (f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasSensitive(propAnalysis.Changes)) ||
+				f.config.ExpandAll
+
+			return output.NewCollapsibleValue(summary,
+				strings.Join(details, "\n"),
+				output.WithExpanded(shouldExpand),
+				output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
+		}
+
+		// Fallback for backward compatibility
 		if propAnalysis, ok := val.(PropertyChangeAnalysis); ok {
 			if propAnalysis.Count == 0 {
 				return "No properties changed"
@@ -536,24 +578,46 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 	}
 }
 
+// formatPropertyChangeWithContext formats a single property change based on the resource change type
+func (f *Formatter) formatPropertyChangeWithContext(change PropertyChange, resourceChangeType ChangeType) string {
+	// For create actions, show only the new values without comparison
+	if resourceChangeType == ChangeTypeCreate {
+		return fmt.Sprintf("- %s = %s",
+			change.Name, f.formatValue(change.After, change.Sensitive))
+	}
+
+	// For other actions, use the standard format
+	return f.formatPropertyChange(change)
+}
+
 // formatPropertyChange formats a single property change in Terraform's diff-style format
 func (f *Formatter) formatPropertyChange(change PropertyChange) string {
+	var line string
+	replacementIndicator := ""
+
+	// Add replacement indicator if this change triggers replacement
+	if change.TriggersReplacement {
+		replacementIndicator = " # forces replacement"
+	}
+
 	// Format based on action and handle complex values
 	switch change.Action {
 	case "add":
-		return fmt.Sprintf("  + %s = %s",
+		line = fmt.Sprintf("  + %s = %s",
 			change.Name, f.formatValue(change.After, change.Sensitive))
 	case "remove":
-		return fmt.Sprintf("  - %s = %s",
+		line = fmt.Sprintf("  - %s = %s",
 			change.Name, f.formatValue(change.Before, change.Sensitive))
 	case "update":
-		return fmt.Sprintf("  ~ %s = %s -> %s",
+		line = fmt.Sprintf("  ~ %s = %s -> %s",
 			change.Name,
 			f.formatValue(change.Before, change.Sensitive),
 			f.formatValue(change.After, change.Sensitive))
 	default:
 		return ""
 	}
+
+	return line + replacementIndicator
 }
 
 // formatValue formats a property value according to Terraform's formatting conventions
@@ -567,11 +631,7 @@ func (f *Formatter) formatValue(val any, sensitive bool) string {
 	case string:
 		return fmt.Sprintf("%q", v)
 	case map[string]any:
-		// Format as { key = value, ... } or <map[N]> for large maps
-		if len(v) > 3 {
-			return fmt.Sprintf("<map[%d]>", len(v))
-		}
-		// Format small maps inline with sorted keys for consistent output
+		// Format maps inline with sorted keys for consistent output
 		var keys []string
 		for key := range v {
 			keys = append(keys, key)
@@ -584,11 +644,7 @@ func (f *Formatter) formatValue(val any, sensitive bool) string {
 		}
 		return fmt.Sprintf("{ %s }", strings.Join(pairs, ", "))
 	case []any:
-		// Format as [ item, ... ] or <list[N]> for large lists
-		if len(v) > 3 {
-			return fmt.Sprintf("<list[%d]>", len(v))
-		}
-		// Format small lists inline
+		// Format lists inline
 		var items []string
 		for _, item := range v {
 			items = append(items, f.formatValue(item, false))
@@ -644,6 +700,12 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			actionDisplay = "⚠️ " + actionDisplay
 		}
 
+		// Create a wrapper that includes both property changes and change type
+		propertyChangesWithContext := PropertyChangesWithContext{
+			PropertyChangeAnalysis: propChanges,
+			ResourceChangeType:     change.ChangeType,
+		}
+
 		row := map[string]any{
 			"action":           actionDisplay,
 			"resource":         change.Address,
@@ -653,7 +715,7 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			"module":           change.ModulePath,
 			"danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
-			"property_changes": propChanges, // Will be formatted by collapsible formatter
+			"property_changes": propertyChangesWithContext, // Will be formatted by collapsible formatter
 		}
 
 		// Add replacement reasons if available
