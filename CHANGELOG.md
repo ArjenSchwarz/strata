@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Property Change Formatting**:
+  - Fixed create action property formatting to properly display Terraform diff-style `+` prefix for new resources
+  - Simplified property change formatter by removing unnecessary context-based special handling
+  - Unified property change display logic for consistent formatting across all resource actions
+
 ### Changed
 - **Dependency Updates**:
   - Updated go-output dependency from v2.1.0 to v2.1.1 for improved collapsible content handling

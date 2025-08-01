@@ -78,11 +78,11 @@ func TestFormatterCreateActionDisplay(t *testing.T) {
 	}
 
 	// Verify the formatting
-	// For create actions, we should see only the new values without comparison
+	// For create actions, we should see the new values with + prefix
 	expectedPatterns := []string{
-		"- name = \"web-server-profile\"",
-		"- path = \"/\"",
-		"- tags = { Environment = \"production\", ManagedBy = \"terraform\" }",
+		"+ name = \"web-server-profile\"",
+		"+ path = \"/\"",
+		"+ tags = { Environment = \"production\", ManagedBy = \"terraform\" }",
 	}
 
 	for _, pattern := range expectedPatterns {
@@ -96,9 +96,9 @@ func TestFormatterCreateActionDisplay(t *testing.T) {
 		t.Errorf("Create action should not contain comparison arrows (->), but got:\n%s", resultStr)
 	}
 
-	// Ensure we don't have the + prefix (which is for diff-style)
-	if strings.Contains(resultStr, "  +") {
-		t.Errorf("Create action should not contain diff-style + prefix, but got:\n%s", resultStr)
+	// Ensure we have the + prefix for new resources (Terraform diff-style)
+	if !strings.Contains(resultStr, "  +") {
+		t.Errorf("Create action should contain diff-style + prefix, but got:\n%s", resultStr)
 	}
 }
 
