@@ -509,13 +509,6 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 		if dataMap, ok := val.(map[string]any); ok {
 			if analysis, hasAnalysis := dataMap["analysis"]; hasAnalysis {
 				if propAnalysis, isPropAnalysis := analysis.(PropertyChangeAnalysis); isPropAnalysis {
-					changeType := ChangeTypeUpdate // default
-					if ct, hasChangeType := dataMap["change_type"]; hasChangeType {
-						if ctTyped, ok := ct.(ChangeType); ok {
-							changeType = ctTyped
-						}
-					}
-
 					if propAnalysis.Count == 0 {
 						return noPropertiesChanged
 					}
@@ -532,7 +525,7 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 					// Format details in Terraform style
 					var details []string
 					for _, change := range propAnalysis.Changes {
-						line := f.formatPropertyChange(change, changeType)
+						line := f.formatPropertyChange(change)
 						details = append(details, line)
 					}
 
@@ -582,13 +575,7 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 }
 
 // formatPropertyChange formats a single property change in Terraform's diff-style format with optional context
-func (f *Formatter) formatPropertyChange(change PropertyChange, resourceChangeType ...ChangeType) string {
-	// Special handling for create actions when context is provided
-	if len(resourceChangeType) > 0 && resourceChangeType[0] == ChangeTypeCreate {
-		return fmt.Sprintf("- %s = %s",
-			change.Name, f.formatValue(change.After, change.Sensitive))
-	}
-
+func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 	var line string
 	replacementIndicator := ""
 
