@@ -68,7 +68,7 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 		},
 		{
 			name:     "Web sample - Test provider grouping and sorting",
-			planFile: "../../samples/websample.json",
+			planFile: "../../samples/web-sample.json",
 			configOverride: func(c *config.Config) {
 				c.Plan.ExpandableSections.Enabled = true
 				c.Plan.Grouping.Enabled = true
@@ -85,7 +85,7 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 		},
 		{
 			name:     "Expand-all functionality test",
-			planFile: "../../samples/websample.json",
+			planFile: "../../samples/web-sample.json",
 			configOverride: func(c *config.Config) {
 				c.Plan.ExpandableSections.Enabled = true
 				c.ExpandAll = true // Global expand all
@@ -248,7 +248,7 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 // TestPropertyChangesFormatterTerraformIntegration tests the Terraform diff format specifically
 func TestPropertyChangesFormatterTerraformIntegration(t *testing.T) {
 	// Load a plan with actual property changes
-	parser := NewParser("../../samples/websample.json")
+	parser := NewParser("../../samples/web-sample.json")
 	plan, err := parser.LoadPlan()
 	if err != nil {
 		t.Fatalf("Failed to load plan: %v", err)
@@ -418,7 +418,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	// Test with different sample files
 	testFiles := []string{
 		"../../samples/danger-sample.json",
-		"../../samples/websample.json",
+		"../../samples/web-sample.json",
 	}
 
 	cfg := getTestConfig()

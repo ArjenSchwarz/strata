@@ -558,8 +558,8 @@ check_prerequisites() {
     log_info "Checking prerequisites..."
     
     # Check if sample files exist
-    if [ ! -f "samples/websample.json" ]; then
-        echo "ERROR: samples/websample.json not found"
+    if [ ! -f "samples/web-sample.json" ]; then
+        echo "ERROR: samples/web-sample.json not found"
         exit 1
     fi
     
@@ -582,10 +582,10 @@ check_prerequisites() {
 
 # Test basic functionality
 test_basic_functionality() {
-    log_test "Basic functionality with websample.json"
+    log_test "Basic functionality with web-sample.json"
     
     # Set up environment
-    export INPUT_PLAN_FILE="samples/websample.json"
+    export INPUT_PLAN_FILE="samples/web-sample.json"
     export INPUT_OUTPUT_FORMAT="markdown"
     export INPUT_SHOW_DETAILS="false"
     export INPUT_COMMENT_ON_PR="false"
@@ -680,7 +680,7 @@ plan:
 EOF
     
     # Set up environment
-    export INPUT_PLAN_FILE="samples/websample.json"
+    export INPUT_PLAN_FILE="samples/web-sample.json"
     export INPUT_OUTPUT_FORMAT="table"
     export INPUT_CONFIG_FILE="/tmp/test_strata.yaml"
     export INPUT_SHOW_DETAILS="true"
@@ -786,7 +786,7 @@ test_binary_caching() {
     
     # Set up environment
     export HOME="/tmp"
-    export INPUT_PLAN_FILE="samples/websample.json"
+    export INPUT_PLAN_FILE="samples/web-sample.json"
     export INPUT_OUTPUT_FORMAT="markdown"
     export INPUT_SHOW_DETAILS="false"
     export INPUT_COMMENT_ON_PR="false"

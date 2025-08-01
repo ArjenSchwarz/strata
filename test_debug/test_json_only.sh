@@ -1,6 +1,6 @@
 #\!/bin/bash
 # Extract just the JSON test from integration_test.sh
-export INPUT_PLAN_FILE="samples/websample.json"
+export INPUT_PLAN_FILE="samples/web-sample.json"
 export INPUT_OUTPUT_FORMAT="json"
 export INPUT_COMMENT_ON_PR="false"
 export GITHUB_STEP_SUMMARY="/tmp/step_summary_json.md"
