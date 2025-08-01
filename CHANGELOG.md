@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.5] - 2025-08-01
 
 ### Fixed
 - **Property Change Formatting**:
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Dependency Updates**:
   - Updated go-output dependency from v2.1.0 to v2.1.1 for improved collapsible content handling
-  
+
 - **Sample File Naming Standardization**:
   - Renamed `k8ssample.json` to `k8s-sample.json` for consistent hyphenated naming convention
   - Renamed `websample.json` to `web-sample.json` for consistent hyphenated naming convention

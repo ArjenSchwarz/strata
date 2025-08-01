@@ -79,6 +79,11 @@ clean:
 install:
 	go install .
 
+# Update v1 tag to latest commit and push to GitHub
+update-v1-tag:
+	git tag -f v1
+	git push origin v1 --force
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -94,6 +99,7 @@ help:
 	@echo "  lint                  - Run linter (requires golangci-lint)"
 	@echo "  clean                 - Clean build artifacts"
 	@echo "  install               - Install the application"
+	@echo "  update-v1-tag         - Update v1 tag to latest commit and push to GitHub"
 	@echo "  help                  - Show this help message"
 	@echo ""
 	@echo "Build examples:"
@@ -101,4 +107,4 @@ help:
 	@echo "  make build VERSION=1.2.3     - Build with specific version"
 	@echo "  make build-release VERSION=1.2.3 - Build release version"
 
-.PHONY: build build-release test test-action-unit test-action-integration test-action run-sample run-sample-details fmt lint clean install help
+.PHONY: build build-release test test-action-unit test-action-integration test-action run-sample run-sample-details fmt lint clean install update-v1-tag help
