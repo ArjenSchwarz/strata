@@ -1,0 +1,465 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.5.0",
+  "planned_changes": {
+    "add": 2,
+    "change": 6,
+    "remove": 0,
+    "replace": 2
+  },
+  "resource_changes": [
+    {
+      "address": "aws_iam_policy.s3_access_policy",
+      "mode": "managed",
+      "type": "aws_iam_policy",
+      "name": "s3_access_policy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "arn": "arn:aws:iam::123456789012:policy/s3-access-policy",
+          "description": "Policy for S3 access",
+          "id": "arn:aws:iam::123456789012:policy/s3-access-policy",
+          "name": "s3-access-policy",
+          "path": "/",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:*\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket/*\",\n        \"arn:aws:s3:::my-app-bucket\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"ec2:*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}",
+          "policy_id": "ANPABCDEFGHIJKLMNOPQR",
+          "tags": {
+            "Environment": "production",
+            "ManagedBy": "terraform"
+          }
+        },
+        "after": {
+          "description": "Enhanced policy for S3 and EC2 access with least privilege",
+          "name": "s3-access-policy",
+          "path": "/",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\",\n        \"s3:PutObject\",\n        \"s3:DeleteObject\",\n        \"s3:GetObjectVersion\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket/*\",\n        \"arn:aws:s3:::my-app-logs-bucket/*\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:ListBucket\",\n        \"s3:GetBucketLocation\",\n        \"s3:GetBucketVersioning\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket\",\n        \"arn:aws:s3:::my-app-logs-bucket\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"ec2:DescribeInstances\",\n        \"ec2:DescribeImages\",\n        \"ec2:DescribeSnapshots\",\n        \"ec2:DescribeVolumes\",\n        \"ec2:ModifyInstanceAttribute\",\n        \"ec2:RebootInstances\",\n        \"ec2:StartInstances\",\n        \"ec2:StopInstances\"\n      ],\n      \"Resource\": \"*\",\n      \"Condition\": {\n        \"StringEquals\": {\n          \"ec2:ResourceTag/Environment\": \"production\"\n        }\n      }\n    }\n  ]\n}",
+          "tags": {
+            "Environment": "production",
+            "ManagedBy": "terraform",
+            "LastUpdated": "2025-08-01",
+            "SecurityReview": "completed"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "policy_id": true
+        }
+      }
+    },
+    {
+      "address": "aws_iam_policy.wildcard_admin_policy",
+      "mode": "managed",
+      "type": "aws_iam_policy",
+      "name": "wildcard_admin_policy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "arn": "arn:aws:iam::123456789012:policy/admin-policy",
+          "description": "Administrative policy with broad permissions",
+          "id": "arn:aws:iam::123456789012:policy/admin-policy",
+          "name": "admin-policy",
+          "path": "/admin/",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}",
+          "policy_id": "ANPXYZABCDEFGHIJKLMNO",
+          "tags": {
+            "Environment": "production",
+            "Role": "admin"
+          }
+        },
+        "after": {
+          "description": "Administrative policy with controlled wildcard permissions",
+          "name": "admin-policy",
+          "path": "/admin/",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"iam:*\",\n        \"ec2:*\",\n        \"s3:*\",\n        \"rds:*\",\n        \"lambda:*\",\n        \"cloudwatch:*\",\n        \"logs:*\"\n      ],\n      \"Resource\": \"*\",\n      \"Condition\": {\n        \"StringEquals\": {\n          \"aws:RequestedRegion\": [\"us-west-2\", \"us-east-1\"]\n        }\n      }\n    },\n    {\n      \"Effect\": \"Deny\",\n      \"Action\": [\n        \"iam:DeleteRole\",\n        \"iam:DeletePolicy\",\n        \"iam:DetachRolePolicy\",\n        \"iam:DetachUserPolicy\"\n      ],\n      \"Resource\": \"*\",\n      \"Condition\": {\n        \"StringLike\": {\n          \"aws:PrincipalTag/Department\": \"*production*\"\n        }\n      }\n    }\n  ]\n}",
+          "tags": {
+            "Environment": "production",
+            "Role": "admin",
+            "SecurityReview": "2025-08-01",
+            "ApprovedBy": "security-team"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "policy_id": true
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.lambda_execution_policy",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "lambda_execution_policy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "id": "lambda-execution-role:lambda-execution-policy",
+          "name": "lambda-execution-policy",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:*\",\n        \"dynamodb:*\",\n        \"s3:*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}",
+          "role": "lambda-execution-role"
+        },
+        "after": {
+          "name": "lambda-execution-policy",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:CreateLogGroup\",\n        \"logs:CreateLogStream\",\n        \"logs:PutLogEvents\",\n        \"logs:DescribeLogGroups\",\n        \"logs:DescribeLogStreams\"\n      ],\n      \"Resource\": [\n        \"arn:aws:logs:us-west-2:123456789012:log-group:/aws/lambda/*\",\n        \"arn:aws:logs:us-west-2:123456789012:log-group:/aws/lambda/*:*\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"dynamodb:GetItem\",\n        \"dynamodb:PutItem\",\n        \"dynamodb:UpdateItem\",\n        \"dynamodb:DeleteItem\",\n        \"dynamodb:Query\",\n        \"dynamodb:Scan\"\n      ],\n      \"Resource\": [\n        \"arn:aws:dynamodb:us-west-2:123456789012:table/app-data-*\",\n        \"arn:aws:dynamodb:us-west-2:123456789012:table/app-cache-*\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\",\n        \"s3:PutObject\",\n        \"s3:DeleteObject\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::lambda-artifacts-bucket/*\",\n        \"arn:aws:s3:::lambda-temp-storage/*\"\n      ]\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"secretsmanager:GetSecretValue\"\n      ],\n      \"Resource\": \"arn:aws:secretsmanager:us-west-2:123456789012:secret:lambda/*\"\n    }\n  ]\n}",
+          "role": "lambda-execution-role"
+        },
+        "after_unknown": {
+          "id": true
+        }
+      }
+    },
+    {
+      "address": "aws_instance.web_server",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_server",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "ami": "ami-0c02fb55956c7d316",
+          "arn": "arn:aws:ec2:us-west-2:123456789012:instance/i-0123456789abcdef0",
+          "associate_public_ip_address": true,  
+          "availability_zone": "us-west-2a",
+          "id": "i-0123456789abcdef0",
+          "instance_type": "t3.micro",
+          "key_name": "web-keypair",
+          "private_ip": "10.0.1.50",
+          "public_ip": "54.123.45.67",
+          "security_groups": ["sg-0123456789abcdef0"],
+          "subnet_id": "subnet-0123456789abcdef0",
+          "tags": {
+            "Name": "web-server",
+            "Environment": "production"
+          },
+          "user_data": "IyEvYmluL2Jhc2gKeXVtIHVwZGF0ZSAteQp5dW0gaW5zdGFsbCAteSBodHRwZApzeXN0ZW1jdGwgc3RhcnQgaHR0cGQKc3lzdGVtY3RsIGVuYWJsZSBodHRwZAplY2hvICJXZWxjb21lIHRvIE15IFdlYiBTZXJ2ZXIiID4gL3Zhci93d3cvaHRtbC9pbmRleC5odG1s",
+          "user_data_base64": "IyEvYmluL2Jhc2gKeXVtIHVwZGF0ZSAteQp5dW0gaW5zdGFsbCAteSBodHRwZApzeXN0ZW1jdGwgc3RhcnQgaHR0cGQKc3lzdGVtY3RsIGVuYWJsZSBodHRwZAplY2hvICJXZWxjb21lIHRvIE15IFdlYiBTZXJ2ZXIiID4gL3Zhci93d3cvaHRtbC9pbmRleC5odG1s",
+          "vpc_security_group_ids": ["sg-0123456789abcdef0"]
+        },
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "associate_public_ip_address": true,
+          "availability_zone": "us-west-2a",
+          "instance_type": "t3.micro",
+          "key_name": "web-keypair",
+          "subnet_id": "subnet-0123456789abcdef0",
+          "tags": {
+            "Name": "web-server",
+            "Environment": "production",
+            "Version": "2.0"
+          },
+          "user_data": "IyEvYmluL2Jhc2gKCiMgU2V0IHZhcmlhYmxlcwpBUFBfVkVSU0lPTj0iMi4wLjAiCkxPR19GSUxFPSIvdmFyL2xvZy93ZWItc2VydmVyLmxvZyIKCiMgVXBkYXRlIHN5c3RlbQp5dW0gdXBkYXRlIC15CgojIEluc3RhbGwgcGFja2FnZXMKeXVtIGluc3RhbGwgLXkgaHR0cGQgaHRvcCBhd3MtY2xpCgojIFN0YXJ0IHNlcnZpY2VzCnN5c3RlbWN0bCBzdGFydCBodHRwZApzeXN0ZW1jdGwgZW5hYmxlIGh0dHBkCgojIENyZWF0ZSB3ZWIgY29udGVudApta2RpciAtcCAvdmFyL3d3dy9odG1sL2FwaQpjYXQgPDxFT0YgPiAvdmFyL3d3dy9odG1sL2luZGV4Lmh0bWwKPCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KICA8dGl0bGU+V2ViIFNlcnZlciB2JHtBUFBfVkVSU0lPTn08L3RpdGxlPgo8L2hlYWQ+Cjxib2R5PgogIDxoMT5XZWxjb21lIHRvIEVuaGFuY2VkIFdlYiBTZXJ2ZXI8L2gxPgogIDxwPlZlcnNpb246ICR7QVBQX1ZFUlNJT059PC9wPgogIDxwPkRlcGxveWVkOiAkKGRhdGUpPC9wPgogIDxhIGhyZWY9Ii9hcGkvaGVhbHRoIj5IZWFsdGggQ2hlY2s8L2E+CjwvYm9keT4KPC9odG1sPgpFT0YKCiMgQ3JlYXRlIEFQSSBlbmRwb2ludApjYXQgPDxFT0YgPiAvdmFyL3d3dy9odG1sL2FwaS9oZWFsdGgKewogICJzdGF0dXMiOiAiaGVhbHRoeSIsCiAgInRpbWVzdGFtcCI6ICIkKGRhdGUgLUlTTzg2MDEpIiwKICAidmVyc2lvbiI6ICIke0FQUF9WRVJTSU9OfSIsCiAgInNlcnZlciI6ICIkKGhvc3RuYW1lKSIKfQpFT0YKCiMgU2V0dXAgbG9nZ2luZwplY2hvICIkKGRhdGUgLUlTTzg2MDEpOiBXZWIgc2VydmVyIGluaXRpYWxpemF0aW9uIGNvbXBsZXRlIiA+PiAiJHtMT0dfRklMRX0iCgojIENvbmZpZ3VyZSBDcm9uSm9iIGZvciBsb2cgY2xlYW51cAplY2hvICIwIDIgKiAqICogZmluZCAvdmFyL2xvZyAtbmFtZSAnKi5sb2cnIC1tdGltZSArNyAtZXhlYyBybSB7fSBcOyIgfCBjcm9udGFiIC0KCiMgU2VuZCBzdGFydHVwIG5vdGlmaWNhdGlvbgphd3MgbG9ncyBwdXQtbG9nLWV2ZW50cyBcCiAgLS1sb2ctZ3JvdXAtbmFtZSAiL2F3cy9lYzIvd2ViLXNlcnZlciIgXAogIC0tbG9nLXN0cmVhbS1uYW1lICIkKGhvc3RuYW1lKS0kKGRhdGUgKyVZJW0lZCkiIFwKICAtLWxvZy1ldmVudHMgImFyciA9IFsKICAgIHt0aW1lc3RhbXA6JChlY2hvICQoKGAoZGF0ZSArJXMpYCAqIDEwMDApKSwgbWVzc2FnZTonV2ViIHNlcnZlciBzdGFydGVkIHN1Y2Nlc3NmdWxseSd9CiAgXSIK",
+          "user_data_base64": "IyEvYmluL2Jhc2gKCiMgU2V0IHZhcmlhYmxlcwpBUFBfVkVSU0lPTj0iMi4wLjAiCkxPR19GSUxFPSIvdmFyL2xvZy93ZWItc2VydmVyLmxvZyIKCiMgVXBkYXRlIHN5c3RlbQp5dW0gdXBkYXRlIC15CgojIEluc3RhbGwgcGFja2FnZXMKeXVtIGluc3RhbGwgLXkgaHR0cGQgaHRvcCBhd3MtY2xpCgojIFN0YXJ0IHNlcnZpY2VzCnN5c3RlbWN0bCBzdGFydCBodHRwZApzeXN0ZW1jdGwgZW5hYmxlIGh0dHBkCgojIENyZWF0ZSB3ZWIgY29udGVudApta2RpciAtcCAvdmFyL3d3dy9odG1sL2FwaQpjYXQgPDxFT0YgPiAvdmFyL3d3dy9odG1sL2luZGV4Lmh0bWwKPCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KICA8dGl0bGU+V2ViIFNlcnZlciB2JHtBUFBfVkVSU0lPTn08L3RpdGxlPgo8L2hlYWQ+Cjxib2R5PgogIDxoMT5XZWxjb21lIHRvIEVuaGFuY2VkIFdlYiBTZXJ2ZXI8L2gxPgogIDxwPlZlcnNpb246ICR7QVBQX1ZFUlNJT059PC9wPgogIDxwPkRlcGxveWVkOiAkKGRhdGUpPC9wPgogIDxhIGhyZWY9Ii9hcGkvaGVhbHRoIj5IZWFsdGggQ2hlY2s8L2E+CjwvYm9keT4KPC9odG1sPgpFT0YKCiMgQ3JlYXRlIEFQSSBlbmRwb2ludApjYXQgPDxFT0YgPiAvdmFyL3d3dy9odG1sL2FwaS9oZWFsdGgKewogICJzdGF0dXMiOiAiaGVhbHRoeSIsCiAgInRpbWVzdGFtcCI6ICIkKGRhdGUgLUlTTzg2MDEpIiwKICAidmVyc2lvbiI6ICIke0FQUF9WRVJTSU9OfSIsCiAgInNlcnZlciI6ICIkKGhvc3RuYW1lKSIKfQpFT0YKCiMgU2V0dXAgbG9nZ2luZwplY2hvICIkKGRhdGUgLUlTTzg2MDEpOiBXZWIgc2VydmVyIGluaXRpYWxpemF0aW9uIGNvbXBsZXRlIiA+PiAiJHtMT0dfRklMRX0iCgojIENvbmZpZ3VyZSBDcm9uSm9iIGZvciBsb2cgY2xlYW51cAplY2hvICIwIDIgKiAqICogZmluZCAvdmFyL2xvZyAtbmFtZSAnKi5sb2cnIC1tdGltZSArNyAtZXhlYyBybSB7fSBcOyIgfCBjcm9udGFiIC0KCiMgU2VuZCBzdGFydHVwIG5vdGlmaWNhdGlvbgphd3MgbG9ncyBwdXQtbG9nLWV2ZW50cyBcCiAgLS1sb2ctZ3JvdXAtbmFtZSAiL2F3cy9lYzIvd2ViLXNlcnZlciIgXAogIC0tbG9nLXN0cmVhbS1uYW1lICIkKGhvc3RuYW1lKS0kKGRhdGUgKyVZJW0lZCkiIFwKICAtLWxvZy1ldmVudHMgImFyciA9IFsKICAgIHt0aW1lc3RhbXA6JChlY2hvICQoKGAoZGF0ZSArJXMpYCAqIDEwMDApKSwgbWVzc2FnZTonV2ViIHNlcnZlciBzdGFydGVkIHN1Y2Nlc3NmdWxseSd9CiAgXSIK",
+          "vpc_security_group_ids": ["sg-0123456789abcdef0"]
+        },
+        "after_unknown": {
+          "arn": true,
+          "cpu_core_count": true,
+          "cpu_threads_per_core": true,
+          "ebs_optimized": true,
+          "get_password_data": true,
+          "host_id": true,
+          "id": true,
+          "instance_state": true,
+          "ipv6_address_count": true,
+          "ipv6_addresses": true,
+          "monitoring": true,
+          "outpost_arn": true,
+          "password_data": true,
+          "placement_group": true,
+          "placement_partition_number": true,
+          "primary_network_interface_id": true,
+          "private_dns": true,
+          "private_ip": true,
+          "public_dns": true,
+          "public_ip": true,
+          "secondary_private_ips": true,
+          "security_groups": true,
+          "source_dest_check": true,
+          "tenancy": true
+        }
+      }
+    },
+    {
+      "address": "aws_launch_template.app_servers",
+      "mode": "managed",
+      "type": "aws_launch_template",
+      "name": "app_servers",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "arn": "arn:aws:ec2:us-west-2:123456789012:launch-template/lt-0123456789abcdef0",
+          "default_version": 1,
+          "description": "Launch template for application servers",
+          "id": "lt-0123456789abcdef0",
+          "image_id": "ami-0c02fb55956c7d316",
+          "instance_type": "t3.micro",
+          "latest_version": 1,
+          "name": "app-servers-template",
+          "tags": {
+            "Name": "app-servers-template",
+            "Environment": "production"
+          },
+          "user_data": "IyEvYmluL2Jhc2gKeXVtIHVwZGF0ZSAteQp5dW0gaW5zdGFsbCAteSBkb2NrZXIKc3lzdGVtY3RsIHN0YXJ0IGRvY2tlcgpzeXN0ZW1jdGwgZW5hYmxlIGRvY2tlcgp1c2VybW9kIC1hIC1HIGRvY2tlciBlYzItdXNlcgpkb2NrZXIgcnVuIC1kIC1wIDgwODA6ODAgLS1uYW1lIGFwcCBteS1hcHA6bGF0ZXN0",
+          "vpc_security_group_ids": ["sg-0abcdef123456789"]
+        },
+        "after": {
+          "description": "Enhanced launch template for application servers with monitoring",
+          "image_id": "ami-0c02fb55956c7d316",
+          "instance_type": "t3.micro",
+          "name": "app-servers-template",
+          "tags": {
+            "Name": "app-servers-template",
+            "Environment": "production",
+            "Version": "2.0",
+            "LastUpdated": "2025-08-01"
+          },
+          "user_data": "IyEvYmluL2Jhc2gKCiMgU2V0IGVudmlyb25tZW50IHZhcmlhYmxlcwpleHBvcnQgQVBQX0VOVj0icHJvZHVjdGlvbiIKZXhwb3J0IEFQUF9WRVJTSU9OPSIyLjAuMCIKZXhwb3J0IERPQ0tFUl9JTUFHRT0ibXktYXBwOjIuMC4wIgpleHBvcnQgQ0xPVURXQVRDSF9MT0dfR1JPVVA9Ii9hd3MvZWMyL2FwcC1zZXJ2ZXJzIgoKIyBVcGRhdGUgc3lzdGVtCnl1bSB1cGRhdGUgLXkKCiMgSW5zdGFsbCByZXF1aXJlZCBwYWNrYWdlcwp5dW0gaW5zdGFsbCAteSBkb2NrZXIgYXdzLWNsaSBodG9wIGlvc3RhdAoKIyBTdGFydCBhbmQgZW5hYmxlIERvY2tlcgpzeXN0ZW1jdGwgc3RhcnQgZG9ja2VyCnN5c3RlbWN0bCBlbmFibGUgZG9ja2VyCnVzZXJtb2QgLWEgLUcgZG9ja2VyIGVjMi11c2VyCgojIENyZWF0ZSBhcHBsaWNhdGlvbiBkaXJlY3RvcnkKbWtkaXIgLXAgL29wdC9hcHAvbG9ncwpta2RpciAtcCAvb3B0L2FwcC9jb25maWcKCiMgQ3JlYXRlIGFwcGxpY2F0aW9uIGNvbmZpZ3VyYXRpb24KY2F0IDw8RU9GID4gL29wdC9hcHAvY29uZmlnL2FwcC55bWwKYXBwOgogIG5hbWU6ICJNeUFwcGxpY2F0aW9uIgogIHZlcnNpb246ICIke0FQUF9WRVJTSU9OfSIKICBlbnZpcm9ubWVudDogIiR7QVBQX0VOVn0iCiAgcG9ydDogODA4MAogIGxvZ0xldmVsOiAiaW5mbyIKY2xvdWR3YXRjaDoKICBsb2dHcm91cDogIiR7Q0xPVURXQVRDSF9MT0dfR1JPVVB9IgogIGxvZ1N0cmVhbTogIiQoaG9zdG5hbWUpLSQoZGF0ZSArJVklbSVkKSIKICByZWdpb246ICJ1cy13ZXN0LTIiCkVPRgoKIyBQdWxsIGFuZCBydW4gYXBwbGljYXRpb24gY29udGFpbmVyCmRvY2tlciBwdWxsICIke0RPQ0tFUl9JTUFHRX0iCmRvY2tlciBydW4gLWQgXAogIC0tcmVzdGFydCB1bmxlc3Mtc3RvcHBlZCBcCiAgLS1uYW1lIGFwcCBcCiAgLXAgODA4MDo4MDgwIFwKICAtLWVudiBBUFBfRU5WPSIke0FQUF9FTlZ9IiBcCiAgLS1lbnYgQVBQX1ZFUlNJT049IiR7QVBQX1ZFUlNJT059IiBcCiAgLXYgL29wdC9hcHAvbG9nczovYXBwL2xvZ3MgXAogIC12IC9vcHQvYXBwL2NvbmZpZzovYXBwL2NvbmZpZyBcCiAgIiR7RE9DS0VSX0lNQUdFfSIKCiMgU2V0dXAgbG9nIHJvdGF0aW9uCmNhdCA8PEVPRiA+IC9ldGMvbG9ncm90YXRlLmQvYXBwLWxvZ3MKL29wdC9hcHAvbG9ncy8qLmxvZyB7CiAgZGFpbHkKICBtaXNzaW5nb2sKICByb3RhdGUgNwogIGNvbXByZXNzCiAgZGVsYXljb21wcmVzcwogIG5vdGlmaWVtcHR5CiAgY3JlYXRlIDY0NCA2NDQ2NDQKICA9CgojIEluc3RhbGwgYW5kIGNvbmZpZ3VyZSBDbG91ZFdhdGNoIGFnZW50CndnZXQgaHR0cHM6Ly9zMy5hbWF6b25hd3MuY29tL2FtYXpvbmNsb3Vkd2F0Y2gtYWdlbnQvYW1hem9uX2xpbnV4L2FtZDY0L2xhdGVzdC9hbWF6b24tY2xvdWR3YXRjaC1hZ2VudC5ycG0KcnBtIC1VIC4vYW1hem9uLWNsb3Vkd2F0Y2gtYWdlbnQucnBtCgpjYXQgPDxFT0YgPiAvb3B0L2F3cy9hbWF6b24tY2xvdWR3YXRjaC1hZ2VudC9ldGMvYW1hem9uLWNsb3Vkd2F0Y2gtY29uZmlnLmpzb24KewogICJhZ2VudCI6IHsKICAgICJtZXRyaWNzX2NvbGxlY3Rpb25faW50ZXJ2YWwiOiA2MAogIH0sCiAgImxvZ3MiOiB7CiAgICAibG9nc19jb2xsZWN0ZWQiOiB7CiAgICAgICJmaWxlcyI6IHsKICAgICAgICAiY29sbGVjdF9saXN0IjogWwogICAgICAgICAgewogICAgICAgICAgICAiZmlsZV9wYXRoIjogIi9vcHQvYXBwL2xvZ3MvKi5sb2ciLAogICAgICAgICAgICAibG9nX2dyb3VwX25hbWUiOiAiJHtDTE9VRFdBVENIX0xPR19HUk9VUH0iLAogICAgICAgICAgICAibG9nX3N0cmVhbV9uYW1lIjogInskKGhvc3RuYW1lKS17aW5zdGFuY2VfaWR9IgogICAgICAgICAgfQogICAgICAgIF0KICAgICAgfQogICAgfQogIH0sCiAgIm1ldHJpY3MiOiB7CiAgICAibWV0cmljc19jb2xsZWN0ZWQiOiB7CiAgICAgICJjcHUiOiB7CiAgICAgICAgIm1lYXN1cmVtZW50IjogWyJjcHVfdXNhZ2VfaWRsZSIsICJjcHVfdXNhZ2VfaW93YWl0IiwgImNwdV91c2FnZV91c2VyIiwgImNwdV91c2FnZV9zeXN0ZW0iXSwKICAgICAgICAibWV0cmljc19jb2xsZWN0aW9uX2ludGVydmFsIjogNjAsCiAgICAgICAgInRvdGFsY3B1IjogZmFsc2UKICAgICAgfSwKICAgICAgImRpc2siOiB7CiAgICAgICAgIm1lYXN1cmVtZW50IjogWyJ1c2VkX3BlcmNlbnQiXSwKICAgICAgICAibWV0cmljc19jb2xsZWN0aW9uX2ludGVydmFsIjogNjAsCiAgICAgICAgInJlc291cmNlcyI6IFsiKiJdCiAgICAgIH0sCiAgICAgICJtZW0iOiB7CiAgICAgICAgIm1lYXN1cmVtZW50IjogWyJtZW1fdXNlZF9wZXJjZW50Il0sCiAgICAgICAgIm1ldHJpY3NfY29sbGVjdGlvbl9pbnRlcnZhbCI6IDYwCiAgICAgIH0KICAgIH0KICB9Cn0KRU9GCgpzeXN0ZW1jdGwgZW5hYmxlIGFtYXpvbi1jbG91ZHdhdGNoLWFnZW50CnN5c3RlbWN0bCBzdGFydCBhbWF6b24tY2xvdWR3YXRjaC1hZ2VudAoKIyBTZW5kIGluaXRpYWxpemF0aW9uIGNvbXBsZXRlIG1lc3NhZ2UKYXdzIGxvZ3MgcHV0LWxvZy1ldmVudHMgXAogIC0tbG9nLWdyb3VwLW5hbWUgIiR7Q0xPVURXQVRDSF9MT0dfR1JPVVB9IiBcCiAgLS1sb2ctc3RyZWFtLW5hbWUgIiQoaG9zdG5hbWUpLSQoZGF0ZSArJVklbSVkKSIgXAogIC0tbG9nLWV2ZW50cyAiYXJyID0gWwogICAge3RpbWVzdGFtcDokKGVjaG8gJCgoYChkYXRlICslcylgICogMTAwMCkpKSwgbWVzc2FnZTonQXBwbGljYXRpb24gc2VydmVyIGluaXRpYWxpemF0aW9uIGNvbXBsZXRlIC0gJHtBUFBfVkVSU0lPTn0nfQogIF0iCgojIFNldCB1cCBoZWFsdGggY2hlY2sgZW5kcG9pbnQKY2F0IDw8RU9GID4gL29wdC9hcHAvaGVhbHRoLXNjcmlwdC5zaAojIS9iaW4vYmFzaAojIEhlYWx0aCBjaGVjayBzY3JpcHQKaWYgZG9ja2VyIHBzIC0tZmlsdGVyICJuYW1lPWFwcCIgLS1mb3JtYXQgInRhYmxlIHt7Lk5hbWVzfX1ce3suU3RhdHVzfX0iIHwgZ3JlcCAtcSAiVXAiOyB0aGVuCiAgZWNobyAiSGVhbHRoeSIKICBleGl0IDAM",
+          "vpc_security_group_ids": ["sg-0abcdef123456789"]
+        },
+        "after_unknown": {
+          "arn": true,
+          "default_version": true,
+          "latest_version": true
+        }
+      }
+    },
+    {
+      "address": "aws_lambda_function.api_handler",
+      "mode": "managed",
+      "type": "aws_lambda_function",
+      "name": "api_handler",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "arn": "arn:aws:lambda:us-west-2:123456789012:function:api-handler",
+          "code_signing_config_arn": null,
+          "dead_letter_config": [],
+          "description": "API handler function",
+          "environment": [
+            {
+              "variables": {
+                "NODE_ENV": "production"
+              }
+            }
+          ],
+          "filename": null,
+          "function_name": "api-handler",
+          "handler": "index.handler",
+          "id": "api-handler",
+          "image_config": [],
+          "image_uri": null,
+          "invoke_arn": "arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:123456789012:function:api-handler/invocations",
+          "kms_key_arn": null,
+          "last_modified": "2024-12-15T10:30:45.000+0000",
+          "layers": [],
+          "memory_size": 128,
+          "package_type": "Zip",
+          "publish": false,
+          "qualified_arn": "arn:aws:lambda:us-west-2:123456789012:function:api-handler:$LATEST",
+          "reserved_concurrent_executions": -1,
+          "role": "arn:aws:iam::123456789012:role/lambda-execution-role",
+          "runtime": "nodejs18.x",
+          "s3_bucket": "lambda-deployment-bucket",
+          "s3_key": "api-handler-v1.0.0.zip",
+          "s3_object_version": null,
+          "signing_job_arn": null,
+          "signing_profile_version_arn": null,
+          "source_code_hash": "abcdef123456789abcdef123456789abcdef123456",
+          "source_code_size": 2048,
+          "tags": {
+            "Environment": "production",
+            "Function": "api-handler"
+          },
+          "timeout": 30,
+          "tracing_config": [
+            {
+              "mode": "PassThrough"
+            }
+          ],
+          "version": "$LATEST"
+        },
+        "after": {
+          "code_signing_config_arn": null,
+          "description": "Enhanced API handler function with improved logging and error handling",
+          "environment": [
+            {
+              "variables": {
+                "NODE_ENV": "production",
+                "APP_VERSION": "2.0.0",
+                "LOG_LEVEL": "info",
+                "CORS_ORIGINS": "https://myapp.com,https://www.myapp.com",
+                "DATABASE_CONNECTION_POOL_SIZE": "10",
+                "CACHE_TTL": "300"
+              }
+            }
+          ],
+          "filename": null,
+          "function_name": "api-handler",
+          "handler": "dist/index.handler",
+          "image_config": [],
+          "image_uri": null,
+          "kms_key_arn": "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+          "layers": [
+            "arn:aws:lambda:us-west-2:123456789012:layer:nodejs-utils:3",
+            "arn:aws:lambda:us-west-2:123456789012:layer:monitoring:2"
+          ],
+          "memory_size": 256,
+          "package_type": "Zip",
+          "publish": false,
+          "reserved_concurrent_executions": 10,
+          "role": "arn:aws:iam::123456789012:role/lambda-execution-role",
+          "runtime": "nodejs20.x",
+          "s3_bucket": "lambda-deployment-bucket",
+          "s3_key": "api-handler-v2.0.0.zip",
+          "s3_object_version": "abc123def456",
+          "signing_job_arn": null,
+          "signing_profile_version_arn": null,
+          "tags": {
+            "Environment": "production",
+            "Function": "api-handler",
+            "Version": "2.0.0",
+            "Team": "backend-team",
+            "CostCenter": "engineering"
+          },
+          "timeout": 60,
+          "tracing_config": [
+            {
+              "mode": "Active"
+            }
+          ]
+        },
+        "after_unknown": {
+          "arn": true,
+          "dead_letter_config": true,
+          "id": true,
+          "invoke_arn": true,
+          "last_modified": true,
+          "qualified_arn": true,
+          "source_code_hash": true,
+          "source_code_size": true,
+          "version": true
+        }
+      }
+    },
+    {
+      "address": "aws_iam_policy.lambda_enhanced_policy",
+      "mode": "managed",
+      "type": "aws_iam_policy",
+      "name": "lambda_enhanced_policy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "description": "Enhanced Lambda policy with granular permissions",
+          "name": "lambda-enhanced-policy",
+          "path": "/lambda/",
+          "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"xray:PutTraceSegments\",\n        \"xray:PutTelemetryRecords\",\n        \"xray:GetSamplingRules\",\n        \"xray:GetSamplingTargets\"\n      ],\n      \"Resource\": \"*\"\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"kms:Decrypt\",\n        \"kms:GenerateDataKey\"\n      ],\n      \"Resource\": [\n        \"arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012\"\n      ]\n    }\n  ]\n}",
+          "tags": {
+            "Environment": "production",
+            "ManagedBy": "terraform",
+            "Purpose": "lambda-xray-kms"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "policy_id": true
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_log_group.lambda_logs",
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "lambda_logs",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "kms_key_id": "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+          "name": "/aws/lambda/api-handler",
+          "retention_in_days": 14,
+          "tags": {
+            "Environment": "production",
+            "Function": "api-handler",
+            "ManagedBy": "terraform"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true
+        }
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.terraform.io/hashicorp/aws",
+        "version_constraint": "~> 5.0",
+        "expressions": {
+          "region": {
+            "constant_value": "us-west-2"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_iam_policy.s3_access_policy",
+          "mode": "managed",
+          "type": "aws_iam_policy",
+          "name": "s3_access_policy",
+          "provider_config_key": "aws",
+          "expressions": {
+            "policy": {
+              "constant_value": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\",\n        \"s3:PutObject\",\n        \"s3:DeleteObject\",\n        \"s3:GetObjectVersion\"\n      ],\n      \"Resource\": [\n        \"arn:aws:s3:::my-app-bucket/*\",\n        \"arn:aws:s3:::my-app-logs-bucket/*\"\n      ]\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "variables": {
+    "app_version": {
+      "description": "Application version for deployment",
+      "default": "2.0.0"
+    },
+    "lambda_memory_size": {
+      "description": "Memory allocation for Lambda functions",
+      "default": 256
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_iam_policy.s3_access_policy",
+          "mode": "managed",
+          "type": "aws_iam_policy",
+          "name": "s3_access_policy",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "values": {
+            "description": "Enhanced policy for S3 and EC2 access with least privilege",
+            "name": "s3-access-policy"
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes_summary": {
+    "add": 2,
+    "change": 6,
+    "remove": 0,
+    "replace": 2
+  }
+}

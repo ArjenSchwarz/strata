@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependency Updates**:
+  - Updated go-output dependency from v2.1.0 to v2.1.1 for improved collapsible content handling
+  
+- **Sample File Naming Standardization**:
+  - Renamed `k8ssample.json` to `k8s-sample.json` for consistent hyphenated naming convention
+  - Renamed `websample.json` to `web-sample.json` for consistent hyphenated naming convention
+  - Added new `wildcards-sample.json` test fixture for wildcard IAM policy testing scenarios
+  - Updated all test references to use the new standardized sample file names
+
 ### Fixed
 - **Property Change Analysis Improvements**:
   - Refactored property comparison logic in analyzer.go to eliminate duplicate property change detection
