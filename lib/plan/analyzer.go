@@ -55,6 +55,62 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		}
 	}
 
+	// Helper function to check if this is a nested object property that should be treated as a single change
+	shouldTreatAsNestedObject := func(before, after any, path string) bool {
+		// Never treat root-level objects as nested (empty path means root level)
+		if path == "" {
+			return false
+		}
+
+		// Check if both values are maps (nested objects)
+		beforeMap, beforeIsMap := before.(map[string]any)
+		afterMap, afterIsMap := after.(map[string]any)
+
+		if !beforeIsMap && !afterIsMap {
+			return false
+		}
+
+		// Handle cases where one is nil (complete addition/removal of nested object)
+		if (before == nil && afterIsMap) || (after == nil && beforeIsMap) {
+			return true
+		}
+
+		// Both are maps - check if this is a nested object that should be treated as single change
+		// Common nested object property names that should be grouped
+		propertyName := a.extractPropertyName(path)
+		isCommonNestedProperty := propertyName == "tags" ||
+			propertyName == "metadata" ||
+			propertyName == "labels" ||
+			propertyName == "environment" ||
+			strings.HasSuffix(propertyName, "_config") ||
+			strings.HasSuffix(propertyName, "_settings")
+
+		// If it's a common nested property, treat as single change
+		if isCommonNestedProperty {
+			return true
+		}
+
+		// For other nested objects, check if they're relatively simple (not deeply nested)
+		// If all values in both maps are primitive types, treat as single nested object
+		allPrimitive := true
+		for _, val := range beforeMap {
+			if isComplexType(val) {
+				allPrimitive = false
+				break
+			}
+		}
+		if allPrimitive {
+			for _, val := range afterMap {
+				if isComplexType(val) {
+					allPrimitive = false
+					break
+				}
+			}
+		}
+
+		return allPrimitive
+	}
+
 	// Determine action type
 	determineAction := func(before, after any) string {
 		if before == nil {
@@ -64,6 +120,36 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			return "remove"
 		}
 		return "update"
+	}
+
+	// Handle nested objects first - check if this should be treated as a single nested property change
+	_, beforeIsMap := before.(map[string]any)
+	_, afterIsMap := after.(map[string]any)
+
+	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(before, after, path) {
+		// Only create a PropertyChange if the objects are actually different
+		if !equals(before, after) {
+			propertyPath := a.parsePath(path)
+			triggersReplacement := false
+			action := determineAction(before, after)
+
+			// Check replacement paths if provided
+			if len(replacePathStrings) > 0 {
+				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
+			}
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               after,
+				Action:              action,
+				TriggersReplacement: triggersReplacement,
+				Sensitive:           a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+			})
+		}
+		// Don't recurse further for nested objects we're treating as single changes
+		return
 	}
 
 	// Property changes - only record for leaf values, not complex objects
@@ -93,7 +179,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		}
 	}
 
-	// Handle nested objects
+	// Handle nested objects that should be recursively processed
 	switch beforeVal := before.(type) {
 	case map[string]any:
 		var afterMap map[string]any

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2025-08-02
+
+### Fixed
+- **Nested Property Display Improvements**:
+  - Fixed nested properties like tags to display with proper visual hierarchy and indentation instead of inline format
+  - Enhanced property change analysis to treat nested objects (tags, metadata, labels, config objects) as single grouped property changes
+  - Implemented cross-format compatible indentation using Unicode En spaces (U+2002) to ensure consistent visual spacing in table, markdown, HTML, and JSON outputs
+  - Updated property change formatter to detect complex nested values and apply appropriate nested formatting with visual indentation
+  - Enhanced nested map and array formatting with proper line breaks and hierarchical display structure
+
+### Changed
+- **Property Analysis Logic**:
+  - Modified `compareObjects` function in analyzer.go to identify and group nested object properties instead of splitting them into individual property changes
+  - Added `shouldTreatAsNestedObject` helper function to detect common nested property patterns (tags, metadata, labels, etc.)
+  - Updated property change formatter to use context-aware formatting with `formatValueWithContext` method
+  - Enhanced test expectations to match new nested property display format with proper indentation
+
+### Dependencies
+- **Go-Output Library**:
+  - Updated go-output dependency from v2.1.1 to v2.1.2 for improved nested content rendering support
+
 ## [1.1.5] - 2025-08-01
 
 ### Fixed
