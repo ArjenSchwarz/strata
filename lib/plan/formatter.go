@@ -584,19 +584,48 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 		replacementIndicator = " # forces replacement"
 	}
 
+	// Check if we're dealing with complex nested values that should use nested formatting
+	isComplexValue := func(val any) bool {
+		switch v := val.(type) {
+		case map[string]any:
+			return len(v) > 1 // Use nested formatting for maps with multiple keys
+		case []any:
+			return len(v) > 2 // Use nested formatting for arrays with multiple items
+		default:
+			return false
+		}
+	}
+
 	// Format based on action and handle complex values
 	switch change.Action {
 	case "add":
-		line = fmt.Sprintf("  + %s = %s",
-			change.Name, f.formatValue(change.After, change.Sensitive))
+		if isComplexValue(change.After) {
+			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
+			line = fmt.Sprintf("  + %s = %s", change.Name, afterValue)
+		} else {
+			line = fmt.Sprintf("  + %s = %s",
+				change.Name, f.formatValue(change.After, change.Sensitive))
+		}
 	case "remove":
-		line = fmt.Sprintf("  - %s = %s",
-			change.Name, f.formatValue(change.Before, change.Sensitive))
+		if isComplexValue(change.Before) {
+			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
+			line = fmt.Sprintf("  - %s = %s", change.Name, beforeValue)
+		} else {
+			line = fmt.Sprintf("  - %s = %s",
+				change.Name, f.formatValue(change.Before, change.Sensitive))
+		}
 	case "update":
-		line = fmt.Sprintf("  ~ %s = %s -> %s",
-			change.Name,
-			f.formatValue(change.Before, change.Sensitive),
-			f.formatValue(change.After, change.Sensitive))
+		if isComplexValue(change.Before) || isComplexValue(change.After) {
+			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
+			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
+			line = fmt.Sprintf("  ~ %s = %s -> %s",
+				change.Name, beforeValue, afterValue)
+		} else {
+			line = fmt.Sprintf("  ~ %s = %s -> %s",
+				change.Name,
+				f.formatValue(change.Before, change.Sensitive),
+				f.formatValue(change.After, change.Sensitive))
+		}
 	default:
 		return ""
 	}
@@ -606,6 +635,11 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 
 // formatValue formats a property value according to Terraform's formatting conventions
 func (f *Formatter) formatValue(val any, sensitive bool) string {
+	return f.formatValueWithContext(val, sensitive, false, "")
+}
+
+// formatValueWithContext formats a property value with context awareness for nested structures
+func (f *Formatter) formatValueWithContext(val any, sensitive bool, isNested bool, indent string) string {
 	if sensitive {
 		return "(sensitive value)"
 	}
@@ -615,30 +649,76 @@ func (f *Formatter) formatValue(val any, sensitive bool) string {
 	case string:
 		return fmt.Sprintf("%q", v)
 	case map[string]any:
-		// Format maps inline with sorted keys for consistent output
-		var keys []string
-		for key := range v {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
+		if isNested && len(v) > 1 {
+			// Format maps with proper indentation for nested display
+			return f.formatNestedMap(v, indent)
+		} else {
+			// Format maps inline with sorted keys for consistent output (backward compatibility)
+			var keys []string
+			for key := range v {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
 
-		var pairs []string
-		for _, key := range keys {
-			pairs = append(pairs, fmt.Sprintf("%s = %s", key, f.formatValue(v[key], false)))
+			var pairs []string
+			for _, key := range keys {
+				pairs = append(pairs, fmt.Sprintf("%s = %s", key, f.formatValueWithContext(v[key], false, false, "")))
+			}
+			return fmt.Sprintf("{ %s }", strings.Join(pairs, ", "))
 		}
-		return fmt.Sprintf("{ %s }", strings.Join(pairs, ", "))
 	case []any:
-		// Format lists inline
-		var items []string
-		for _, item := range v {
-			items = append(items, f.formatValue(item, false))
+		if isNested && len(v) > 2 {
+			// Format arrays with proper indentation for nested display
+			return f.formatNestedArray(v, indent)
+		} else {
+			// Format lists inline (backward compatibility)
+			var items []string
+			for _, item := range v {
+				items = append(items, f.formatValueWithContext(item, false, false, ""))
+			}
+			return fmt.Sprintf("[ %s ]", strings.Join(items, ", "))
 		}
-		return fmt.Sprintf("[ %s ]", strings.Join(items, ", "))
 	case nil:
 		return "null"
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// formatNestedMap formats a map with proper indentation and line breaks
+func (f *Formatter) formatNestedMap(v map[string]any, baseIndent string) string {
+	var keys []string
+	for key := range v {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var lines []string
+	lines = append(lines, "{")
+	for _, key := range keys {
+		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
+		nextIndent := baseIndent + "\u2002\u2002\u2002\u2002"
+		value := f.formatValueWithContext(v[key], false, false, nextIndent)
+		// Use Unicode En spaces for consistent indentation across all formats
+		lines = append(lines, fmt.Sprintf("%s\u2002\u2002\u2002\u2002%s = %s", baseIndent, key, value))
+	}
+	lines = append(lines, baseIndent+"}")
+	return strings.Join(lines, "\n")
+}
+
+// formatNestedArray formats an array with proper indentation and line breaks
+func (f *Formatter) formatNestedArray(v []any, baseIndent string) string {
+	var lines []string
+	lines = append(lines, "[")
+	for i, item := range v {
+		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
+		nextIndent := baseIndent + "\u2002\u2002"
+		value := f.formatValueWithContext(item, false, false, nextIndent)
+		// Use Unicode En spaces for consistent indentation across all formats
+		lines = append(lines, fmt.Sprintf("%s\u2002\u2002[%d] = %s", baseIndent, i, value))
+	}
+	lines = append(lines, baseIndent+"]")
+	return strings.Join(lines, "\n")
 }
 
 // hasSensitive checks if any changes in the list contain sensitive properties

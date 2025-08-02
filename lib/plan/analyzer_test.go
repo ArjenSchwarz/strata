@@ -1910,7 +1910,7 @@ func TestCompareObjects(t *testing.T) {
 			after:             map[string]any{"tags": map[string]any{"env": "prod"}},
 			expectedChanges:   1,
 			expectedActions:   []string{"update"},
-			expectedNames:     []string{"env"},
+			expectedNames:     []string{"tags"},
 			expectedSensitive: []bool{false},
 		},
 		{
@@ -2477,11 +2477,11 @@ func TestCompareObjectsEnhanced(t *testing.T) {
 				"tags": map[string]any{"env": "prod"},
 			},
 			expected: []PropertyChange{{
-				Name:   "env",
-				Path:   []string{"tags", "env"},
+				Name:   "tags",
+				Path:   []string{"tags"},
 				Action: "update",
-				Before: "dev",
-				After:  "prod",
+				Before: map[string]any{"env": "dev"},
+				After:  map[string]any{"env": "prod"},
 			}},
 		},
 		{

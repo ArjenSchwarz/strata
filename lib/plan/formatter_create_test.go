@@ -79,10 +79,14 @@ func TestFormatterCreateActionDisplay(t *testing.T) {
 
 	// Verify the formatting
 	// For create actions, we should see the new values with + prefix
+	// Tags should now be displayed in nested format since they have multiple keys
 	expectedPatterns := []string{
 		"+ name = \"web-server-profile\"",
 		"+ path = \"/\"",
-		"+ tags = { Environment = \"production\", ManagedBy = \"terraform\" }",
+		"+ tags = {",
+		"\u2002\u2002\u2002\u2002Environment = \"production\"",
+		"\u2002\u2002\u2002\u2002ManagedBy = \"terraform\"",
+		"\u2002\u2002\u2002\u2002}",
 	}
 
 	for _, pattern := range expectedPatterns {
