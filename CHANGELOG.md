@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform Unknown Values and Outputs Support - Data Models**:
+  - Added unknown values support to `PropertyChange` struct with `IsUnknown` and `UnknownType` fields for tracking before/after/both unknown states (requirement 1.6, 1.7)
+  - Added unknown values tracking to `ResourceChange` struct with `HasUnknownValues` and `UnknownProperties` fields for complete unknown value visibility (requirement 1.2, 1.5)
+  - Added outputs support fields to `OutputChange` struct with `IsUnknown`, `Action`, and `Indicator` fields for comprehensive output change display (requirement 2.3, 2.5-2.7)
+  - Enhanced data models with proper JSON serialization tags for cross-format consistency (requirement 3.4)
 - **Terraform Unknown Values and Outputs Feature Planning**:
   - Added comprehensive requirements documentation for handling unknown values and output changes
   - Added detailed design specification for implementing `after_unknown` field processing and outputs section
@@ -16,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added UI/UX analysis for output changes display with visual hierarchy recommendations
 - **Development Environment Enhancements**:
   - Added additional MCP tool permissions for internet search and URL fetching capabilities
+
+### Fixed
+- **Test Compatibility**:
+  - Updated JSON serialization tests to include new unknown values and outputs fields in expected output
+  - Fixed `TestResourceChange_SerializationWithNewFields` and `TestResourceAnalysis_Serialization` test expectations
+  - Maintained backward compatibility for existing JSON output structure
 
 ## [1.1.6] - 2025-08-02
 

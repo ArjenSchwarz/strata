@@ -50,6 +50,9 @@ type ResourceChange struct {
 	TopChanges       []string               `json:"top_changes,omitempty"`       // First 3 changed properties for updates (only shown if show_context=true)
 	ReplacementHints []string               `json:"replacement_hints,omitempty"` // Human-readable replacement reasons (always shown)
 	PropertyChanges  PropertyChangeAnalysis `json:"property_changes,omitempty"`  // Detailed property change analysis
+	// New fields for unknown values (requirement 1.2, 1.5)
+	HasUnknownValues  bool     `json:"has_unknown_values"`  // Whether resource contains unknown properties (requirement 1.2)
+	UnknownProperties []string `json:"unknown_properties"`  // List of unknown property paths (requirement 1.5)
 }
 
 // PlanSummary contains the summarised information from a Terraform plan
@@ -72,6 +75,10 @@ type OutputChange struct {
 	Sensitive  bool       `json:"sensitive"`
 	Before     any        `json:"before,omitempty"`
 	After      any        `json:"after,omitempty"`
+	// New fields for outputs support (requirement 2.3, 2.5, 2.6, 2.7)
+	IsUnknown  bool       `json:"is_unknown"`     // Whether output value is unknown (requirement 2.3)
+	Action     string     `json:"action"`         // "Add", "Modify", "Remove" actions (requirements 2.5, 2.6, 2.7)
+	Indicator  string     `json:"indicator"`      // "+", "~", "-" visual indicators (requirements 2.5, 2.6, 2.7)
 }
 
 // BackendInfo contains information about the Terraform backend
@@ -163,6 +170,9 @@ type PropertyChange struct {
 	Size                int      `json:"size"`                 // Size in bytes for memory tracking
 	Action              string   `json:"action"`               // "add", "remove", "update" actions
 	TriggersReplacement bool     `json:"triggers_replacement"` // Whether this change causes resource replacement
+	// New fields for unknown values (requirement 1.6)
+	IsUnknown           bool     `json:"is_unknown"`           // Whether this property has unknown values
+	UnknownType         string   `json:"unknown_type"`         // "before", "after", "both" to track unknown states (requirement 1.7)
 }
 
 // PerformanceLimits defines memory and processing limits for analysis

@@ -26,7 +26,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 				TopChanges:       []string{"bucket", "versioning", "encryption"},
 				ReplacementHints: []string{"Bucket name changes require replacement"},
 			},
-			wantJSON: `{"address":"aws_s3_bucket.example","type":"aws_s3_bucket","name":"example","change_type":"create","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"aws","top_changes":["bucket","versioning","encryption"],"replacement_hints":["Bucket name changes require replacement"],"property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false}}`,
+			wantJSON: `{"address":"aws_s3_bucket.example","type":"aws_s3_bucket","name":"example","change_type":"create","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"aws","top_changes":["bucket","versioning","encryption"],"replacement_hints":["Bucket name changes require replacement"],"property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false},"has_unknown_values":false,"unknown_properties":null}`,
 		},
 		{
 			name: "resource change with empty enhanced fields",
@@ -39,7 +39,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 				ReplacementType: ReplacementNever,
 				Provider:        "azurerm",
 			},
-			wantJSON: `{"address":"azurerm_resource_group.example","type":"azurerm_resource_group","name":"example","change_type":"update","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"azurerm","property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false}}`,
+			wantJSON: `{"address":"azurerm_resource_group.example","type":"azurerm_resource_group","name":"example","change_type":"update","is_destructive":false,"replacement_type":"Never","physical_id":"","planned_id":"","module_path":"","change_attributes":null,"is_dangerous":false,"danger_reason":"","danger_properties":null,"provider":"azurerm","property_changes":{"changes":null,"count":0,"total_size_bytes":0,"truncated":false},"has_unknown_values":false,"unknown_properties":null}`,
 		},
 	}
 
@@ -199,7 +199,7 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 				ReplacementReasons: []string{"Instance type changes require replacement"},
 				RiskLevel:          "medium",
 			},
-			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20,"action":"update","triggers_replacement":false}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium"}`,
+			wantJSON: `{"property_changes":{"changes":[{"name":"instance_type","path":["instance_type"],"before":"t3.micro","after":"t3.small","sensitive":false,"size":20,"action":"update","triggers_replacement":false,"is_unknown":false,"unknown_type":""}],"count":1,"total_size_bytes":20,"truncated":false},"replacement_reasons":["Instance type changes require replacement"],"risk_level":"medium"}`,
 		},
 		{
 			name: "analysis with truncated properties",
