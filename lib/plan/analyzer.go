@@ -39,11 +39,14 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 }
 
 // compareObjects performs deep object comparison for property change extraction with optional replacement path checking
-func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, replacePathStrings []string, analysis *PropertyChangeAnalysis) {
+func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, afterUnknown any, replacePathStrings []string, analysis *PropertyChangeAnalysis) {
 	// Handle nil cases
 	if before == nil && after == nil {
 		return
 	}
+
+	// Check if this property is unknown and handle it first (requirement 1.6)
+	isUnknown := a.isValueUnknown(afterUnknown, path)
 
 	// Helper function to check if value is complex (map or slice)
 	isComplexType := func(val any) bool {
@@ -138,14 +141,24 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
 			}
 
+			// Handle unknown values override logic (requirement 1.6)
+			displayAfter := after
+			unknownType := ""
+			if isUnknown {
+				displayAfter = a.getUnknownValueDisplay()
+				unknownType = "after"
+			}
+
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
 				Before:              before,
-				After:               after,
+				After:               displayAfter,
 				Action:              action,
 				TriggersReplacement: triggersReplacement,
 				Sensitive:           a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+				IsUnknown:           isUnknown,
+				UnknownType:         unknownType,
 			})
 		}
 		// Don't recurse further for nested objects we're treating as single changes
@@ -163,14 +176,24 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
 		}
 
+		// Handle unknown values for leaf properties (requirement 1.6)
+		displayAfter := after
+		unknownType := ""
+		if isUnknown {
+			displayAfter = a.getUnknownValueDisplay()
+			unknownType = "after"
+		}
+
 		analysis.Changes = append(analysis.Changes, PropertyChange{
 			Name:                a.extractPropertyName(path),
 			Path:                propertyPath,
 			Before:              before,
-			After:               after,
+			After:               displayAfter,
 			Action:              action,
 			TriggersReplacement: triggersReplacement,
 			Sensitive:           a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+			IsUnknown:           isUnknown,
+			UnknownType:         unknownType,
 		})
 
 		// For leaf values, don't recurse further
@@ -227,7 +250,15 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				}
 			}
 
-			a.compareObjects(newPath, beforeChild, afterChild, beforeSensChild, afterSensChild, replacePathStrings, analysis)
+			// Extract afterUnknown for the child property
+			var afterUnknownChild any
+			if afterUnknown != nil {
+				if afterUnknownMap, ok := afterUnknown.(map[string]any); ok {
+					afterUnknownChild = afterUnknownMap[key]
+				}
+			}
+
+			a.compareObjects(newPath, beforeChild, afterChild, beforeSensChild, afterSensChild, afterUnknownChild, replacePathStrings, analysis)
 		}
 
 	case []any:
@@ -244,13 +275,23 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
 			}
 
+			// Handle unknown values for array size changes (requirement 1.6)
+			displayAfter := after
+			unknownType := ""
+			if isUnknown {
+				displayAfter = a.getUnknownValueDisplay()
+				unknownType = "after"
+			}
+
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
 				Before:              before,
-				After:               after,
+				After:               displayAfter,
 				Action:              "update",
 				TriggersReplacement: triggersReplacement,
+				IsUnknown:           isUnknown,
+				UnknownType:         unknownType,
 			})
 		} else {
 			// Compare each element for same-sized arrays
@@ -270,9 +311,17 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 					afterItem = afterSlice[i]
 				}
 
+				// Extract afterUnknown for the array element
+				var afterUnknownItem any
+				if afterUnknown != nil {
+					if afterUnknownSlice, ok := afterUnknown.([]any); ok && i < len(afterUnknownSlice) {
+						afterUnknownItem = afterUnknownSlice[i]
+					}
+				}
+
 				a.compareObjects(newPath, beforeItem, afterItem,
 					a.extractSensitiveIndex(beforeSensitive, i),
-					a.extractSensitiveIndex(afterSensitive, i), replacePathStrings, analysis)
+					a.extractSensitiveIndex(afterSensitive, i), afterUnknownItem, replacePathStrings, analysis)
 			}
 		}
 
@@ -296,13 +345,29 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 					}
 				}
 
-				a.compareObjects(newPath, nil, afterVal[key], nil, afterSensChild, replacePathStrings, analysis)
+				// Extract afterUnknown for the new property
+				var afterUnknownChild any
+				if afterUnknown != nil {
+					if afterUnknownMap, ok := afterUnknown.(map[string]any); ok {
+						afterUnknownChild = afterUnknownMap[key]
+					}
+				}
+
+				a.compareObjects(newPath, nil, afterVal[key], nil, afterSensChild, afterUnknownChild, replacePathStrings, analysis)
 			}
 		case []any:
 			// nil to slice: treat all elements as additions
 			for i, item := range afterVal {
 				newPath := fmt.Sprintf("%s[%d]", path, i)
-				a.compareObjects(newPath, nil, item, nil, a.extractSensitiveIndex(afterSensitive, i), replacePathStrings, analysis)
+				// Extract afterUnknown for the new array element
+				var afterUnknownItem any
+				if afterUnknown != nil {
+					if afterUnknownSlice, ok := afterUnknown.([]any); ok && i < len(afterUnknownSlice) {
+						afterUnknownItem = afterUnknownSlice[i]
+					}
+				}
+
+				a.compareObjects(newPath, nil, item, nil, a.extractSensitiveIndex(afterSensitive, i), afterUnknownItem, replacePathStrings, analysis)
 			}
 		}
 	}
@@ -523,6 +588,21 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 		// Analyze property changes
 		propertyChanges := a.analyzePropertyChanges(rc)
 
+		// Extract unknown values information (requirement 1.5, 1.2)
+		hasUnknownValues := false
+		unknownProperties := []string{}
+
+		for _, pc := range propertyChanges.Changes {
+			if pc.IsUnknown {
+				hasUnknownValues = true
+				if len(pc.Path) > 0 {
+					unknownProperties = append(unknownProperties, strings.Join(pc.Path, "."))
+				} else {
+					unknownProperties = append(unknownProperties, pc.Name)
+				}
+			}
+		}
+
 		change := ResourceChange{
 			Address:          rc.Address,
 			Type:             rc.Type,
@@ -545,6 +625,9 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			ReplacementHints: a.extractReplacementHints(rc),
 			TopChanges:       a.getTopChangedProperties(rc, 3),
 			PropertyChanges:  propertyChanges,
+			// Unknown values fields (requirement 1.2, 1.5)
+			HasUnknownValues:  hasUnknownValues,
+			UnknownProperties: unknownProperties,
 		}
 
 		// Enhanced danger reason logic
@@ -1104,9 +1187,9 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 		}
 	}
 
-	// Use deep comparison with sensitive values and replacement paths
+	// Use deep comparison with sensitive values, unknown values, and replacement paths
 	a.compareObjects("", change.Change.Before, change.Change.After,
-		change.Change.BeforeSensitive, change.Change.AfterSensitive, replacePathStrings, &analysis)
+		change.Change.BeforeSensitive, change.Change.AfterSensitive, change.Change.AfterUnknown, replacePathStrings, &analysis)
 
 	// Note: Deduplication removed - improved comparison logic prevents duplicates at source
 
@@ -1404,6 +1487,52 @@ func (a *Analyzer) groupByProvider(changes []ResourceChange) map[string][]Resour
 	}
 
 	return groups
+}
+
+// isValueUnknown checks if a property at the given path is marked as unknown in after_unknown
+func (a *Analyzer) isValueUnknown(afterUnknown any, path string) bool {
+	if afterUnknown == nil {
+		return false
+	}
+
+	// Navigate the after_unknown structure following the path
+	current := afterUnknown
+	pathParts := a.parsePath(path)
+
+	for _, part := range pathParts {
+		switch curr := current.(type) {
+		case map[string]any:
+			if val, exists := curr[part]; exists {
+				current = val
+			} else {
+				return false
+			}
+		case []any:
+			// Convert part to index
+			if index, err := strconv.Atoi(part); err == nil && index >= 0 && index < len(curr) {
+				current = curr[index]
+			} else {
+				return false
+			}
+		case bool:
+			// If we encounter a boolean, it represents unknown status for this level
+			return curr
+		default:
+			return false
+		}
+	}
+
+	// Final check - if we've navigated to a boolean, return it
+	if unknown, ok := current.(bool); ok {
+		return unknown
+	}
+
+	return false
+}
+
+// getUnknownValueDisplay returns the exact Terraform syntax for unknown values
+func (a *Analyzer) getUnknownValueDisplay() string {
+	return "(known after apply)"
 }
 
 // equals is a helper to compare two values, handling maps and slices specially
