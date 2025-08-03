@@ -47,13 +47,13 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Verify unknown values don't appear as deletions (requirement 1.2)
 
 ### 4. Update Output Formatting for Unknown Values Display
-- [ ] 4.1. Enhance property change formatting in `lib/plan/formatter.go`
+- [x] 4.1. Enhance property change formatting in `lib/plan/formatter.go`
   - Update table format to display "(known after apply)" for unknown values (requirement 1.3)
   - Update JSON format to include unknown value information (requirement 3.4)
   - Update HTML and Markdown formats for consistent unknown value display (requirement 3.4)
   - Ensure unknown values integrate with collapsible sections (requirement 3.2)
 
-- [ ] 4.2. Test unknown value display across all output formats
+- [x] 4.2. Test unknown value display across all output formats
   - Create test cases for table, JSON, HTML, and Markdown output (requirement 3.4)
   - Verify "(known after apply)" appears consistently across formats (requirement 1.3)
   - Test integration with danger highlighting for unknown sensitive properties (requirement 3.1)

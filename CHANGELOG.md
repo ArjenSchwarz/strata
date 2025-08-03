@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added UI/UX analysis for output changes display with visual hierarchy recommendations
 - **Development Environment Enhancements**:
   - Added additional MCP tool permissions for internet search and URL fetching capabilities
+- **Terraform Unknown Values Display**:
+  - Support for displaying Terraform unknown values as `(known after apply)` without quotes in all output formats
+  - Comprehensive test coverage for unknown value formatting across table, JSON, HTML, and Markdown formats
+
+### Changed
+- **Output Formatting**:
+  - Enhanced `formatValueWithContext` function to detect and properly format unknown values
+  - Updated property change formatting to display `(known after apply)` without quotes, matching Terraform's exact syntax
 
 ### Fixed
 - **Test Compatibility**:

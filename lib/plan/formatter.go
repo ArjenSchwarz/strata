@@ -647,6 +647,10 @@ func (f *Formatter) formatValueWithContext(val any, sensitive bool, isNested boo
 	// Handle different value types
 	switch v := val.(type) {
 	case string:
+		// Check if this is the unknown value marker (requirement 1.3)
+		if v == "(known after apply)" {
+			return v // Return without quotes to match Terraform's display
+		}
 		return fmt.Sprintf("%q", v)
 	case map[string]any:
 		if isNested && len(v) > 1 {
