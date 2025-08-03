@@ -17,18 +17,18 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Ensure integration with existing danger highlighting fields (requirement 3.1)
 
 ### 2. Implement Unknown Value Detection in Analyzer
-- [ ] 2.1. Create helper function for unknown value detection in `lib/plan/analyzer.go`
+- [x] 2.1. Create helper function for unknown value detection in `lib/plan/analyzer.go`
   - Implement `isValueUnknown(afterUnknown any, path string) bool` function (requirement 1.6)
   - Implement `getUnknownValueDisplay() string` function returning "(known after apply)" (requirement 1.3)
   - Add comprehensive test cases for nested object unknown value detection
 
-- [ ] 2.2. Enhance `compareObjects` function to handle unknown values in `lib/plan/analyzer.go`
+- [x] 2.2. Enhance `compareObjects` function to handle unknown values in `lib/plan/analyzer.go`
   - Add `afterUnknown any` parameter to function signature (requirement 1.6)
   - Implement logic to check unknown status before standard property comparison (requirement 1.6)
   - Handle edge cases: unknown to known, known to unknown, and remaining unknown transitions (requirements 1.4, 1.7)
   - Ensure unknown values override deletion detection logic (requirement 1.2)
 
-- [ ] 2.3. Update `ProcessResourceChange` function in `lib/plan/analyzer.go`
+- [x] 2.3. Update `ProcessResourceChange` function in `lib/plan/analyzer.go`
   - Extract `after_unknown` field from Terraform JSON change data (requirement 1.6)
   - Pass `after_unknown` data to enhanced `compareObjects` function
   - Populate `HasUnknownValues` and `UnknownProperties` fields in `ResourceChange` (requirement 1.5)

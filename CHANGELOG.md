@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added unknown values tracking to `ResourceChange` struct with `HasUnknownValues` and `UnknownProperties` fields for complete unknown value visibility (requirement 1.2, 1.5)
   - Added outputs support fields to `OutputChange` struct with `IsUnknown`, `Action`, and `Indicator` fields for comprehensive output change display (requirement 2.3, 2.5-2.7)
   - Enhanced data models with proper JSON serialization tags for cross-format consistency (requirement 3.4)
+- **Terraform Unknown Values Detection Implementation**:
+  - Implemented `isValueUnknown` helper function to detect unknown values in `after_unknown` field with proper path navigation (requirement 1.6)
+  - Enhanced `compareObjects` function to handle `afterUnknown` parameter and detect unknown values throughout object hierarchy
+  - Added `getUnknownValueDisplay` function returning "(known after apply)" for consistent Terraform syntax display (requirement 1.3)
+  - Implemented unknown values override logic to prevent false deletion detection for unknown properties (requirement 1.2)
+  - Enhanced property change analysis to populate `HasUnknownValues` and `UnknownProperties` fields in resource changes (requirement 1.5)
 - **Terraform Unknown Values and Outputs Feature Planning**:
   - Added comprehensive requirements documentation for handling unknown values and output changes
   - Added detailed design specification for implementing `after_unknown` field processing and outputs section
