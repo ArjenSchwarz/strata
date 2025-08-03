@@ -43,7 +43,9 @@
       "Bash(gh issue view:*)",
       "mcp__devtools__*",
       "mcp__devtools__think",
-      "mcp__devtools__gemini-agent"
+      "mcp__devtools__gemini-agent",
+      "mcp__devtools__internet_search",
+      "mcp__devtools__fetch_url"
     ],
     "deny": []
   }

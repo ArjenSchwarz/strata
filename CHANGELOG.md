@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Terraform Unknown Values and Outputs Feature Planning**:
+  - Added comprehensive requirements documentation for handling unknown values and output changes
+  - Added detailed design specification for implementing `after_unknown` field processing and outputs section
+  - Added feature decision log documenting key implementation choices and technical decisions
+  - Added feature task breakdown for development implementation phases
+  - Added UI/UX analysis for output changes display with visual hierarchy recommendations
+- **Development Environment Enhancements**:
+  - Added additional MCP tool permissions for internet search and URL fetching capabilities
+
 ## [1.1.6] - 2025-08-02
 
 ### Fixed
