@@ -11,8 +11,6 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-// replace github.com/ArjenSchwarz/go-output/v2 => ../go-output/v2
-
 require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

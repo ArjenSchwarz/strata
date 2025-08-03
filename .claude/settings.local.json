@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Bash(go build:*)",
@@ -40,9 +41,10 @@
       "WebFetch(domain:developer.hashicorp.com)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
-      "mcp__devtools__*"
+      "mcp__devtools__*",
+      "mcp__devtools__think",
+      "mcp__devtools__gemini-agent"
     ],
     "deny": []
-  },
-  "$schema": "https://json.schemastore.org/claude-code-settings.json"
+  }
 }

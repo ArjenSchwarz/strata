@@ -698,7 +698,13 @@ func (f *Formatter) formatNestedMap(v map[string]any, baseIndent string) string 
 	for _, key := range keys {
 		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
 		nextIndent := baseIndent + "\u2002\u2002\u2002\u2002"
-		value := f.formatValueWithContext(v[key], false, false, nextIndent)
+		// Check if the value is complex (map or slice) to handle nested structures properly
+		isValueNested := false
+		switch v[key].(type) {
+		case map[string]any, []any:
+			isValueNested = true
+		}
+		value := f.formatValueWithContext(v[key], false, isValueNested, nextIndent)
 		// Use Unicode En spaces for consistent indentation across all formats
 		lines = append(lines, fmt.Sprintf("%s\u2002\u2002\u2002\u2002%s = %s", baseIndent, key, value))
 	}
@@ -713,7 +719,13 @@ func (f *Formatter) formatNestedArray(v []any, baseIndent string) string {
 	for i, item := range v {
 		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
 		nextIndent := baseIndent + "\u2002\u2002"
-		value := f.formatValueWithContext(item, false, false, nextIndent)
+		// Check if the item is complex (map or slice) to handle nested structures properly
+		isItemNested := false
+		switch item.(type) {
+		case map[string]any, []any:
+			isItemNested = true
+		}
+		value := f.formatValueWithContext(item, false, isItemNested, nextIndent)
 		// Use Unicode En spaces for consistent indentation across all formats
 		lines = append(lines, fmt.Sprintf("%s\u2002\u2002[%d] = %s", baseIndent, i, value))
 	}
