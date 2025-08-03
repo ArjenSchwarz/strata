@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `getUnknownValueDisplay` function returning "(known after apply)" for consistent Terraform syntax display (requirement 1.3)
   - Implemented unknown values override logic to prevent false deletion detection for unknown properties (requirement 1.2)
   - Enhanced property change analysis to populate `HasUnknownValues` and `UnknownProperties` fields in resource changes (requirement 1.5)
+- **Terraform Unknown Values Testing Infrastructure**:
+  - Added comprehensive unit tests for unknown value detection functions (`isValueUnknown`, `getUnknownValueDisplay`)
+  - Added integration tests for enhanced `compareObjects` function with unknown values processing
+  - Added test coverage for unknown values integration with sensitive property detection
+  - Added test verification that unknown values don't appear as deletions (requirement 1.2)
+  - Added test validation of exact "(known after apply)" string display (requirement 1.3)
+  - Enhanced test coverage for edge cases including nested objects, arrays, and complex data types
 - **Terraform Unknown Values and Outputs Feature Planning**:
   - Added comprehensive requirements documentation for handling unknown values and output changes
   - Added detailed design specification for implementing `after_unknown` field processing and outputs section

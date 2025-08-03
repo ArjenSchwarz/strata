@@ -35,12 +35,12 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Maintain integration with existing danger highlighting (requirement 3.1)
 
 ### 3. Write Comprehensive Tests for Unknown Values Processing
-- [ ] 3.1. Create unit tests for unknown value detection functions in `lib/plan/analyzer_test.go`
+- [x] 3.1. Create unit tests for unknown value detection functions in `lib/plan/analyzer_test.go`
   - Test `isValueUnknown` with various `after_unknown` structures
   - Test `getUnknownValueDisplay` returns exact "(known after apply)" string (requirement 1.3)
   - Test edge cases: nested objects, arrays, complex data types
 
-- [ ] 3.2. Create integration tests for enhanced `compareObjects` function
+- [x] 3.2. Create integration tests for enhanced `compareObjects` function
   - Test unknown value detection with real Terraform plan data (requirement 1.1)
   - Test property change classification with unknown values (requirements 1.4, 1.5, 1.7)
   - Test integration with existing sensitive property detection (requirement 3.1)

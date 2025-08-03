@@ -40,13 +40,13 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 
 // compareObjects performs deep object comparison for property change extraction with optional replacement path checking
 func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, afterUnknown any, replacePathStrings []string, analysis *PropertyChangeAnalysis) {
-	// Handle nil cases
-	if before == nil && after == nil {
-		return
-	}
-
 	// Check if this property is unknown and handle it first (requirement 1.6)
 	isUnknown := a.isValueUnknown(afterUnknown, path)
+
+	// Handle nil cases - but only return early if not unknown
+	if before == nil && after == nil && !isUnknown {
+		return
+	}
 
 	// Helper function to check if value is complex (map or slice)
 	isComplexType := func(val any) bool {
@@ -116,6 +116,13 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 
 	// Determine action type
 	determineAction := func(before, after any) string {
+		// For unknown values, if before is nil, it's an add; otherwise it's an update
+		if isUnknown {
+			if before == nil {
+				return "add"
+			}
+			return "update"
+		}
 		if before == nil {
 			return "add"
 		}
@@ -167,7 +174,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 
 	// Property changes - only record for leaf values, not complex objects
 	action := determineAction(before, after)
-	if (before == nil || after == nil || !reflect.DeepEqual(before, after)) && !isComplexType(before) && !isComplexType(after) {
+	// Create a property change if there's an actual change, or if the property is unknown (even if both values are nil)
+	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(before) && !isComplexType(after)
+	if shouldCreateChange {
 		propertyPath := a.parsePath(path)
 		triggersReplacement := false
 
