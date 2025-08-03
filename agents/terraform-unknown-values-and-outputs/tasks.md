@@ -6,12 +6,12 @@ Convert the feature design into a series of prompts for a code-generation LLM th
 ## Implementation Tasks
 
 ### 1. Enhance Data Models for Unknown Values Support
-- [ ] 1.1. Add unknown value fields to `PropertyChange` struct in `lib/plan/models.go`
+- [x] 1.1. Add unknown value fields to `PropertyChange` struct in `lib/plan/models.go`
   - Add `IsUnknown bool` field (requirement 1.6)
   - Add `UnknownType string` field to track before/after/both unknown states (requirement 1.7)
   - Update JSON tags for proper serialization across output formats (requirement 3.4)
 
-- [ ] 1.2. Add unknown value tracking to `ResourceChange` struct in `lib/plan/models.go`
+- [x] 1.2. Add unknown value tracking to `ResourceChange` struct in `lib/plan/models.go`
   - Add `HasUnknownValues bool` field to indicate resource contains unknown properties (requirement 1.2)
   - Add `UnknownProperties []string` field to list unknown property paths (requirement 1.5)
   - Ensure integration with existing danger highlighting fields (requirement 3.1)
