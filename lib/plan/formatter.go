@@ -271,6 +271,11 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	}
 	// If no conditions above are met, we show only Plan Information and Summary Statistics tables
 
+	// Output Changes table - placed after resource changes section (requirement 2.1)
+	if err := f.handleOutputDisplay(summary, builder); err != nil {
+		return err
+	}
+
 	// Unified document building using output.New().AddContent().Build() pattern
 	doc := builder.Build()
 
@@ -1296,5 +1301,82 @@ func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, outputC
 	} else if outputConfig.OutputFile == "" {
 		builder.Text("No sensitive resource changes detected.")
 	}
+	return nil
+}
+
+// createOutputChangesData creates the output changes data (requirement 2.2)
+func (f *Formatter) createOutputChangesData(summary *PlanSummary) ([]map[string]any, error) {
+	if summary == nil || len(summary.OutputChanges) == 0 {
+		return nil, nil // Return nil for empty outputs to suppress section (requirement 2.8)
+	}
+
+	var data []map[string]any
+
+	for _, change := range summary.OutputChanges {
+		// Format current (before) value
+		currentValue := formatOutputValue(change.Before, change.Sensitive, false) // Before values are typically not unknown
+
+		// Format planned (after) value
+		plannedValue := formatOutputValue(change.After, change.Sensitive, change.IsUnknown)
+
+		// Format sensitive indicator (requirement 2.4)
+		sensitiveIndicator := ""
+		if change.Sensitive {
+			sensitiveIndicator = "⚠️"
+		}
+
+		data = append(data, map[string]any{
+			"NAME":      change.Name,
+			"ACTION":    change.Action,
+			"CURRENT":   currentValue,
+			"PLANNED":   plannedValue,
+			"SENSITIVE": sensitiveIndicator,
+		})
+	}
+
+	return data, nil
+}
+
+// formatOutputValue formats an output value for display (requirements 2.3, 2.4)
+func formatOutputValue(value any, sensitive bool, isUnknown bool) string {
+	if sensitive {
+		return "(sensitive value)" // requirement 2.4
+	}
+	if isUnknown {
+		return "(known after apply)" // requirement 2.3
+	}
+	if value == nil {
+		return "-"
+	}
+	// Format as JSON for consistent display
+	switch v := value.(type) {
+	case string:
+		return fmt.Sprintf("%q", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// handleOutputDisplay handles the display of output changes section (requirement 2.1)
+func (f *Formatter) handleOutputDisplay(summary *PlanSummary, builder *output.Builder) error {
+	// Create outputs data
+	outputsData, err := f.createOutputChangesData(summary)
+	if err != nil {
+		return fmt.Errorf("failed to create output changes data: %w", err)
+	}
+
+	// Only add outputs section if there are output changes (requirement 2.8)
+	if len(outputsData) > 0 {
+		outputsTable, err := output.NewTableContent("Output Changes", outputsData,
+			output.WithKeys("NAME", "ACTION", "CURRENT", "PLANNED", "SENSITIVE"))
+		if err == nil {
+			builder.AddContent(outputsTable)
+		} else {
+			// Log warning but continue operation - conservative error handling
+			fmt.Printf("Warning: Failed to create output changes table: %v\n", err)
+		}
+	}
+	// If outputsData is empty, section is suppressed (requirement 2.8)
+
 	return nil
 }
