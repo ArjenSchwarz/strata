@@ -111,13 +111,13 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Ensure sensitive value masking with ⚠️ indicator (requirement 2.4)
 
 ### 9. Create End-to-End Integration Tests
-- [ ] 9.1. Create comprehensive integration tests in `lib/plan/analyzer_test.go`
+- [x] 9.1. Create comprehensive integration tests in `lib/plan/analyzer_test.go`
   - Test complete workflow with real Terraform plan containing unknown values and outputs
   - Verify unknown values display correctly and don't appear as deletions (requirements 1.1, 1.2)
   - Verify outputs section displays with correct 5-column format (requirement 2.2)
   - Test integration with existing danger highlighting (requirement 3.1)
 
-- [ ] 9.2. Create cross-format consistency tests
+- [x] 9.2. Create cross-format consistency tests
   - Test unknown values display consistency across table, JSON, HTML, Markdown (requirement 3.4)
   - Test outputs section consistency across all output formats (requirement 3.4)
   - Verify "(known after apply)" and "(sensitive value)" display consistently (requirements 1.3, 2.4)

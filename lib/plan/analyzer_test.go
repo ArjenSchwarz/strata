@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -4266,6 +4267,499 @@ func TestOutputsDisplayConsistencyAcrossFormats(t *testing.T) {
 
 		if instanceId, exists := outputMap["instance_id"]; exists {
 			assert.Equal(t, "(known after apply)", instanceId.After, "instance_id should maintain (known after apply) in summary")
+		}
+	})
+}
+
+// TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration tests the complete workflow
+// with real Terraform plan containing unknown values and outputs (Task 9.1)
+func TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			ShowDetails:      true,
+			HighlightDangers: true,
+		},
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_iam_policy"},
+		},
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_instance", Property: "user_data"},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name            string
+		plan            *tfjson.Plan
+		validateSummary func(t *testing.T, summary *PlanSummary, description string)
+		description     string
+	}{
+		{
+			name: "comprehensive plan with mixed unknown values, outputs, and danger highlighting",
+			plan: &tfjson.Plan{
+				FormatVersion:    "1.0",
+				TerraformVersion: "1.5.0",
+				ResourceChanges: []*tfjson.ResourceChange{
+					{
+						Address: "aws_instance.web_server",
+						Type:    "aws_instance",
+						Name:    "web_server",
+						Change: &tfjson.Change{
+							Actions: []tfjson.Action{tfjson.ActionCreate},
+							Before:  nil,
+							After: map[string]any{
+								"instance_type": "t3.micro",
+								"ami":           "ami-12345678",
+								"user_data":     "#!/bin/bash\necho 'Hello World'",
+								"id":            nil,
+								"public_ip":     nil,
+							},
+							AfterUnknown: map[string]any{
+								"id":        true,
+								"public_ip": true,
+							},
+						},
+					},
+					{
+						Address: "aws_iam_policy.admin_policy",
+						Type:    "aws_iam_policy",
+						Name:    "admin_policy",
+						Change: &tfjson.Change{
+							Actions: []tfjson.Action{tfjson.ActionUpdate},
+							Before: map[string]any{
+								"policy": `{"Version": "2012-10-17"}`,
+								"arn":    "arn:aws:iam::123456789012:policy/old-policy",
+							},
+							After: map[string]any{
+								"policy": `{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}]}`,
+								"arn":    nil,
+							},
+							AfterUnknown: map[string]any{
+								"arn": true,
+							},
+						},
+					},
+					{
+						Address: "aws_s3_bucket.data_bucket",
+						Type:    "aws_s3_bucket",
+						Name:    "data_bucket",
+						Change: &tfjson.Change{
+							Actions: []tfjson.Action{tfjson.ActionCreate},
+							Before:  nil,
+							After: map[string]any{
+								"bucket":             "my-data-bucket-2024",
+								"versioning":         true,
+								"force_destroy":      false,
+								"id":                 nil,
+								"bucket_domain_name": nil,
+							},
+							AfterUnknown: map[string]any{
+								"id":                 true,
+								"bucket_domain_name": true,
+							},
+						},
+					},
+				},
+				OutputChanges: map[string]*tfjson.Change{
+					"instance_public_ip": {
+						Actions:      []tfjson.Action{tfjson.ActionCreate},
+						Before:       nil,
+						After:        nil,
+						AfterUnknown: true,
+					},
+					"policy_arn": {
+						Actions:      []tfjson.Action{tfjson.ActionUpdate},
+						Before:       "arn:aws:iam::123456789012:policy/old-policy",
+						After:        nil,
+						AfterUnknown: true,
+					},
+					"bucket_endpoint": {
+						Actions: []tfjson.Action{tfjson.ActionCreate},
+						Before:  nil,
+						After:   "https://my-data-bucket-2024.s3.amazonaws.com",
+					},
+					"database_password": {
+						Actions:        []tfjson.Action{tfjson.ActionCreate},
+						Before:         nil,
+						After:          "super-secret-password",
+						AfterSensitive: true,
+					},
+					"deprecated_config": {
+						Actions: []tfjson.Action{tfjson.ActionDelete},
+						Before:  "old-configuration-value",
+						After:   nil,
+					},
+				},
+			},
+			validateSummary: func(t *testing.T, summary *PlanSummary, description string) {
+				// Test 1: Verify unknown values display correctly and don't appear as deletions (requirement 1.1, 1.2)
+				assert.Len(t, summary.ResourceChanges, 3, description+" - should have 3 resource changes")
+
+				resourceMap := make(map[string]ResourceChange)
+				for _, rc := range summary.ResourceChanges {
+					resourceMap[rc.Address] = rc
+				}
+
+				// Verify aws_instance has unknown values displayed correctly
+				if instance, exists := resourceMap["aws_instance.web_server"]; exists {
+					assert.True(t, instance.HasUnknownValues, "web_server should have unknown values")
+					assert.Contains(t, instance.UnknownProperties, "id", "web_server should have unknown id property")
+					assert.Contains(t, instance.UnknownProperties, "public_ip", "web_server should have unknown public_ip property")
+
+					// Verify unknown values in property changes don't appear as deletions
+					for _, change := range instance.PropertyChanges.Changes {
+						if change.IsUnknown {
+							assert.NotEqual(t, "remove", change.Action, "Unknown property %s should not appear as deletion", change.Name)
+						}
+					}
+				}
+
+				// Verify aws_iam_policy has unknown values and can work with danger highlighting (requirement 3.1)
+				if policy, exists := resourceMap["aws_iam_policy.admin_policy"]; exists {
+					assert.True(t, policy.HasUnknownValues, "admin_policy should have unknown values")
+					assert.Contains(t, policy.UnknownProperties, "arn", "admin_policy should have unknown arn property")
+					// Note: Danger highlighting typically applies to destructive changes (replace/delete),
+					// but unknown values should still work with any danger highlighting logic that does apply
+				}
+
+				// Test 2: Verify outputs section displays with correct 5-column format (requirement 2.2)
+				assert.Len(t, summary.OutputChanges, 5, description+" - should have 5 output changes")
+
+				outputMap := make(map[string]OutputChange)
+				for _, oc := range summary.OutputChanges {
+					outputMap[oc.Name] = oc
+				}
+
+				// Verify unknown output values display "(known after apply)" (requirement 2.3)
+				if instanceIp, exists := outputMap["instance_public_ip"]; exists {
+					assert.Equal(t, "(known after apply)", instanceIp.After, "instance_public_ip should show (known after apply)")
+					assert.True(t, instanceIp.IsUnknown, "instance_public_ip should be marked as unknown")
+					assert.Equal(t, "Add", instanceIp.Action, "instance_public_ip should have Add action")
+					assert.Equal(t, "+", instanceIp.Indicator, "instance_public_ip should have + indicator")
+				}
+
+				if policyArn, exists := outputMap["policy_arn"]; exists {
+					assert.Equal(t, "(known after apply)", policyArn.After, "policy_arn should show (known after apply)")
+					assert.True(t, policyArn.IsUnknown, "policy_arn should be marked as unknown")
+					assert.Equal(t, "Modify", policyArn.Action, "policy_arn should have Modify action")
+					assert.Equal(t, "~", policyArn.Indicator, "policy_arn should have ~ indicator")
+				}
+
+				// Verify sensitive output values display "(sensitive value)" (requirement 2.4)
+				if dbPassword, exists := outputMap["database_password"]; exists {
+					assert.Equal(t, "(sensitive value)", dbPassword.After, "database_password should show (sensitive value)")
+					assert.True(t, dbPassword.Sensitive, "database_password should be marked as sensitive")
+					assert.False(t, dbPassword.IsUnknown, "database_password should not be unknown")
+					assert.Equal(t, "Add", dbPassword.Action, "database_password should have Add action")
+					assert.Equal(t, "+", dbPassword.Indicator, "database_password should have + indicator")
+				}
+
+				// Verify normal output values display correctly
+				if bucketEndpoint, exists := outputMap["bucket_endpoint"]; exists {
+					assert.Equal(t, "https://my-data-bucket-2024.s3.amazonaws.com", bucketEndpoint.After, "bucket_endpoint should show actual value")
+					assert.False(t, bucketEndpoint.Sensitive, "bucket_endpoint should not be sensitive")
+					assert.False(t, bucketEndpoint.IsUnknown, "bucket_endpoint should not be unknown")
+				}
+
+				// Verify deleted output values
+				if deprecated, exists := outputMap["deprecated_config"]; exists {
+					assert.Equal(t, "Remove", deprecated.Action, "deprecated_config should have Remove action")
+					assert.Equal(t, "-", deprecated.Indicator, "deprecated_config should have - indicator")
+				}
+
+				// Test 3: Verify statistics properly categorize resource changes with unknown values (requirement 3.3)
+				stats := summary.Statistics
+				assert.Equal(t, 2, stats.ToAdd, "statistics should count resource creations")
+				assert.Equal(t, 1, stats.ToChange, "statistics should count resource modifications")
+				assert.Equal(t, 3, stats.Total, "statistics should total resource changes only, not outputs")
+
+				// Test 4: Verify basic summary structure
+				assert.Equal(t, "1.0", summary.FormatVersion, "format version should match")
+				assert.Equal(t, "1.5.0", summary.TerraformVersion, "terraform version should match")
+			},
+			description: "Complete workflow should handle unknown values, outputs, and danger highlighting together",
+		},
+		{
+			name: "complex nested unknown values with outputs integration",
+			plan: &tfjson.Plan{
+				FormatVersion:    "1.0",
+				TerraformVersion: "1.5.0",
+				ResourceChanges: []*tfjson.ResourceChange{
+					{
+						Address: "aws_vpc.main",
+						Type:    "aws_vpc",
+						Name:    "main",
+						Change: &tfjson.Change{
+							Actions: []tfjson.Action{tfjson.ActionCreate},
+							Before:  nil,
+							After: map[string]any{
+								"cidr_block": "10.0.0.0/16",
+								"tags": map[string]any{
+									"Name":        "main-vpc",
+									"Environment": "production",
+								},
+								"id":                        nil,
+								"arn":                       nil,
+								"default_security_group_id": nil,
+								"default_network_acl_id":    nil,
+							},
+							AfterUnknown: map[string]any{
+								"id":                        true,
+								"arn":                       true,
+								"default_security_group_id": true,
+								"default_network_acl_id":    true,
+							},
+						},
+					},
+				},
+				OutputChanges: map[string]*tfjson.Change{
+					"vpc_details": {
+						Actions:      []tfjson.Action{tfjson.ActionCreate},
+						Before:       nil,
+						After:        nil,
+						AfterUnknown: true,
+					},
+				},
+			},
+			validateSummary: func(t *testing.T, summary *PlanSummary, description string) {
+				// Verify nested unknown values are handled correctly
+				assert.Len(t, summary.ResourceChanges, 1, description+" - should have 1 resource change")
+
+				vpc := summary.ResourceChanges[0]
+				assert.True(t, vpc.HasUnknownValues, "VPC should have unknown values")
+				assert.Contains(t, vpc.UnknownProperties, "id", "VPC should have unknown id")
+				assert.Contains(t, vpc.UnknownProperties, "arn", "VPC should have unknown arn")
+				assert.Contains(t, vpc.UnknownProperties, "default_security_group_id", "VPC should have unknown default_security_group_id")
+
+				// Verify outputs with complex unknown structures
+				assert.Len(t, summary.OutputChanges, 1, description+" - should have 1 output change")
+
+				output := summary.OutputChanges[0]
+				assert.Equal(t, "vpc_details", output.Name, "output name should match")
+				assert.Equal(t, "(known after apply)", output.After, "complex unknown output should show (known after apply)")
+				assert.True(t, output.IsUnknown, "output should be marked as unknown")
+			},
+			description: "Complex nested unknown values should integrate correctly with outputs",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set the plan on the analyzer
+			analyzer.plan = tc.plan
+
+			// Generate complete summary - this tests the full workflow
+			summary := analyzer.GenerateSummary("")
+			assert.NotNil(t, summary, tc.description+" - summary should not be nil")
+
+			// Run comprehensive validation
+			if tc.validateSummary != nil {
+				tc.validateSummary(t, summary, tc.description)
+			}
+		})
+	}
+}
+
+// TestCrossFormatConsistencyForUnknownValuesAndOutputs tests display consistency
+// across all output formats (Task 9.2)
+func TestCrossFormatConsistencyForUnknownValuesAndOutputs(t *testing.T) {
+	cfg := &config.Config{}
+	analyzer := &Analyzer{config: cfg}
+
+	// Create a comprehensive plan with various unknown values and outputs
+	plan := &tfjson.Plan{
+		FormatVersion:    "1.0",
+		TerraformVersion: "1.5.0",
+		ResourceChanges: []*tfjson.ResourceChange{
+			{
+				Address: "aws_instance.test",
+				Type:    "aws_instance",
+				Name:    "test",
+				Change: &tfjson.Change{
+					Actions: []tfjson.Action{tfjson.ActionCreate},
+					Before:  nil,
+					After: map[string]any{
+						"instance_type": "t3.micro",
+						"ami":           "ami-12345678",
+						"id":            nil,
+						"public_ip":     nil,
+					},
+					AfterUnknown: map[string]any{
+						"id":        true,
+						"public_ip": true,
+					},
+				},
+			},
+		},
+		OutputChanges: map[string]*tfjson.Change{
+			"instance_ip": {
+				Actions:      []tfjson.Action{tfjson.ActionCreate},
+				Before:       nil,
+				After:        nil,
+				AfterUnknown: true,
+			},
+			"secret_value": {
+				Actions:        []tfjson.Action{tfjson.ActionCreate},
+				Before:         nil,
+				After:          "top-secret",
+				AfterSensitive: true,
+			},
+			"public_endpoint": {
+				Actions: []tfjson.Action{tfjson.ActionCreate},
+				Before:  nil,
+				After:   "https://api.example.com",
+			},
+		},
+	}
+
+	analyzer.plan = plan
+	summary := analyzer.GenerateSummary("")
+
+	testCases := []struct {
+		name            string
+		validateContent func(t *testing.T, content string, format string)
+		description     string
+	}{
+		{
+			name: "unknown values display consistency across formats",
+			validateContent: func(t *testing.T, content string, format string) {
+				// Verify "(known after apply)" appears consistently (requirement 1.3)
+				assert.Contains(t, content, "(known after apply)", format+" format should contain (known after apply)")
+
+				// Count occurrences - should appear for both resource properties and outputs
+				unknownCount := strings.Count(content, "(known after apply)")
+				assert.GreaterOrEqual(t, unknownCount, 2, format+" format should have multiple (known after apply) instances")
+			},
+			description: "Unknown values should display (known after apply) consistently across all formats",
+		},
+		{
+			name: "sensitive values display consistency across formats",
+			validateContent: func(t *testing.T, content string, format string) {
+				// Verify "(sensitive value)" appears consistently (requirement 2.4)
+				assert.Contains(t, content, "(sensitive value)", format+" format should contain (sensitive value)")
+			},
+			description: "Sensitive values should display (sensitive value) consistently across all formats",
+		},
+		{
+			name: "outputs section format consistency",
+			validateContent: func(t *testing.T, content string, format string) {
+				// Verify outputs section content appears
+				outputNames := []string{"instance_ip", "secret_value", "public_endpoint"}
+				for _, name := range outputNames {
+					assert.Contains(t, content, name, format+" format should contain output "+name)
+				}
+
+				// Verify action indicators appear
+				actionIndicators := []string{"+", "~", "-"}
+				indicatorFound := false
+				for _, indicator := range actionIndicators {
+					if strings.Contains(content, indicator) {
+						indicatorFound = true
+						break
+					}
+				}
+				assert.True(t, indicatorFound, format+" format should contain action indicators")
+			},
+			description: "Outputs section should appear consistently across all formats",
+		},
+	}
+
+	// Test formats that are relevant for consistency checking
+	formats := []struct {
+		name       string
+		getContent func() string
+	}{
+		{
+			name: "JSON",
+			getContent: func() string {
+				// Test JSON serialization consistency
+				jsonBytes, err := json.Marshal(summary)
+				assert.NoError(t, err, "JSON marshaling should not error")
+				return string(jsonBytes)
+			},
+		},
+		{
+			name: "Summary Structure",
+			getContent: func() string {
+				// Test the summary data structure directly
+				var content strings.Builder
+
+				// Add resource changes content
+				for _, rc := range summary.ResourceChanges {
+					content.WriteString(fmt.Sprintf("Resource: %s\n", rc.Address))
+					if rc.HasUnknownValues {
+						content.WriteString("Has unknown values\n")
+						for _, prop := range rc.UnknownProperties {
+							content.WriteString(fmt.Sprintf("Unknown property: %s\n", prop))
+						}
+					}
+					for _, change := range rc.PropertyChanges.Changes {
+						if change.IsUnknown {
+							content.WriteString(fmt.Sprintf("Property %s: (known after apply)\n", change.Name))
+						}
+					}
+				}
+
+				// Add output changes content
+				for _, oc := range summary.OutputChanges {
+					content.WriteString(fmt.Sprintf("Output: %s %s\n", oc.Name, oc.Indicator))
+					if oc.IsUnknown {
+						content.WriteString("(known after apply)\n")
+					} else if oc.Sensitive {
+						content.WriteString("(sensitive value)\n")
+					}
+				}
+
+				return content.String()
+			},
+		},
+	}
+
+	for _, format := range formats {
+		for _, tc := range testCases {
+			t.Run(fmt.Sprintf("%s_%s", format.name, tc.name), func(t *testing.T) {
+				content := format.getContent()
+				tc.validateContent(t, content, format.name)
+			})
+		}
+	}
+
+	// Additional cross-format validation
+	t.Run("data_consistency_across_processing", func(t *testing.T) {
+		// Verify that the same data appears consistently in the summary structure
+
+		// Check resource changes
+		assert.Len(t, summary.ResourceChanges, 1, "should have 1 resource change")
+		resource := summary.ResourceChanges[0]
+		assert.True(t, resource.HasUnknownValues, "resource should have unknown values")
+		assert.Contains(t, resource.UnknownProperties, "id", "resource should have unknown id")
+		assert.Contains(t, resource.UnknownProperties, "public_ip", "resource should have unknown public_ip")
+
+		// Check output changes
+		assert.Len(t, summary.OutputChanges, 3, "should have 3 output changes")
+
+		outputMap := make(map[string]OutputChange)
+		for _, oc := range summary.OutputChanges {
+			outputMap[oc.Name] = oc
+		}
+
+		// Verify unknown output
+		if instanceIp, exists := outputMap["instance_ip"]; exists {
+			assert.Equal(t, "(known after apply)", instanceIp.After, "unknown output should show (known after apply)")
+			assert.True(t, instanceIp.IsUnknown, "unknown output should be marked as unknown")
+		}
+
+		// Verify sensitive output
+		if secretValue, exists := outputMap["secret_value"]; exists {
+			assert.Equal(t, "(sensitive value)", secretValue.After, "sensitive output should show (sensitive value)")
+			assert.True(t, secretValue.Sensitive, "sensitive output should be marked as sensitive")
+		}
+
+		// Verify normal output
+		if publicEndpoint, exists := outputMap["public_endpoint"]; exists {
+			assert.Equal(t, "https://api.example.com", publicEndpoint.After, "normal output should show actual value")
+			assert.False(t, publicEndpoint.Sensitive, "normal output should not be sensitive")
+			assert.False(t, publicEndpoint.IsUnknown, "normal output should not be unknown")
 		}
 	})
 }

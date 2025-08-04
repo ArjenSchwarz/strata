@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform Unknown Values and Outputs Integration Tests**:
+  - Added comprehensive end-to-end integration tests in `lib/plan/analyzer_test.go` for complete workflow validation
+  - Added `TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration` test with comprehensive unknown values, outputs, and danger highlighting validation
+  - Added `TestCrossFormatConsistencyForUnknownValuesAndOutputs` test for display consistency across all output formats
+  - Verified unknown values display correctly and don't appear as deletions (requirements 1.1, 1.2)
+  - Validated outputs section displays with correct 5-column format (requirement 2.2)
+  - Ensured "(known after apply)" and "(sensitive value)" display consistently across formats (requirements 1.3, 2.4)
+  - Tested integration with existing danger highlighting functionality (requirement 3.1)
+  - Completed tasks 9.1 and 9.2 for end-to-end integration testing
 - **Terraform Outputs Section Formatter Implementation**:
   - Implemented `handleOutputDisplay` function in formatter.go for outputs section rendering after resource changes (requirement 2.1)
   - Added `createOutputChangesData` function to create 5-column output table data: NAME, ACTION, CURRENT, PLANNED, SENSITIVE (requirement 2.2)

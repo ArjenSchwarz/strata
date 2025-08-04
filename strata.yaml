@@ -4,7 +4,7 @@ table:
 plan:
   show-details: true
   highlight-dangers: true
-  
+
   # Collapsible sections configuration
   expandable_sections:
     enabled: true                    # Enable collapsible sections
@@ -14,7 +14,7 @@ plan:
 # Sensitive resources and properties configuration
 sensitive_resources:
   - resource_type: aws_db_instance
-  - resource_type: aws_ec2_instance
+  - resource_type: aws_instance
 sensitive_properties:
   - resource_type: aws_instance
     property: user_data
