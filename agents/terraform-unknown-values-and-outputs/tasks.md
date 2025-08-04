@@ -87,13 +87,13 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Add outputs to plan summary for display (requirement 2.1)
 
 ### 7. Write Comprehensive Tests for Outputs Processing
-- [ ] 7.1. Create unit tests for outputs processing functions in `lib/plan/analyzer_test.go`
+- [x] 7.1. Create unit tests for outputs processing functions in `lib/plan/analyzer_test.go`
   - Test `ProcessOutputChanges` with various output change scenarios
   - Test `analyzeOutputChange` for create, update, delete actions (requirements 2.5, 2.6, 2.7)
   - Test sensitive output handling with "(sensitive value)" display (requirement 2.4)
   - Test unknown output values display "(known after apply)" (requirement 2.3)
 
-- [ ] 7.2. Create integration tests for end-to-end outputs processing
+- [x] 7.2. Create integration tests for end-to-end outputs processing
   - Test outputs section integration with resource changes (requirement 2.1)
   - Test empty outputs section suppression (requirement 2.8)
   - Test outputs display consistency across all formats (requirement 3.4)

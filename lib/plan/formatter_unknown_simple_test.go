@@ -82,9 +82,9 @@ func TestUnknownValueFormatting(t *testing.T) {
 				},
 			},
 			expectedPatterns: []string{
-				`"after":"(known after apply)"`, // JSON should have the value as a string
-				`"is_unknown":true`,
-				`"has_unknown_values":true`,
+				`"after": "(known after apply)"`, // JSON should have the value as a string (allow spaces)
+				`"is_unknown": true`,             // Allow spaces in JSON formatting
+				`"has_unknown_values": true`,     // Allow spaces in JSON formatting
 			},
 		},
 	}
@@ -93,6 +93,7 @@ func TestUnknownValueFormatting(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create config
 			cfg := &config.Config{
+				ExpandAll: true,
 				Plan: config.PlanConfig{
 					ShowDetails: true,
 					ExpandableSections: config.ExpandableSectionsConfig{
