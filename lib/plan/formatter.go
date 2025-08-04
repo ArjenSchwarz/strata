@@ -27,6 +27,16 @@ const (
 	knownAfterApply = "(known after apply)"
 )
 
+// Cached regex patterns for ActionSortTransformer performance optimization
+var (
+	// Matches action words at the beginning of table cells
+	actionStartRegex = regexp.MustCompile(`^\s*\|\s*(Add|Remove|Replace|Modify)\s*\|`)
+	// Matches actions with emoji prefix (like "⚠️ Remove")
+	actionEmojiRegex = regexp.MustCompile(`^\s*\|\s*[^|]*\s*(Add|Remove|Replace|Modify)\s*\|`)
+	// Matches non-empty DANGER column (anything after the last | that's not just whitespace)
+	dangerColumnRegex = regexp.MustCompile(`\|\s*[^|\s]+\s*$`)
+)
+
 // Formatter handles different output formats for plan summaries
 type Formatter struct {
 	config *config.Config
@@ -145,15 +155,13 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 
 // extractActionFromTableRow extracts the action from a table row
 func extractActionFromTableRow(row string) string {
-	// Use regex to find action words at the beginning of table cells
-	re := regexp.MustCompile(`^\s*\|\s*(Add|Remove|Replace|Modify)\s*\|`)
-	matches := re.FindStringSubmatch(row)
+	// Use cached regex to find action words at the beginning of table cells
+	matches := actionStartRegex.FindStringSubmatch(row)
 	if len(matches) > 1 {
 		return matches[1]
 	}
 	// Also check for actions with emoji prefix (like "⚠️ Remove")
-	re2 := regexp.MustCompile(`^\s*\|\s*[^|]*\s*(Add|Remove|Replace|Modify)\s*\|`)
-	matches2 := re2.FindStringSubmatch(row)
+	matches2 := actionEmojiRegex.FindStringSubmatch(row)
 	if len(matches2) > 1 {
 		return matches2[1]
 	}
@@ -176,7 +184,7 @@ func isDangerousRow(row string) bool {
 		strings.Contains(row, "Dangerous") ||
 		strings.Contains(row, "High Risk") ||
 		// Look for non-empty DANGER column (anything after the last | that's not just whitespace)
-		regexp.MustCompile(`\|\s*[^|\s]+\s*$`).MatchString(strings.TrimSpace(row))
+		dangerColumnRegex.MatchString(strings.TrimSpace(row))
 }
 
 // getActionSortPriority returns priority for sorting (lower = higher priority)

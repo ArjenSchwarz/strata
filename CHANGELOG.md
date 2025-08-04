@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Performance Optimizations**:
+  - Cached compiled regex patterns in ActionSortTransformer as package-level variables to eliminate redundant compilation overhead
+  - Optimized `extractActionFromTableRow` and `isDangerousRow` functions to use pre-compiled regex patterns instead of runtime compilation
+  - Significant performance improvement for large table outputs with multiple resource changes
+
 ### Added
 - **Terraform Unknown Values and Outputs Edge Case Testing**:
   - Added comprehensive edge case tests for unknown values processing in `lib/plan/unknown_values_edge_cases_test.go`
