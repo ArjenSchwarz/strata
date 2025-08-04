@@ -84,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive test coverage for unknown value formatting across table, JSON, HTML, and Markdown formats
 
 ### Changed
+- **Code Quality Improvements**:
+  - Refactored string literals to named constants in `lib/plan/analyzer.go` and `lib/plan/formatter.go` for improved code maintainability
+  - Replaced hardcoded strings like "add", "update", "after", "(sensitive value)", "(known after apply)" with descriptive constants
 - **Output Formatting**:
   - Enhanced `formatValueWithContext` function to detect and properly format unknown values
   - Updated property change formatting to display `(known after apply)` without quotes, matching Terraform's exact syntax

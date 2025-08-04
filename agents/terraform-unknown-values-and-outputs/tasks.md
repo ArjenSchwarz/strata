@@ -136,12 +136,12 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Test plans with only outputs changes (no resource changes)
 
 ### 11. Update Statistics and Integration Points
-- [ ] 11.1. Update resource statistics calculation in `lib/plan/analyzer.go`
+- [x] 11.1. Update resource statistics calculation in `lib/plan/analyzer.go`
   - Ensure proper categorization of resource changes involving unknown values (requirement 3.3)
   - Verify unknown properties appear in "x properties changed" count for collapsible sections
   - Maintain existing statistics structure for resource changes only
 
-- [ ] 11.2. Final integration verification
+- [x] 11.2. Final integration verification
   - Test collapsible sections include unknown values in expanded details (requirement 3.2)
   - Test danger highlighting still functions with unknown values (requirement 3.1)
   - Test provider grouping works correctly with unknown values and outputs
