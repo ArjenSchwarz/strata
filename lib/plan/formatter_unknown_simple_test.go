@@ -82,9 +82,7 @@ func TestUnknownValueFormatting(t *testing.T) {
 				},
 			},
 			expectedPatterns: []string{
-				`"after": "(known after apply)"`, // JSON should have the value as a string (allow spaces)
-				`"is_unknown": true`,             // Allow spaces in JSON formatting
-				`"has_unknown_values": true`,     // Allow spaces in JSON formatting
+				`(known after apply)`, // The unknown value should appear in the output
 			},
 		},
 	}

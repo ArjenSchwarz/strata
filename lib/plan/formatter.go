@@ -824,11 +824,6 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			"danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
 			"property_changes": propertyChangesData, // Will be formatted by collapsible formatter
-			// Add unknown value fields for JSON output
-			"has_unknown_values": change.HasUnknownValues,
-			"unknown_properties": change.UnknownProperties,
-			// Add raw property changes for JSON structured access
-			"property_change_details": propChanges.Changes,
 		}
 
 		// Add replacement reasons if available
@@ -895,7 +890,8 @@ func (f *Formatter) addResourceChangesWithProgressiveDisclosure(builder *output.
 
 		// Use NewTableContent consistently to match working example pattern
 		schema := f.getResourceTableSchema()
-		resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
+		resourceTable, err := output.NewTableContent("Resource Changes", tableData,
+			output.WithSchema(schema...))
 		if err == nil {
 			builder = builder.AddContent(resourceTable)
 		} else {
@@ -1048,18 +1044,6 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 			Name:      "property_changes",
 			Type:      "object",
 			Formatter: f.propertyChangesFormatterTerraform(),
-		},
-		{
-			Name: "has_unknown_values",
-			Type: "boolean",
-		},
-		{
-			Name: "unknown_properties",
-			Type: "array",
-		},
-		{
-			Name: "property_change_details",
-			Type: "array",
 		},
 	}
 }
@@ -1226,7 +1210,8 @@ func (f *Formatter) addProviderGroupTable(providerName string, resources []Resou
 	if len(groupData) > 0 {
 		schema := f.getResourceTableSchema()
 		// Create table for this provider group
-		providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData, output.WithSchema(schema...))
+		providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData,
+			output.WithSchema(schema...))
 		if err == nil {
 			// Create collapsible section for this provider (requirement 1.3: show only changed resources in count)
 			changedCount := f.countChangedResources(resources)
@@ -1250,7 +1235,8 @@ func (f *Formatter) addStandardResourceTable(summary *PlanSummary, builder *outp
 	// Requirement 1.1: Only create table if data exists after filtering no-ops
 	if len(tableData) > 0 {
 		schema := f.getResourceTableSchema()
-		resourceTable, err := output.NewTableContent("Resource Changes", tableData, output.WithSchema(schema...))
+		resourceTable, err := output.NewTableContent("Resource Changes", tableData,
+			output.WithSchema(schema...))
 		if err == nil {
 			builder.AddContent(resourceTable)
 		} else {

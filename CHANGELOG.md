@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-08-04
+
+### Fixed
+- **Table Output Cleanup**:
+  - Removed three unnecessary columns from Resource Changes table that were accidentally introduced during terraform-unknown-values-and-outputs feature implementation
+  - Removed `has_unknown_values`, `unknown_properties`, and `property_change_details` fields from table display as they were implementation details that leaked into the user interface
+  - Table now correctly shows only the 8 expected columns: ACTION, RESOURCE, TYPE, ID, REPLACEMENT, MODULE, DANGER, and PROPERTY_CHANGES
+  - Updated test expectations to align with actual feature requirements rather than testing implementation artifacts
+
+### Changed
+- **Test Improvements**:
+  - Simplified unknown value formatting test to focus on actual requirements (displaying "(known after apply)" text) rather than internal field structure
+  - Improved test maintainability by removing dependencies on internal implementation details
+
 ## [1.2.0] - 2025-08-04
 
 ### Added
