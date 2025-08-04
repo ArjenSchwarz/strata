@@ -123,13 +123,13 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Verify "(known after apply)" and "(sensitive value)" display consistently (requirements 1.3, 2.4)
 
 ### 10. Add Performance and Edge Case Testing
-- [ ] 10.1. Create edge case tests for unknown values processing
+- [x] 10.1. Create edge case tests for unknown values processing
   - Test complex nested structures with mixed known/unknown values
   - Test arrays with unknown elements
   - Test properties remaining unknown (before and after unknown) (requirement 1.7)
   - Test large plans with many unknown values within existing performance limits
 
-- [ ] 10.2. Create edge case tests for outputs processing
+- [x] 10.2. Create edge case tests for outputs processing
   - Test sensitive outputs with unknown values (requirements 2.3, 2.4)
   - Test large output values with size limits
   - Test malformed output structures with graceful error handling

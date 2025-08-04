@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform Unknown Values and Outputs Edge Case Testing**:
+  - Added comprehensive edge case tests for unknown values processing in `lib/plan/unknown_values_edge_cases_test.go`
+  - Test coverage for complex nested structures with mixed known/unknown values
+  - Test validation for arrays with unknown elements
+  - Test verification of properties remaining unknown (before and after unknown) scenarios
+  - Performance testing with large plans containing many unknown values within existing performance limits
+- **Terraform Outputs Edge Case Testing**:
+  - Added comprehensive edge case tests for outputs processing in `lib/plan/outputs_edge_cases_test.go`
+  - Test coverage for sensitive outputs with unknown values with proper indicator precedence
+  - Test validation for large output values with size limits
+  - Test verification of malformed output structures with graceful error handling
+  - Performance testing with large output sets (50, 200, 500 outputs) for efficiency validation
 - **Terraform Unknown Values and Outputs Integration Tests**:
   - Added comprehensive end-to-end integration tests in `lib/plan/analyzer_test.go` for complete workflow validation
   - Added `TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration` test with comprehensive unknown values, outputs, and danger highlighting validation
