@@ -1144,7 +1144,13 @@ func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeT
 func (a *Analyzer) getSensitiveResourceReason(resourceType string) string {
 	// Provide specific reasons based on common resource types
 	switch {
-	case strings.Contains(resourceType, "rds") || strings.Contains(resourceType, "database") || strings.Contains(resourceType, "db"):
+	case strings.Contains(resourceType, "rds") ||
+		strings.Contains(resourceType, "database") ||
+		strings.HasPrefix(resourceType, "aws_db_") ||
+		strings.HasPrefix(resourceType, "google_sql_database_instance") ||
+		strings.HasPrefix(resourceType, "azurerm_postgresql_") ||
+		strings.HasPrefix(resourceType, "azurerm_mysql_") ||
+		strings.HasPrefix(resourceType, "azurerm_mariadb_"):
 		return "Database replacement"
 	case strings.Contains(resourceType, "instance") || strings.Contains(resourceType, "vm") || strings.Contains(resourceType, "virtual_machine"):
 		return "Compute instance replacement"
