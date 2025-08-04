@@ -59,29 +59,29 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Test integration with danger highlighting for unknown sensitive properties (requirement 3.1)
 
 ### 5. Enhance Data Models for Outputs Support
-- [ ] 5.1. Add output change fields to `OutputChange` struct in `lib/plan/models.go`
+- [x] 5.1. Add output change fields to `OutputChange` struct in `lib/plan/models.go`
   - Add `IsUnknown bool` field for unknown output values (requirement 2.3)
   - Add `Action string` field for "Add", "Modify", "Remove" actions (requirements 2.5, 2.6, 2.7)
   - Add `Indicator string` field for "+", "~", "-" visual indicators (requirements 2.5, 2.6, 2.7)
   - Update JSON tags for proper serialization (requirement 3.4)
 
-- [ ] 5.2. Add outputs tracking to `PlanSummary` struct in `lib/plan/models.go`
+- [x] 5.2. Add outputs tracking to `PlanSummary` struct in `lib/plan/models.go`
   - Ensure `OutputChanges []OutputChange` field exists for outputs section (requirement 2.1)
   - Ensure outputs are properly displayed in plan summary (requirement 2.1)
 
 ### 6. Implement Outputs Processing in Analyzer
-- [ ] 6.1. Create outputs processing function in `lib/plan/analyzer.go`
+- [x] 6.1. Create outputs processing function in `lib/plan/analyzer.go`
   - Implement `ProcessOutputChanges(plan *tfjson.Plan) ([]OutputChange, error)` function (requirement 2.1)
   - Extract output changes from plan's `OutputChanges` field
   - Handle missing `output_changes` field gracefully (return empty list, requirement 2.8)
 
-- [ ] 6.2. Create individual output analysis function in `lib/plan/analyzer.go`
+- [x] 6.2. Create individual output analysis function in `lib/plan/analyzer.go`
   - Implement `analyzeOutputChange(name string, change *tfjson.Change) (*OutputChange, error)` function
   - Detect output change actions: create, update, delete (requirements 2.5, 2.6, 2.7)
   - Apply unknown value detection using existing logic (requirement 2.3)
   - Handle sensitive output detection with "(sensitive value)" display (requirement 2.4)
 
-- [ ] 6.3. Update main analysis workflow in `lib/plan/analyzer.go`
+- [x] 6.3. Update main analysis workflow in `lib/plan/analyzer.go`
   - Integrate outputs processing into `GenerateSummary` function (requirement 2.1)
   - Add output changes to plan summary structure
   - Add outputs to plan summary for display (requirement 2.1)

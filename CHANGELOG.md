@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform Outputs Processing Implementation**:
+  - Added `ProcessOutputChanges` function in analyzer.go for comprehensive output change processing with graceful error handling (requirement 2.1)
+  - Added `analyzeOutputChange` function for individual output analysis with action detection (create/Add, update/Modify, delete/Remove) and visual indicators (+, ~, -) (requirements 2.5-2.7)
+  - Added `getOutputActionAndIndicator` helper function for consistent action naming and visual indicator mapping across output formats
+  - Enhanced output processing with unknown value detection using existing `after_unknown` logic, displaying "(known after apply)" for unknown output values (requirement 2.3)
+  - Implemented sensitive output handling with "(sensitive value)" masking and ⚠️ indicator support (requirement 2.4)
+  - Added graceful handling of missing `output_changes` field, returning empty list instead of errors (requirement 2.8)
+  - Maintained backward compatibility through legacy `analyzeOutputChanges` method that internally calls new processing functions
+  - Integrated outputs processing into main `GenerateSummary` workflow for seamless plan analysis
 - **Terraform Unknown Values and Outputs Support - Data Models**:
   - Added unknown values support to `PropertyChange` struct with `IsUnknown` and `UnknownType` fields for tracking before/after/both unknown states (requirement 1.6, 1.7)
   - Added unknown values tracking to `ResourceChange` struct with `HasUnknownValues` and `UnknownProperties` fields for complete unknown value visibility (requirement 1.2, 1.5)
