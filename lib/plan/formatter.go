@@ -221,6 +221,11 @@ func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
 // that didn't actually exist. This approach re-enables all tables while maintaining
 // all existing functionality including collapsible content and provider grouping.
 func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.OutputConfiguration, showDetails bool) error {
+	// Handle nil summary gracefully
+	if summary == nil {
+		return fmt.Errorf("plan summary cannot be nil")
+	}
+
 	ctx := context.Background()
 
 	// Validate output format first
@@ -784,6 +789,7 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 		propertyChangesData := map[string]any{
 			"analysis":    propChanges,
 			"change_type": change.ChangeType,
+			"properties":  propChanges.Changes, // Include raw property changes for JSON access
 		}
 
 		row := map[string]any{
@@ -796,6 +802,11 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			"danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
 			"property_changes": propertyChangesData, // Will be formatted by collapsible formatter
+			// Add unknown value fields for JSON output
+			"has_unknown_values": change.HasUnknownValues,
+			"unknown_properties": change.UnknownProperties,
+			// Add raw property changes for JSON structured access
+			"property_change_details": propChanges.Changes,
 		}
 
 		// Add replacement reasons if available
@@ -1015,6 +1026,18 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 			Name:      "property_changes",
 			Type:      "object",
 			Formatter: f.propertyChangesFormatterTerraform(),
+		},
+		{
+			Name: "has_unknown_values",
+			Type: "boolean",
+		},
+		{
+			Name: "unknown_properties",
+			Type: "array",
+		},
+		{
+			Name: "property_change_details",
+			Type: "array",
 		},
 	}
 }
