@@ -99,12 +99,12 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - Test outputs display consistency across all formats (requirement 3.4)
 
 ### 8. Implement Outputs Section Formatting
-- [ ] 8.1. Add outputs section rendering to `lib/plan/formatter.go`
+- [x] 8.1. Add outputs section rendering to `lib/plan/formatter.go`
   - Implement 5-column table format: NAME, ACTION, CURRENT, PLANNED, SENSITIVE (requirement 2.2)
   - Place outputs section after resource changes section (requirement 2.1)
   - Suppress section entirely when no output changes exist (requirement 2.8)
 
-- [ ] 8.2. Implement outputs formatting across all output formats
+- [x] 8.2. Implement outputs formatting across all output formats
   - Add outputs table support for table format with visual indicators (requirements 2.5, 2.6, 2.7)
   - Add outputs section support for JSON format (requirement 3.4)
   - Add outputs section support for HTML and Markdown formats (requirement 3.4)
