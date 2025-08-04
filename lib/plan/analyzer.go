@@ -665,42 +665,98 @@ func (a *Analyzer) analyzeReplacementNecessity(change *tfjson.ResourceChange) Re
 	return ReplacementNever
 }
 
-// analyzeOutputChanges processes all output changes in the plan
+// ProcessOutputChanges processes all output changes in the plan (requirement 2.1)
+func (a *Analyzer) ProcessOutputChanges(plan *tfjson.Plan) ([]OutputChange, error) {
+	// Handle missing output_changes field gracefully (requirement 2.8)
+	if plan.OutputChanges == nil {
+		return []OutputChange{}, nil
+	}
+
+	changes := make([]OutputChange, 0, len(plan.OutputChanges))
+
+	for name, oc := range plan.OutputChanges {
+		outputChange, err := a.analyzeOutputChange(name, oc)
+		if err != nil {
+			// Skip malformed output entries but continue processing others
+			continue
+		}
+
+		if outputChange != nil {
+			changes = append(changes, *outputChange)
+		}
+	}
+
+	return changes, nil
+}
+
+// analyzeOutputChange analyzes an individual output change (requirement 2.1)
+func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*OutputChange, error) {
+	if change == nil {
+		return nil, fmt.Errorf("change is nil for output %s", name)
+	}
+
+	changeType := FromTerraformAction(change.Actions)
+
+	// Detect if output is sensitive by checking the sensitive flags
+	isSensitive := a.isOutputSensitive(change)
+
+	// Detect output change actions (requirements 2.5, 2.6, 2.7)
+	action, indicator := a.getOutputActionAndIndicator(changeType)
+
+	// Apply unknown value detection using existing logic (requirement 2.3)
+	isUnknown := false
+	displayAfter := change.After
+
+	// Check if the output value is unknown using after_unknown logic
+	if change.AfterUnknown != nil {
+		if unknown, ok := change.AfterUnknown.(bool); ok && unknown {
+			isUnknown = true
+			displayAfter = a.getUnknownValueDisplay()
+		}
+	}
+
+	outputChange := &OutputChange{
+		Name:       name,
+		ChangeType: changeType,
+		Sensitive:  isSensitive,
+		Before:     change.Before,
+		After:      displayAfter,
+		// New fields for outputs support (requirement 2.3, 2.5, 2.6, 2.7)
+		IsUnknown: isUnknown,
+		Action:    action,
+		Indicator: indicator,
+	}
+
+	// Handle sensitive output detection with "(sensitive value)" display (requirement 2.4)
+	if isSensitive {
+		if outputChange.Before != nil {
+			outputChange.Before = "(sensitive value)"
+		}
+		if outputChange.After != nil && !isUnknown {
+			outputChange.After = "(sensitive value)"
+		}
+	}
+
+	return outputChange, nil
+}
+
+// getOutputActionAndIndicator returns action name and visual indicator for output changes
+func (a *Analyzer) getOutputActionAndIndicator(changeType ChangeType) (string, string) {
+	switch changeType {
+	case ChangeTypeCreate:
+		return "Add", "+"
+	case ChangeTypeUpdate:
+		return "Modify", "~"
+	case ChangeTypeDelete:
+		return "Remove", "-"
+	default:
+		return "No-op", ""
+	}
+}
+
+// analyzeOutputChanges processes all output changes in the plan (legacy method for backward compatibility)
 func (a *Analyzer) analyzeOutputChanges() []OutputChange {
-	if a.plan.OutputChanges == nil {
-		return []OutputChange{}
-	}
-
-	changes := make([]OutputChange, 0, len(a.plan.OutputChanges))
-
-	for name, oc := range a.plan.OutputChanges {
-		changeType := FromTerraformAction(oc.Actions)
-
-		// Detect if output is sensitive by checking the sensitive flags
-		// For outputs, if either BeforeSensitive or AfterSensitive is true, the output is sensitive
-		isSensitive := a.isOutputSensitive(oc)
-
-		change := OutputChange{
-			Name:       name,
-			ChangeType: changeType,
-			Sensitive:  isSensitive,
-			Before:     oc.Before,
-			After:      oc.After,
-		}
-
-		// Mask sensitive values
-		if isSensitive {
-			if change.Before != nil {
-				change.Before = nil // Don't expose sensitive before values
-			}
-			if change.After != nil {
-				change.After = nil // Don't expose sensitive after values
-			}
-		}
-
-		changes = append(changes, change)
-	}
-
+	changes, _ := a.ProcessOutputChanges(a.plan)
 	return changes
 }
 
