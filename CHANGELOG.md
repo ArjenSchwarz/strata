@@ -5,102 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2025-08-04
+
+### Added
+- **Terraform Unknown Values and Outputs Support**:
+  - Added support for Terraform unknown values, displaying them as "(known after apply)" to match Terraform's syntax
+  - Added comprehensive outputs section that displays after resource changes with 5-column format (NAME, ACTION, CURRENT, PLANNED, SENSITIVE)
+  - Enhanced data models with `IsUnknown`, `UnknownType`, and `HasUnknownValues` fields for tracking unknown states
+  - Implemented unknown value detection in `after_unknown` field with proper path navigation
+  - Added sensitive output handling with "(sensitive value)" masking and ⚠️ indicator support
+  - Outputs section automatically suppressed when no output changes exist
 
 ### Changed
 - **Performance Optimizations**:
-  - Cached compiled regex patterns in ActionSortTransformer as package-level variables to eliminate redundant compilation overhead
-  - Optimized `extractActionFromTableRow` and `isDangerousRow` functions to use pre-compiled regex patterns instead of runtime compilation
-  - Significant performance improvement for large table outputs with multiple resource changes
-
-### Added
-- **Terraform Unknown Values and Outputs Edge Case Testing**:
-  - Added comprehensive edge case tests for unknown values processing in `lib/plan/unknown_values_edge_cases_test.go`
-  - Test coverage for complex nested structures with mixed known/unknown values
-  - Test validation for arrays with unknown elements
-  - Test verification of properties remaining unknown (before and after unknown) scenarios
-  - Performance testing with large plans containing many unknown values within existing performance limits
-- **Terraform Outputs Edge Case Testing**:
-  - Added comprehensive edge case tests for outputs processing in `lib/plan/outputs_edge_cases_test.go`
-  - Test coverage for sensitive outputs with unknown values with proper indicator precedence
-  - Test validation for large output values with size limits
-  - Test verification of malformed output structures with graceful error handling
-  - Performance testing with large output sets (50, 200, 500 outputs) for efficiency validation
-- **Terraform Unknown Values and Outputs Integration Tests**:
-  - Added comprehensive end-to-end integration tests in `lib/plan/analyzer_test.go` for complete workflow validation
-  - Added `TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration` test with comprehensive unknown values, outputs, and danger highlighting validation
-  - Added `TestCrossFormatConsistencyForUnknownValuesAndOutputs` test for display consistency across all output formats
-  - Verified unknown values display correctly and don't appear as deletions (requirements 1.1, 1.2)
-  - Validated outputs section displays with correct 5-column format (requirement 2.2)
-  - Ensured "(known after apply)" and "(sensitive value)" display consistently across formats (requirements 1.3, 2.4)
-  - Tested integration with existing danger highlighting functionality (requirement 3.1)
-  - Completed tasks 9.1 and 9.2 for end-to-end integration testing
-- **Terraform Outputs Section Formatter Implementation**:
-  - Implemented `handleOutputDisplay` function in formatter.go for outputs section rendering after resource changes (requirement 2.1)
-  - Added `createOutputChangesData` function to create 5-column output table data: NAME, ACTION, CURRENT, PLANNED, SENSITIVE (requirement 2.2)
-  - Added `formatOutputValue` function with proper handling of sensitive values "(sensitive value)" and unknown values "(known after apply)" (requirements 2.3, 2.4)
-  - Implemented outputs section suppression when no output changes exist (requirement 2.8)
-  - Added outputs table integration with go-output builder pattern for cross-format compatibility
-  - Completed tasks 8.1 and 8.2 for outputs section formatting implementation
-- **Comprehensive Terraform Outputs Testing**:
-  - Complete test coverage for `ProcessOutputChanges` function with all output change scenarios
-  - Unit tests for `analyzeOutputChange` covering create, update, delete actions with proper indicators (+, ~, -)
-  - Test validation for sensitive output masking with "(sensitive value)" display
-  - Test validation for unknown output values with "(known after apply)" display
-  - Integration tests for end-to-end outputs processing workflow
-  - Edge case testing for sensitive unknown outputs with proper precedence handling
-  - Task completion tracking for terraform-unknown-values-and-outputs feature (tasks 7.1, 7.2)
-- **Terraform Outputs Processing Implementation**:
-  - Added `ProcessOutputChanges` function in analyzer.go for comprehensive output change processing with graceful error handling (requirement 2.1)
-  - Added `analyzeOutputChange` function for individual output analysis with action detection (create/Add, update/Modify, delete/Remove) and visual indicators (+, ~, -) (requirements 2.5-2.7)
-  - Added `getOutputActionAndIndicator` helper function for consistent action naming and visual indicator mapping across output formats
-  - Enhanced output processing with unknown value detection using existing `after_unknown` logic, displaying "(known after apply)" for unknown output values (requirement 2.3)
-  - Implemented sensitive output handling with "(sensitive value)" masking and ⚠️ indicator support (requirement 2.4)
-  - Added graceful handling of missing `output_changes` field, returning empty list instead of errors (requirement 2.8)
-  - Maintained backward compatibility through legacy `analyzeOutputChanges` method that internally calls new processing functions
-  - Integrated outputs processing into main `GenerateSummary` workflow for seamless plan analysis
-- **Terraform Unknown Values and Outputs Support - Data Models**:
-  - Added unknown values support to `PropertyChange` struct with `IsUnknown` and `UnknownType` fields for tracking before/after/both unknown states (requirement 1.6, 1.7)
-  - Added unknown values tracking to `ResourceChange` struct with `HasUnknownValues` and `UnknownProperties` fields for complete unknown value visibility (requirement 1.2, 1.5)
-  - Added outputs support fields to `OutputChange` struct with `IsUnknown`, `Action`, and `Indicator` fields for comprehensive output change display (requirement 2.3, 2.5-2.7)
-  - Enhanced data models with proper JSON serialization tags for cross-format consistency (requirement 3.4)
-- **Terraform Unknown Values Detection Implementation**:
-  - Implemented `isValueUnknown` helper function to detect unknown values in `after_unknown` field with proper path navigation (requirement 1.6)
-  - Enhanced `compareObjects` function to handle `afterUnknown` parameter and detect unknown values throughout object hierarchy
-  - Added `getUnknownValueDisplay` function returning "(known after apply)" for consistent Terraform syntax display (requirement 1.3)
-  - Implemented unknown values override logic to prevent false deletion detection for unknown properties (requirement 1.2)
-  - Enhanced property change analysis to populate `HasUnknownValues` and `UnknownProperties` fields in resource changes (requirement 1.5)
-- **Terraform Unknown Values Testing Infrastructure**:
-  - Added comprehensive unit tests for unknown value detection functions (`isValueUnknown`, `getUnknownValueDisplay`)
-  - Added integration tests for enhanced `compareObjects` function with unknown values processing
-  - Added test coverage for unknown values integration with sensitive property detection
-  - Added test verification that unknown values don't appear as deletions (requirement 1.2)
-  - Added test validation of exact "(known after apply)" string display (requirement 1.3)
-  - Enhanced test coverage for edge cases including nested objects, arrays, and complex data types
-- **Terraform Unknown Values and Outputs Feature Planning**:
-  - Added comprehensive requirements documentation for handling unknown values and output changes
-  - Added detailed design specification for implementing `after_unknown` field processing and outputs section
-  - Added feature decision log documenting key implementation choices and technical decisions
-  - Added feature task breakdown for development implementation phases
-  - Added UI/UX analysis for output changes display with visual hierarchy recommendations
-- **Development Environment Enhancements**:
-  - Added additional MCP tool permissions for internet search and URL fetching capabilities
-- **Terraform Unknown Values Display**:
-  - Support for displaying Terraform unknown values as `(known after apply)` without quotes in all output formats
-  - Comprehensive test coverage for unknown value formatting across table, JSON, HTML, and Markdown formats
-
-### Changed
-- **Code Quality Improvements**:
-  - Refactored string literals to named constants in `lib/plan/analyzer.go` and `lib/plan/formatter.go` for improved code maintainability
-  - Replaced hardcoded strings like "add", "update", "after", "(sensitive value)", "(known after apply)" with descriptive constants
-- **Output Formatting**:
+  - Cached compiled regex patterns in ActionSortTransformer to eliminate redundant compilation overhead
+  - Optimized table row parsing functions to use pre-compiled regex patterns instead of runtime compilation
   - Enhanced `formatValueWithContext` function to detect and properly format unknown values
-  - Updated property change formatting to display `(known after apply)` without quotes, matching Terraform's exact syntax
+
+- **Code Quality Improvements**:
+  - Refactored string literals to named constants throughout analyzer and formatter for improved maintainability
+  - Enhanced output formatting to display "(known after apply)" without quotes, matching Terraform's exact syntax
 
 ### Fixed
 - **Test Compatibility**:
-  - Updated JSON serialization tests to include new unknown values and outputs fields in expected output
-  - Fixed `TestResourceChange_SerializationWithNewFields` and `TestResourceAnalysis_Serialization` test expectations
+  - Updated JSON serialization tests to include new unknown values and outputs fields
   - Maintained backward compatibility for existing JSON output structure
 
 ## [1.1.6] - 2025-08-02
