@@ -15,6 +15,16 @@ const (
 	riskLevelHigh   = "high"
 	riskLevelMedium = "medium"
 
+	// Action constants for property change analysis
+	actionAdd    = "add"
+	actionUpdate = "update"
+
+	// Unknown value constants
+	unknownAfter = "after"
+
+	// Sensitive value constant
+	sensitiveValue = "(sensitive value)"
+
 	// MaxPropertiesPerResource limits the number of properties extracted per resource to prevent runaway extraction
 	MaxPropertiesPerResource = 100
 	// MaxPropertyValueSize limits individual property values to 10KB
@@ -119,17 +129,17 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		// For unknown values, if before is nil, it's an add; otherwise it's an update
 		if isUnknown {
 			if before == nil {
-				return "add"
+				return actionAdd
 			}
-			return "update"
+			return actionUpdate
 		}
 		if before == nil {
-			return "add"
+			return actionAdd
 		}
 		if after == nil {
 			return "remove"
 		}
-		return "update"
+		return actionUpdate
 	}
 
 	// Handle nested objects first - check if this should be treated as a single nested property change
@@ -153,7 +163,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
-				unknownType = "after"
+				unknownType = unknownAfter
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
@@ -289,7 +299,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
-				unknownType = "after"
+				unknownType = unknownAfter
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
@@ -730,10 +740,10 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 	// Handle sensitive output detection with "(sensitive value)" display (requirement 2.4)
 	if isSensitive {
 		if outputChange.Before != nil {
-			outputChange.Before = "(sensitive value)"
+			outputChange.Before = sensitiveValue
 		}
 		if outputChange.After != nil && !isUnknown {
-			outputChange.After = "(sensitive value)"
+			outputChange.After = sensitiveValue
 		}
 	}
 
@@ -1134,7 +1144,7 @@ func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeT
 func (a *Analyzer) getSensitiveResourceReason(resourceType string) string {
 	// Provide specific reasons based on common resource types
 	switch {
-	case strings.Contains(resourceType, "rds") || strings.Contains(resourceType, "database"):
+	case strings.Contains(resourceType, "rds") || strings.Contains(resourceType, "database") || strings.Contains(resourceType, "db"):
 		return "Database replacement"
 	case strings.Contains(resourceType, "instance") || strings.Contains(resourceType, "vm") || strings.Contains(resourceType, "virtual_machine"):
 		return "Compute instance replacement"

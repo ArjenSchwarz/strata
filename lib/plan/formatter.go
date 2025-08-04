@@ -16,6 +16,15 @@ const (
 	formatTable         = "table"
 	noPropertiesChanged = "No properties changed"
 	truncatedIndicator  = " [truncated]"
+
+	// Action constants for table sorting
+	tableActionRemove  = "Remove"
+	tableActionReplace = "Replace"
+	tableActionModify  = "Modify"
+	tableActionAdd     = "Add"
+
+	// Known after apply constant
+	knownAfterApply = "(known after apply)"
 )
 
 // Formatter handles different output formats for plan summaries
@@ -173,13 +182,13 @@ func isDangerousRow(row string) bool {
 // getActionSortPriority returns priority for sorting (lower = higher priority)
 func getActionSortPriority(action string) int {
 	switch action {
-	case "Remove":
+	case tableActionRemove:
 		return 1
-	case "Replace":
+	case tableActionReplace:
 		return 2
-	case "Modify":
+	case tableActionModify:
 		return 3
-	case "Add":
+	case tableActionAdd:
 		return 4
 	default:
 		return 5
@@ -658,7 +667,7 @@ func (f *Formatter) formatValueWithContext(val any, sensitive bool, isNested boo
 	switch v := val.(type) {
 	case string:
 		// Check if this is the unknown value marker (requirement 1.3)
-		if v == "(known after apply)" {
+		if v == knownAfterApply {
 			return v // Return without quotes to match Terraform's display
 		}
 		return fmt.Sprintf("%q", v)
@@ -1343,7 +1352,7 @@ func formatOutputValue(value any, sensitive bool, isUnknown bool) string {
 		return "(sensitive value)" // requirement 2.4
 	}
 	if isUnknown {
-		return "(known after apply)" // requirement 2.3
+		return knownAfterApply // requirement 2.3
 	}
 	if value == nil {
 		return "-"
