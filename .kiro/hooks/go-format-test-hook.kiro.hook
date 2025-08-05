@@ -1,0 +1,16 @@
+{
+  "name": "Go Format and Test",
+  "description": "Automatically runs gofmt, golangci-lint, and go test when Go files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.go"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "I notice you've modified Go code. I'll help ensure code quality by:\n\n1. Running `gofmt` to format the code according to Go standards\n\nLet me execute these checks for you and report any issues that need to be addressed."
+  },
+  "enabled": true
+}
