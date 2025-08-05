@@ -162,19 +162,19 @@ func TestPrepareResourceTableData(t *testing.T) {
 
 	// Check first resource
 	row1 := tableData[0]
-	if row1["resource"] != "aws_instance.web" {
-		t.Errorf("Expected resource 'aws_instance.web', got %v", row1["resource"])
+	if row1["Resource"] != "aws_instance.web" {
+		t.Errorf("Expected resource 'aws_instance.web', got %v", row1["Resource"])
 	}
-	if row1["action"] != "Add" {
-		t.Errorf("Expected action 'Add', got %v", row1["action"])
+	if row1["Action"] != "Add" {
+		t.Errorf("Expected action 'Add', got %v", row1["Action"])
 	}
 	if row1["risk_level"] != "low" {
 		t.Errorf("Expected risk_level 'low', got %v", row1["risk_level"])
 	}
 
 	// Verify property_changes exists and is a map with analysis and change_type
-	if propData, ok := row1["property_changes"].(map[string]any); !ok {
-		t.Errorf("Expected property_changes to be map[string]any, got %T", row1["property_changes"])
+	if propData, ok := row1["Property Changes"].(map[string]any); !ok {
+		t.Errorf("Expected property_changes to be map[string]any, got %T", row1["Property Changes"])
 	} else {
 		if _, hasAnalysis := propData["analysis"]; !hasAnalysis {
 			t.Errorf("Expected property_changes to contain 'analysis' key")
@@ -186,8 +186,8 @@ func TestPrepareResourceTableData(t *testing.T) {
 
 	// Check second resource (sensitive RDS)
 	row2 := tableData[1]
-	if row2["resource"] != "aws_rds_db_instance.main" {
-		t.Errorf("Expected resource 'aws_rds_db_instance.main', got %v", row2["resource"])
+	if row2["Resource"] != "aws_rds_db_instance.main" {
+		t.Errorf("Expected resource 'aws_rds_db_instance.main', got %v", row2["Resource"])
 	}
 	if row2["risk_level"] != "high" {
 		t.Errorf("Expected risk_level 'high' for sensitive resource replacement, got %v", row2["risk_level"])

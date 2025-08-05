@@ -63,7 +63,7 @@ func TestFormatterCreateActionDisplay(t *testing.T) {
 	propFormatter := formatter.propertyChangesFormatterTerraform()
 
 	// Get the property changes from the table data
-	propChanges := tableData[0]["property_changes"]
+	propChanges := tableData[0]["Property Changes"]
 
 	// Apply the formatter
 	result := propFormatter(propChanges)
@@ -143,7 +143,7 @@ func TestFormatterUpdateActionDisplay(t *testing.T) {
 	// Format the property changes
 	tableData := formatter.prepareResourceTableData(summary.ResourceChanges)
 	propFormatter := formatter.propertyChangesFormatterTerraform()
-	propChanges := tableData[0]["property_changes"]
+	propChanges := tableData[0]["Property Changes"]
 	result := propFormatter(propChanges)
 
 	// Convert to string to check the content
