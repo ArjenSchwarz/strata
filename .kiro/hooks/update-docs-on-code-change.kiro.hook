@@ -1,0 +1,18 @@
+{
+  "name": "Update Documentation on Code Change",
+  "description": "Monitors changes to Go source files and configuration, then suggests updates to documentation in the README or docs folder to keep documentation in sync with code.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.go",
+      "strata.yaml",
+      "go.mod",
+      "go.sum"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "I noticed changes to the Go source code or project configuration. Please review these changes and suggest appropriate updates to the documentation:\n\n1. If the changes affect user-facing functionality, consider updating the README (changelog.md) with new features, changes, or fixes.\n2. If the changes affect implementation details, consider updating or creating documentation in the docs/implementation folder.\n3. If the changes introduce new concepts or research, consider updating or creating documentation in the docs/research folder.\n\nPlease provide specific suggestions for documentation updates based on the code changes, including:\n- What documentation files should be updated\n- What content should be added, modified, or removed\n- How the documentation changes should be structured to maintain consistency with existing docs\n\nFocus on keeping the documentation accurate, comprehensive, and aligned with the current state of the codebase."
+  }
+}

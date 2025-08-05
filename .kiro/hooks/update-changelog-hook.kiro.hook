@@ -1,0 +1,18 @@
+{
+  "name": "Update Changelog and create commit message",
+  "description": "After completing a task, update the changelog.md file with a summary of the changes in the unreleased section",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*.go",
+      "**/*.md",
+      "**/*.yaml",
+      "**/*.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "You need to update the changelog.md file with a summary of the changes in the staged files.\n\n1. Use the tool git diff staged to get an overview of the changes\n2. Create a concise, well-formatted summary of the changes\n3. Open the changelog.md file\n4. Look for an \"Unreleased\" section at the top of the file\n5. If the \"Unreleased\" section doesn't exist, create it at the top of the file with the following format:\n   ```\n   ## [Unreleased]\n   \n   ```\n6. Add your change summary as bullet points under the Unreleased section similar to the following format:\n```\n* Feature: Danger highlights\n  * Update analyser to identify changes that may be dangerous\n  * Add configuration options for setting which resources should trigger a warning when deleted and/or certain properties changed\n```\n7. Use proper Markdown formatting and maintain the existing style of the changelog\n8. Be specific about what was added, changed, fixed, or removed\n9. Save the updated changelog.md file\n10. Summarise this into a properly formatted commit message. DO NOT TRY TO COMMIT. Only provide the commit message\n\nRemember to keep your summary professional and focused on the technical changes made."
+  }
+}
