@@ -1294,7 +1294,7 @@ func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, outputC
 			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
 		}
 		sensitiveTable, err := output.NewTableContent("Sensitive Resource Changes", sensitiveData,
-			output.WithKeys("ACTION", "RESOURCE", "TYPE", "ID", "REPLACEMENT", "MODULE", "DANGER"))
+			output.WithKeys("Action", "Resource", "Type", "ID", "Replacement", "Module", "Danger"))
 		if err == nil {
 			builder.AddContent(sensitiveTable)
 		} else {

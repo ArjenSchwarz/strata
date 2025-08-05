@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fixed table header key mismatch in sensitive resource display table where data was using Title Case keys ("Action", "Resource", etc.) but table creation was using uppercase keys ("ACTION", "RESOURCE", etc.), which would have resulted in empty table columns when displaying sensitive resources in summary mode
+
 ## [1.2.2] - 2025-08-05
 
 ### Added
