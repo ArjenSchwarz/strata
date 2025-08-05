@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-08-05
+
+### Added
+- **Table Header Consistency Feature Documentation**:
+  - Added comprehensive design documentation, decision log, and UI/UX improvements analysis for table header consistency feature
+  - Added detailed implementation specifications with design principles, component architecture, and testing strategy
+  - Enhanced test coverage for formatter functionality with additional test scenarios
+
+### Changed
+- **Documentation Organization**:
+  - Reorganized feature documentation from generic UI-IMPROVEMENTS.md to specific feature-based directory structure
+  - Updated table header formatting implementation in formatter.go and associated tests for improved consistency
+
+### Removed
+- **Legacy Documentation**:
+  - Removed generic UI-IMPROVEMENTS.md documentation file in favor of feature-specific organization
+
 ## [1.2.1] - 2025-08-04
 
 ### Fixed

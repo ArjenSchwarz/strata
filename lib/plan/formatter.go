@@ -273,7 +273,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	statsData, err := f.createStatisticsSummaryDataV2(summary)
 	if err == nil && len(statsData) > 0 {
 		statsTable, err := output.NewTableContent("Summary Statistics", statsData,
-			output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
+			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
 		if err == nil {
 			builder = builder.AddContent(statsTable)
 		} else {
@@ -428,13 +428,13 @@ func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[s
 
 	data := []map[string]any{
 		{
-			"TOTAL CHANGES": summary.Statistics.Total,
-			"ADDED":         summary.Statistics.ToAdd,
-			"REMOVED":       summary.Statistics.ToDestroy,
-			"MODIFIED":      summary.Statistics.ToChange,
-			"REPLACEMENTS":  summary.Statistics.Replacements,
-			"HIGH RISK":     summary.Statistics.HighRisk,
-			"UNMODIFIED":    summary.Statistics.Unmodified,
+			"Total Changes": summary.Statistics.Total,
+			"Added":         summary.Statistics.ToAdd,
+			"Removed":       summary.Statistics.ToDestroy,
+			"Modified":      summary.Statistics.ToChange,
+			"Replacements":  summary.Statistics.Replacements,
+			"High Risk":     summary.Statistics.HighRisk,
+			"Unmodified":    summary.Statistics.Unmodified,
 		},
 	}
 
@@ -485,13 +485,13 @@ func (f *Formatter) createSensitiveResourceChangesDataV2(summary *PlanSummary) (
 		}
 
 		data = append(data, map[string]any{
-			"ACTION":      getActionDisplay(change.ChangeType),
-			"RESOURCE":    change.Address,
-			"TYPE":        change.Type,
+			"Action":      getActionDisplay(change.ChangeType),
+			"Resource":    change.Address,
+			"Type":        change.Type,
 			"ID":          displayID,
-			"REPLACEMENT": replacementDisplay,
-			"MODULE":      change.ModulePath,
-			"DANGER":      dangerInfo,
+			"Replacement": replacementDisplay,
+			"Module":      change.ModulePath,
+			"Danger":      dangerInfo,
 		})
 	}
 
@@ -815,15 +815,15 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 		}
 
 		row := map[string]any{
-			"action":           actionDisplay,
-			"resource":         change.Address,
-			"type":             change.Type,
-			"id":               f.getDisplayID(change),
-			"replacement":      f.getReplacementDisplay(change),
-			"module":           change.ModulePath,
-			"danger":           f.getDangerDisplay(change),
+			"Action":           actionDisplay,
+			"Resource":         change.Address,
+			"Type":             change.Type,
+			"ID":               f.getDisplayID(change),
+			"Replacement":      f.getReplacementDisplay(change),
+			"Module":           change.ModulePath,
+			"Danger":           f.getDangerDisplay(change),
 			"risk_level":       riskLevel,
-			"property_changes": propertyChangesData, // Will be formatted by collapsible formatter
+			"Property Changes": propertyChangesData, // Will be formatted by collapsible formatter
 		}
 
 		// Add replacement reasons if available
@@ -924,7 +924,7 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
 	}
 	statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
+		output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
 	if err == nil {
 		builder = builder.AddContent(statsTable)
 	}
@@ -951,7 +951,7 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
 	}
 	statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-		output.WithKeys("TOTAL CHANGES", "ADDED", "REMOVED", "MODIFIED", "REPLACEMENTS", "HIGH RISK", "UNMODIFIED"))
+		output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
 	if err == nil {
 		builder = builder.AddContent(statsTable)
 	}
@@ -1012,36 +1012,36 @@ func (f *Formatter) addGroupedResourceChangesWithCollapsibleSections(builder *ou
 func (f *Formatter) getResourceTableSchema() []output.Field {
 	return []output.Field{
 		{
-			Name: "action",
+			Name: "Action",
 			Type: "string",
 		},
 		{
-			Name:      "resource",
+			Name:      "Resource",
 			Type:      "string",
 			Formatter: output.FilePathFormatter(50),
 		},
 		{
-			Name: "type",
+			Name: "Type",
 			Type: "string",
 		},
 		{
-			Name: "id",
+			Name: "ID",
 			Type: "string",
 		},
 		{
-			Name: "replacement",
+			Name: "Replacement",
 			Type: "string",
 		},
 		{
-			Name: "module",
+			Name: "Module",
 			Type: "string",
 		},
 		{
-			Name: "danger",
+			Name: "Danger",
 			Type: "string",
 		},
 		{
-			Name:      "property_changes",
+			Name:      "Property Changes",
 			Type:      "object",
 			Formatter: f.propertyChangesFormatterTerraform(),
 		},
@@ -1329,11 +1329,11 @@ func (f *Formatter) createOutputChangesData(summary *PlanSummary) ([]map[string]
 		}
 
 		data = append(data, map[string]any{
-			"NAME":      change.Name,
-			"ACTION":    change.Action,
-			"CURRENT":   currentValue,
-			"PLANNED":   plannedValue,
-			"SENSITIVE": sensitiveIndicator,
+			"Name":      change.Name,
+			"Action":    change.Action,
+			"Current":   currentValue,
+			"Planned":   plannedValue,
+			"Sensitive": sensitiveIndicator,
 		})
 	}
 
@@ -1371,7 +1371,7 @@ func (f *Formatter) handleOutputDisplay(summary *PlanSummary, builder *output.Bu
 	// Only add outputs section if there are output changes (requirement 2.8)
 	if len(outputsData) > 0 {
 		outputsTable, err := output.NewTableContent("Output Changes", outputsData,
-			output.WithKeys("NAME", "ACTION", "CURRENT", "PLANNED", "SENSITIVE"))
+			output.WithKeys("Name", "Action", "Current", "Planned", "Sensitive"))
 		if err == nil {
 			builder.AddContent(outputsTable)
 		} else {
