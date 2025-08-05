@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2025-08-06
+
 ### Fixed
 - Fixed table header key mismatch in sensitive resource display table where data was using Title Case keys ("Action", "Resource", etc.) but table creation was using uppercase keys ("ACTION", "RESOURCE", etc.), which would have resulted in empty table columns when displaying sensitive resources in summary mode
 
