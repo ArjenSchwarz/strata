@@ -46,7 +46,8 @@
       "mcp__devtools__gemini-agent",
       "mcp__devtools__internet_search",
       "mcp__devtools__fetch_url",
-      "mcp__devtools__resolve_library_id"
+      "mcp__devtools__resolve_library_id",
+      "mcp__devtools__search_packages"
     ],
     "deny": []
   }

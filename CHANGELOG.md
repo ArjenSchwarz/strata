@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Output Refinements Feature Documentation**:
+  - Added comprehensive design documentation for output refinements feature addressing issues #17-#21 with property sorting, no-op display control, and sensitive value masking
+  - Added detailed decision log documenting architectural choices, security considerations, and stakeholder feedback integration
+  - Added complete requirements specification covering property sorting improvements, sensitivity-based resource ordering, configurable no-op display, and comprehensive sensitive value masking
+  - Added implementation task breakdown with phased development approach and testing strategy
+
+### Changed
+- **Development Tool Configuration**:
+  - Updated Claude settings to include mcp__devtools__search_packages in allowlist for enhanced package management capabilities
+
 ## [1.2.3] - 2025-08-06
 
 ### Fixed
