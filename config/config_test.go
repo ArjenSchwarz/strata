@@ -22,6 +22,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 					"group-by-provider":  true,
 					"grouping-threshold": 15,
 					"show-context":       true,
+					"show-no-ops":        true,
 				},
 			},
 			expectedPlan: PlanConfig{
@@ -30,6 +31,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 				GroupByProvider:   true,
 				GroupingThreshold: 15,
 				ShowContext:       true,
+				ShowNoOps:         true,
 			},
 		},
 		{
@@ -41,6 +43,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 					"group-by-provider":  false,
 					"grouping-threshold": 0,
 					"show-context":       false,
+					"show-no-ops":        false,
 				},
 			},
 			expectedPlan: PlanConfig{
@@ -49,6 +52,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 				GroupByProvider:   false,
 				GroupingThreshold: 0,
 				ShowContext:       false,
+				ShowNoOps:         false,
 			},
 		},
 		{
@@ -63,6 +67,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 					"group-by-provider":         true,
 					"grouping-threshold":        10,
 					"show-context":              false,
+					"show-no-ops":               true,
 				},
 			},
 			expectedPlan: PlanConfig{
@@ -74,6 +79,7 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 				GroupByProvider:         true,
 				GroupingThreshold:       10,
 				ShowContext:             false,
+				ShowNoOps:               true,
 			},
 		},
 	}
@@ -124,6 +130,9 @@ func TestPlanConfig_NewFieldsLoadFromYAML(t *testing.T) {
 			if planConfig.ShowContext != tt.expectedPlan.ShowContext {
 				t.Errorf("ShowContext = %v, expected %v", planConfig.ShowContext, tt.expectedPlan.ShowContext)
 			}
+			if planConfig.ShowNoOps != tt.expectedPlan.ShowNoOps {
+				t.Errorf("ShowNoOps = %v, expected %v", planConfig.ShowNoOps, tt.expectedPlan.ShowNoOps)
+			}
 		})
 	}
 }
@@ -154,6 +163,9 @@ func TestPlanConfig_DefaultValues(t *testing.T) {
 	}
 	if planConfig.ShowContext != false {
 		t.Errorf("ShowContext should default to false, got %v", planConfig.ShowContext)
+	}
+	if planConfig.ShowNoOps != false {
+		t.Errorf("ShowNoOps should default to false, got %v", planConfig.ShowNoOps)
 	}
 
 	// Verify existing fields still work
@@ -516,6 +528,10 @@ func TestGetDefaultConfig(t *testing.T) {
 
 	if config.Plan.PerformanceLimits.MaxPropertiesPerResource != 100 {
 		t.Errorf("Expected MaxPropertiesPerResource to be 100, got %d", config.Plan.PerformanceLimits.MaxPropertiesPerResource)
+	}
+
+	if config.Plan.ShowNoOps != false {
+		t.Errorf("Expected ShowNoOps to be false, got %v", config.Plan.ShowNoOps)
 	}
 
 	// Test that validation passes for default config
