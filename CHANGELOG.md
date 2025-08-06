@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **No-Op Filtering Implementation for Output Refinements feature**:
+  - Implemented `filterNoOps` method in `lib/plan/formatter.go` for resource filtering that removes resources with `ChangeTypeNoOp` when `ShowNoOps` is false
+  - Implemented `filterNoOpOutputs` method in `lib/plan/formatter.go` for output filtering that removes outputs with `IsNoOp == true` when `ShowNoOps` is false
+  - Enhanced `OutputSummary` method to integrate no-op filtering based on `f.config.Plan.ShowNoOps` configuration
+  - Added "No changes detected" message display when no actual changes exist after filtering
+  - Ensured statistics remain unchanged and count all resources including no-ops (preserves original behavior)
+  - Completed tasks 4.1, 4.2, and 4.3 from Output Refinements feature implementation
+
 - **No-op resource and output detection for Output Refinements feature**:
   - Added `IsNoOp` field to `ResourceChange` struct for internal no-op resource tracking
   - Added `IsNoOp` field to `OutputChange` struct for internal no-op output tracking  

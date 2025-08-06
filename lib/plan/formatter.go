@@ -234,6 +234,10 @@ func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
 // 3. Format Handling Delegation: All format-specific logic delegated to go-output library
 // 4. Conservative Error Handling: Individual table failures logged but don't stop rendering
 //
+// ENHANCEMENT: No-Op Filtering Integration (Task 4.3)
+// This enhanced version applies no-op filtering based on f.config.Plan.ShowNoOps configuration
+// and displays "No changes detected" message when no actual changes exist (Requirement 3.5)
+//
 // The previous implementation incorrectly disabled tables due to a perceived "library bug"
 // that didn't actually exist. This approach re-enables all tables while maintaining
 // all existing functionality including collapsible content and provider grouping.
@@ -250,6 +254,27 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		return err
 	}
 
+	// TASK 4.3: Apply filtering based on f.config.Plan.ShowNoOps configuration
+	// Make a copy of summary to avoid modifying the original
+	filteredSummary := *summary
+	filteredSummary.ResourceChanges = f.filterNoOps(summary.ResourceChanges)
+	filteredSummary.OutputChanges = f.filterNoOpOutputs(summary.OutputChanges)
+
+	// TASK 4.3: Display "No changes detected" message when no actual changes exist (Requirement 3.5)
+	if len(filteredSummary.ResourceChanges) == 0 && len(filteredSummary.OutputChanges) == 0 {
+		builder := output.New()
+		builder = builder.Text("No changes detected")
+		doc := builder.Build()
+		
+		stdoutFormat := f.getFormatFromConfig(outputConfig.Format)
+		stdoutOptions := []output.OutputOption{
+			output.WithFormat(stdoutFormat),
+			output.WithWriter(output.NewStdoutWriter()),
+		}
+		stdoutOut := output.NewOutput(stdoutOptions...)
+		return stdoutOut.Render(ctx, doc)
+	}
+
 	// Build the document using v2 builder pattern
 	builder := output.New()
 
@@ -257,7 +282,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	// This fixes the multi-table rendering issue by using consistent table creation methods
 
 	// Plan Information table - RE-ENABLED using NewTableContent pattern
-	planData, err := f.createPlanInfoDataV2(summary)
+	planData, err := f.createPlanInfoDataV2(&filteredSummary)
 	if err == nil && len(planData) > 0 {
 		planTable, err := output.NewTableContent("Plan Information", planData,
 			output.WithKeys("Plan File", "Version", "Workspace", "Backend", "Created"))
@@ -270,6 +295,8 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	}
 
 	// Summary Statistics table - RE-ENABLED using NewTableContent pattern
+	// TASK 4.3: Ensure statistics remain unchanged and count all resources including no-ops (Requirement 3.7)
+	// Use original summary for statistics to maintain count of all resources
 	statsData, err := f.createStatisticsSummaryDataV2(summary)
 	if err == nil && len(statsData) > 0 {
 		statsTable, err := output.NewTableContent("Summary Statistics", statsData,
@@ -283,13 +310,15 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	}
 
 	// Resource Changes table - UNIFIED TABLE CREATION following go-output example pattern
-	if err := f.handleResourceDisplay(summary, showDetails, outputConfig, builder); err != nil {
+	// Use filtered summary for display
+	if err := f.handleResourceDisplay(&filteredSummary, showDetails, outputConfig, builder); err != nil {
 		return err
 	}
 	// If no conditions above are met, we show only Plan Information and Summary Statistics tables
 
 	// Output Changes table - placed after resource changes section (requirement 2.1)
-	if err := f.handleOutputDisplay(summary, builder); err != nil {
+	// Use filtered summary for display  
+	if err := f.handleOutputDisplay(&filteredSummary, builder); err != nil {
 		return err
 	}
 
@@ -1382,4 +1411,40 @@ func (f *Formatter) handleOutputDisplay(summary *PlanSummary, builder *output.Bu
 	// If outputsData is empty, section is suppressed (requirement 2.8)
 
 	return nil
+}
+
+// filterNoOps filters out resources where ChangeType == ChangeTypeNoOp when ShowNoOps is false
+// This implements Task 4.1 from the Output Refinements feature (Requirement 3.2)
+func (f *Formatter) filterNoOps(resources []ResourceChange) []ResourceChange {
+	if f.config.Plan.ShowNoOps {
+		// Return original slice when ShowNoOps is true
+		return resources
+	}
+
+	// Filter out resources where ChangeType == ChangeTypeNoOp
+	filtered := make([]ResourceChange, 0, len(resources))
+	for _, r := range resources {
+		if r.ChangeType != ChangeTypeNoOp {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered
+}
+
+// filterNoOpOutputs filters out outputs where IsNoOp == true when ShowNoOps is false
+// This implements Task 4.2 from the Output Refinements feature (Requirement 4.2, 4.3, 4.4)
+func (f *Formatter) filterNoOpOutputs(outputs []OutputChange) []OutputChange {
+	if f.config.Plan.ShowNoOps {
+		// Include no-op outputs when --show-no-ops flag is enabled (Requirement 4.4)
+		return outputs
+	}
+
+	// Filter out outputs where IsNoOp == true when ShowNoOps is false
+	filtered := make([]OutputChange, 0, len(outputs))
+	for _, o := range outputs {
+		if !o.IsNoOp {
+			filtered = append(filtered, o)
+		}
+	}
+	return filtered
 }
