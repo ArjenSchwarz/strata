@@ -56,6 +56,7 @@ type PlanConfig struct {
 	ShowStatisticsSummary   bool   `mapstructure:"show-statistics-summary"`
 	StatisticsSummaryFormat string `mapstructure:"statistics-summary-format"`
 	AlwaysShowSensitive     bool   `mapstructure:"always-show-sensitive"` // Always show sensitive resources even when details are disabled
+	ShowNoOps               bool   `mapstructure:"show-no-ops"`           // Show no-op resources (default: false)
 	// Enhanced summary visualization fields
 	GroupByProvider    bool                     `mapstructure:"group-by-provider"`   // Enable provider grouping
 	GroupingThreshold  int                      `mapstructure:"grouping-threshold"`  // Minimum resources to trigger grouping
@@ -302,6 +303,7 @@ func GetDefaultConfig() *Config {
 			ShowStatisticsSummary:   true,
 			StatisticsSummaryFormat: "horizontal",
 			AlwaysShowSensitive:     true,
+			ShowNoOps:               false,
 			ExpandableSections: ExpandableSectionsConfig{
 				Enabled:             true,
 				AutoExpandDangerous: true,

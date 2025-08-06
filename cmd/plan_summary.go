@@ -91,6 +91,9 @@ Examples:
   # Generate summary without statistics table
   strata plan summary --show-statistics=false terraform.tfplan
 
+  # Include no-op resources in the summary
+  strata plan summary --show-no-ops terraform.tfplan
+
 Configuration:
 The summary behavior can be customized through the strata.yaml configuration file:
 
@@ -98,6 +101,7 @@ The summary behavior can be customized through the strata.yaml configuration fil
   expand_all: false                    # Expand all collapsible sections
 
   plan:
+    show-no-ops: false                 # Show no-op resources (default: false)
     expandable_sections:
       enabled: true                    # Enable collapsible sections
       auto_expand_dangerous: true      # Auto-expand high-risk sections
@@ -114,6 +118,7 @@ var (
 	highlightDangers        bool
 	showStatisticsSummary   bool
 	statisticsSummaryFormat string
+	showNoOps               bool
 )
 
 func runPlanSummary(cmd *cobra.Command, args []string) error {
@@ -137,6 +142,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	cfg.Plan.HighlightDangers = highlightDangers
 	cfg.Plan.ShowStatisticsSummary = showStatisticsSummary
 	cfg.Plan.StatisticsSummaryFormat = statisticsSummaryFormat
+	cfg.Plan.ShowNoOps = showNoOps
 
 	// Read expand-all configuration from Viper (includes CLI flag override)
 	cfg.ExpandAll = viper.GetBool("expand_all")
@@ -233,6 +239,13 @@ func init() {
 	planSummaryCmd.Flags().StringVar(&statisticsSummaryFormat, "stats-format", "horizontal",
 		"Statistics summary format (horizontal, vertical)")
 	if err := viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format")); err != nil {
+		panic(err)
+	}
+
+	// Show no-ops flag
+	planSummaryCmd.Flags().BoolVar(&showNoOps, "show-no-ops", false,
+		"Show no-op resources in the summary")
+	if err := viper.BindPFlag("plan.show-no-ops", planSummaryCmd.Flags().Lookup("show-no-ops")); err != nil {
 		panic(err)
 	}
 }

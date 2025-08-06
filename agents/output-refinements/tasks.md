@@ -7,12 +7,12 @@ Convert the feature design into a series of prompts for implementing the Output 
 ## Implementation Tasks
 
 ### 1. Configuration Enhancement
-- [ ] 1.1 Add `ShowNoOps bool` field to `PlanConfig` struct in `config/config.go` with `mapstructure:"show-no-ops"` tag
+- [x] 1.1 Add `ShowNoOps bool` field to `PlanConfig` struct in `config/config.go` with `mapstructure:"show-no-ops"` tag
   - Implement field with proper YAML mapping for kebab-case configuration
   - Ensure default value is `false` to hide no-ops by default (Requirement 3.2)
   - Write unit tests for configuration loading and parsing
 
-- [ ] 1.2 Add `--show-no-ops` CLI flag to plan summary command in `cmd/plan_summary.go`
+- [x] 1.2 Add `--show-no-ops` CLI flag to plan summary command in `cmd/plan_summary.go`
   - Implement boolean flag that overrides configuration file setting
   - Ensure CLI flag takes precedence over config file (Requirement 3.4)
   - Write unit tests for flag parsing and precedence behavior

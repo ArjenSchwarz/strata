@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **No-Op Resources Display Control**:
+  - Added `ShowNoOps` field to `PlanConfig` struct with `mapstructure:"show-no-ops"` tag for YAML configuration support
+  - Added `--show-no-ops` CLI flag to plan summary command with boolean override capability
+  - Implemented CLI flag precedence over configuration file setting for flexible usage
+  - Added comprehensive unit tests for flag parsing, configuration loading, and precedence behavior
+
 - **Output Refinements Feature Documentation**:
   - Added comprehensive design documentation for output refinements feature addressing issues #17-#21 with property sorting, no-op display control, and sensitive value masking
   - Added detailed decision log documenting architectural choices, security considerations, and stakeholder feedback integration
