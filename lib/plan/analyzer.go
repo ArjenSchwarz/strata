@@ -786,6 +786,8 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			// Unknown values fields (requirement 1.2, 1.5)
 			HasUnknownValues:  hasUnknownValues,
 			UnknownProperties: unknownProperties,
+			// Mark no-op resources for filtering (Output Refinements feature)
+			IsNoOp: changeType == ChangeTypeNoOp,
 		}
 
 		// Enhanced danger reason logic
@@ -864,6 +866,9 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 		}
 	}
 
+	// Detect no-op outputs where before equals after (Output Refinements feature)
+	isNoOp := reflect.DeepEqual(change.Before, change.After)
+
 	outputChange := &OutputChange{
 		Name:       name,
 		ChangeType: changeType,
@@ -874,6 +879,8 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 		IsUnknown: isUnknown,
 		Action:    action,
 		Indicator: indicator,
+		// Mark no-op outputs for filtering (Output Refinements feature)
+		IsNoOp: isNoOp,
 	}
 
 	// Handle sensitive output detection with "(sensitive value)" display (requirement 2.4)

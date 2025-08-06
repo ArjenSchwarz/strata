@@ -53,6 +53,8 @@ type ResourceChange struct {
 	// New fields for unknown values (requirement 1.2, 1.5)
 	HasUnknownValues  bool     `json:"has_unknown_values"` // Whether resource contains unknown properties (requirement 1.2)
 	UnknownProperties []string `json:"unknown_properties"` // List of unknown property paths (requirement 1.5)
+	// Field for no-op filtering (Output Refinements feature)
+	IsNoOp bool `json:"-"` // Internal: true for no-op resources
 }
 
 // PlanSummary contains the summarised information from a Terraform plan
@@ -79,6 +81,8 @@ type OutputChange struct {
 	IsUnknown bool   `json:"is_unknown"` // Whether output value is unknown (requirement 2.3)
 	Action    string `json:"action"`     // "Add", "Modify", "Remove" actions (requirements 2.5, 2.6, 2.7)
 	Indicator string `json:"indicator"`  // "+", "~", "-" visual indicators (requirements 2.5, 2.6, 2.7)
+	// Field for no-op filtering (Output Refinements feature)
+	IsNoOp bool `json:"-"` // Internal: true if before equals after
 }
 
 // BackendInfo contains information about the Terraform backend
