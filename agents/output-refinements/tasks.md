@@ -46,18 +46,18 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write unit tests for no-op detection logic
 
 ### 4. No-Op Filtering Implementation
-- [ ] 4.1 Implement `filterNoOps` method in `lib/plan/formatter.go` for resource filtering
+- [x] 4.1 Implement `filterNoOps` method in `lib/plan/formatter.go` for resource filtering
   - Filter out resources where `ChangeType == ChangeTypeNoOp` when `ShowNoOps` is false (Requirement 3.2)
   - Preserve original slice when `ShowNoOps` is true
   - Write unit tests for filtering behavior
 
-- [ ] 4.2 Implement `filterNoOpOutputs` method in `lib/plan/formatter.go` for output filtering
+- [x] 4.2 Implement `filterNoOpOutputs` method in `lib/plan/formatter.go` for output filtering
   - Filter out outputs where `IsNoOp == true` when `ShowNoOps` is false (Requirement 4.2)
   - Hide entire output changes section when all outputs are no-ops (Requirement 4.3)
   - Include no-op outputs when `--show-no-ops` flag is enabled (Requirement 4.4)
   - Write unit tests for output filtering scenarios
 
-- [ ] 4.3 Enhance `FormatPlan` method in `lib/plan/formatter.go` to integrate no-op filtering
+- [x] 4.3 Enhance `OutputSummary` method in `lib/plan/formatter.go` to integrate no-op filtering
   - Apply filtering based on `f.config.Plan.ShowNoOps` configuration
   - Display "No changes detected" message when no actual changes exist (Requirement 3.5)
   - Ensure statistics remain unchanged and count all resources including no-ops (Requirement 3.7)
