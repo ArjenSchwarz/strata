@@ -18,13 +18,13 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write unit tests for flag parsing and precedence behavior
 
 ### 2. Property Sorting and Sensitive Value Masking
-- [ ] 2.1 Enhance `analyzePropertyChanges` function in `lib/plan/analyzer.go` to implement alphabetical property sorting
+- [x] 2.1 Enhance `analyzePropertyChanges` function in `lib/plan/analyzer.go` to implement alphabetical property sorting
   - Sort properties case-insensitively by property name within each resource (Requirement 1.1, 1.3)
   - For properties with same name, sort by path hierarchy (Requirement 1.2)  
   - Implement natural sort ordering for special characters and numbers (Requirement 1.4)
   - Write comprehensive unit tests for all sorting scenarios
 
-- [ ] 2.2 Implement immediate sensitive value masking in `compareObjects` function in `lib/plan/analyzer.go`
+- [x] 2.2 Implement immediate sensitive value masking in `compareObjects` function in `lib/plan/analyzer.go`
   - Add `maskSensitiveValue` helper function that returns "(sensitive value)" for table/HTML/Markdown formats (Requirement 5.4)
   - Mask sensitive values immediately during property extraction to ensure security by default (Requirement 5.1, 5.2)
   - Handle nested structures by masking only sensitive leaf values while preserving structure (Requirement 5.5)

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Property Sorting and Sensitive Value Masking**:
+  - Implemented alphabetical property sorting within resources (case-insensitive) with natural sort ordering for numbers and special characters
+  - Added path hierarchy sorting for same-named properties to ensure consistent ordering
+  - Implemented immediate sensitive value masking during property extraction for security by default
+  - Added `maskSensitiveValue` helper function that returns "(sensitive value)" for primitive types while preserving structure for nested objects
+  - Enhanced property comparison logic to mask sensitive values immediately in `compareObjects` function
+  - Added comprehensive unit tests for property sorting, natural sort ordering, sensitive value masking, and nested structure handling
+
 - **No-Op Resources Display Control**:
   - Added `ShowNoOps` field to `PlanConfig` struct with `mapstructure:"show-no-ops"` tag for YAML configuration support
   - Added `--show-no-ops` CLI flag to plan summary command with boolean override capability

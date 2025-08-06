@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,13 +49,38 @@ func NewAnalyzer(plan *tfjson.Plan, cfg *config.Config) *Analyzer {
 	}
 }
 
+// maskSensitiveValue masks sensitive values immediately during extraction for security by default
+// Implements requirement 5.1, 5.2, 5.4, 5.5 for immediate sensitive value masking
+func (a *Analyzer) maskSensitiveValue(value any, isSensitive bool) any {
+	if !isSensitive || value == nil {
+		return value
+	}
+
+	// Only mask primitive values, preserve structure for nested objects (requirement 5.5)
+	switch value.(type) {
+	case map[string]any, []any:
+		// Don't mask complex types - preserve structure for recursion
+		return value
+	default:
+		// Mask primitive sensitive values (requirement 5.4)
+		return sensitiveValue // "(sensitive value)" constant already defined
+	}
+}
+
 // compareObjects performs deep object comparison for property change extraction with optional replacement path checking
 func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, afterUnknown any, replacePathStrings []string, analysis *PropertyChangeAnalysis) {
 	// Check if this property is unknown and handle it first (requirement 1.6)
 	isUnknown := a.isValueUnknown(afterUnknown, path)
 
+	// Check if values are sensitive and mask immediately (requirement 5.1, 5.2)
+	isSensitive := a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive)
+
+	// Apply immediate sensitive value masking for security by default
+	maskedBefore := a.maskSensitiveValue(before, isSensitive)
+	maskedAfter := a.maskSensitiveValue(after, isSensitive)
+
 	// Handle nil cases - but only return early if not unknown
-	if before == nil && after == nil && !isUnknown {
+	if maskedBefore == nil && maskedAfter == nil && !isUnknown {
 		return
 	}
 
@@ -69,22 +95,22 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Helper function to check if this is a nested object property that should be treated as a single change
-	shouldTreatAsNestedObject := func(before, after any, path string) bool {
+	shouldTreatAsNestedObject := func(maskedBefore, maskedAfter any, path string) bool {
 		// Never treat root-level objects as nested (empty path means root level)
 		if path == "" {
 			return false
 		}
 
 		// Check if both values are maps (nested objects)
-		beforeMap, beforeIsMap := before.(map[string]any)
-		afterMap, afterIsMap := after.(map[string]any)
+		beforeMap, beforeIsMap := maskedBefore.(map[string]any)
+		afterMap, afterIsMap := maskedAfter.(map[string]any)
 
 		if !beforeIsMap && !afterIsMap {
 			return false
 		}
 
 		// Handle cases where one is nil (complete addition/removal of nested object)
-		if (before == nil && afterIsMap) || (after == nil && beforeIsMap) {
+		if (maskedBefore == nil && afterIsMap) || (maskedAfter == nil && beforeIsMap) {
 			return true
 		}
 
@@ -125,33 +151,33 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Determine action type
-	determineAction := func(before, after any) string {
+	determineAction := func(maskedBefore, maskedAfter any) string {
 		// For unknown values, if before is nil, it's an add; otherwise it's an update
 		if isUnknown {
-			if before == nil {
+			if maskedBefore == nil {
 				return actionAdd
 			}
 			return actionUpdate
 		}
-		if before == nil {
+		if maskedBefore == nil {
 			return actionAdd
 		}
-		if after == nil {
+		if maskedAfter == nil {
 			return "remove"
 		}
 		return actionUpdate
 	}
 
 	// Handle nested objects first - check if this should be treated as a single nested property change
-	_, beforeIsMap := before.(map[string]any)
-	_, afterIsMap := after.(map[string]any)
+	_, beforeIsMap := maskedBefore.(map[string]any)
+	_, afterIsMap := maskedAfter.(map[string]any)
 
-	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(before, after, path) {
-		// Only create a PropertyChange if the objects are actually different
+	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(maskedBefore, maskedAfter, path) {
+		// Only create a PropertyChange if the objects are actually different (compare originals to detect changes)
 		if !equals(before, after) {
 			propertyPath := a.parsePath(path)
 			triggersReplacement := false
-			action := determineAction(before, after)
+			action := determineAction(maskedBefore, maskedAfter)
 
 			// Check replacement paths if provided
 			if len(replacePathStrings) > 0 {
@@ -159,7 +185,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			}
 
 			// Handle unknown values override logic (requirement 1.6)
-			displayAfter := after
+			displayAfter := maskedAfter
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
@@ -169,11 +195,11 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
-				Before:              before,
+				Before:              maskedBefore,
 				After:               displayAfter,
 				Action:              action,
 				TriggersReplacement: triggersReplacement,
-				Sensitive:           a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+				Sensitive:           isSensitive, // Already computed above
 				IsUnknown:           isUnknown,
 				UnknownType:         unknownType,
 			})
@@ -183,9 +209,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Property changes - only record for leaf values, not complex objects
-	action := determineAction(before, after)
-	// Create a property change if there's an actual change, or if the property is unknown (even if both values are nil)
-	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(before) && !isComplexType(after)
+	action := determineAction(maskedBefore, maskedAfter)
+	// Create a property change if there's an actual change, or if the property is unknown (compare originals to detect changes)
+	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(maskedBefore) && !isComplexType(maskedAfter)
 	if shouldCreateChange {
 		propertyPath := a.parsePath(path)
 		triggersReplacement := false
@@ -196,7 +222,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		}
 
 		// Handle unknown values for leaf properties (requirement 1.6)
-		displayAfter := after
+		displayAfter := maskedAfter
 		unknownType := ""
 		if isUnknown {
 			displayAfter = a.getUnknownValueDisplay()
@@ -206,17 +232,17 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		analysis.Changes = append(analysis.Changes, PropertyChange{
 			Name:                a.extractPropertyName(path),
 			Path:                propertyPath,
-			Before:              before,
+			Before:              maskedBefore,
 			After:               displayAfter,
 			Action:              action,
 			TriggersReplacement: triggersReplacement,
-			Sensitive:           a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive),
+			Sensitive:           isSensitive, // Already computed above
 			IsUnknown:           isUnknown,
 			UnknownType:         unknownType,
 		})
 
 		// For leaf values, don't recurse further
-		if !isComplexType(before) && !isComplexType(after) {
+		if !isComplexType(maskedBefore) && !isComplexType(maskedAfter) {
 			return
 		}
 	}
@@ -390,6 +416,119 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			}
 		}
 	}
+}
+
+// sortPropertiesAlphabetically sorts properties within a resource alphabetically by name and path
+// Implements requirements 1.1, 1.2, 1.3, and 1.4 for property sorting
+func (a *Analyzer) sortPropertiesAlphabetically(analysis *PropertyChangeAnalysis) {
+	sort.Slice(analysis.Changes, func(i, j int) bool {
+		prop1, prop2 := analysis.Changes[i], analysis.Changes[j]
+
+		// First: Sort by property name (case-insensitive) - requirement 1.1 and 1.3
+		name1 := strings.ToLower(prop1.Name)
+		name2 := strings.ToLower(prop2.Name)
+
+		if name1 != name2 {
+			// Natural sort ordering for special characters and numbers - requirement 1.4
+			return a.naturalSort(name1, name2)
+		}
+
+		// Second: For same-named properties, sort by path hierarchy - requirement 1.2
+		path1 := strings.Join(prop1.Path, ".")
+		path2 := strings.Join(prop2.Path, ".")
+
+		if path1 != path2 {
+			return a.naturalSort(strings.ToLower(path1), strings.ToLower(path2))
+		}
+
+		// Final tiebreaker: by action type for consistent ordering
+		actionOrder := map[string]int{
+			"remove": 0,
+			"update": 1,
+			"add":    2,
+		}
+
+		order1, exists1 := actionOrder[prop1.Action]
+		order2, exists2 := actionOrder[prop2.Action]
+
+		if exists1 && exists2 {
+			return order1 < order2
+		}
+
+		// Default alphabetical comparison for unknown actions
+		return prop1.Action < prop2.Action
+	})
+}
+
+// naturalSort implements natural sorting for strings with numbers
+// This ensures "prop1, prop2, prop10" instead of "prop1, prop10, prop2" - requirement 1.4
+func (a *Analyzer) naturalSort(s1, s2 string) bool {
+	// Simple implementation of natural sort
+	// Split strings into alternating text and numeric parts
+	parts1 := a.splitNatural(s1)
+	parts2 := a.splitNatural(s2)
+
+	minLen := len(parts1)
+	if len(parts2) < minLen {
+		minLen = len(parts2)
+	}
+
+	for i := 0; i < minLen; i++ {
+		part1, part2 := parts1[i], parts2[i]
+
+		// Try to parse as numbers
+		if num1, err1 := strconv.Atoi(part1); err1 == nil {
+			if num2, err2 := strconv.Atoi(part2); err2 == nil {
+				// Both are numbers - compare numerically
+				if num1 != num2 {
+					return num1 < num2
+				}
+				continue
+			}
+		}
+
+		// Compare as strings
+		if part1 != part2 {
+			return part1 < part2
+		}
+	}
+
+	// If all compared parts are equal, shorter string comes first
+	return len(parts1) < len(parts2)
+}
+
+// splitNatural splits a string into alternating text and numeric parts
+func (a *Analyzer) splitNatural(s string) []string {
+	var parts []string
+	var current strings.Builder
+	var isDigit bool
+
+	// Handle empty string case
+	if s == "" {
+		return []string{}
+	}
+
+	for i, r := range s {
+		currIsDigit := r >= '0' && r <= '9'
+
+		// If type changes (digit to non-digit or vice versa), start new part
+		if i > 0 && currIsDigit != isDigit {
+			if current.Len() > 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			}
+		}
+
+		current.WriteRune(r)
+		isDigit = currIsDigit
+	}
+
+	// Add the last part
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
+	return parts
 }
 
 // enforcePropertyLimits enforces performance limits on property analysis to prevent excessive memory usage
@@ -1273,6 +1412,9 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 		change.Change.BeforeSensitive, change.Change.AfterSensitive, change.Change.AfterUnknown, replacePathStrings, &analysis)
 
 	// Note: Deduplication removed - improved comparison logic prevents duplicates at source
+
+	// Sort properties alphabetically within the resource (requirement 1.1, 1.2, 1.3, 1.4)
+	a.sortPropertiesAlphabetically(&analysis)
 
 	// Apply performance limits using the new dedicated function
 	a.enforcePropertyLimits(&analysis)
