@@ -4763,3 +4763,446 @@ func TestCrossFormatConsistencyForUnknownValuesAndOutputs(t *testing.T) {
 		}
 	})
 }
+
+// TestSortPropertiesAlphabetically tests the property sorting functionality
+func TestSortPropertiesAlphabetically(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		input    []PropertyChange
+		expected []PropertyChange
+	}{
+		{
+			name: "Basic alphabetical sorting case-insensitive",
+			input: []PropertyChange{
+				{Name: "zebra", Path: []string{"zebra"}, Action: "update"},
+				{Name: "Apple", Path: []string{"Apple"}, Action: "update"},
+				{Name: "banana", Path: []string{"banana"}, Action: "update"},
+			},
+			expected: []PropertyChange{
+				{Name: "Apple", Path: []string{"Apple"}, Action: "update"},
+				{Name: "banana", Path: []string{"banana"}, Action: "update"},
+				{Name: "zebra", Path: []string{"zebra"}, Action: "update"},
+			},
+		},
+		{
+			name: "Same name properties sorted by path hierarchy",
+			input: []PropertyChange{
+				{Name: "config", Path: []string{"config", "nested", "deep"}, Action: "update"},
+				{Name: "config", Path: []string{"config", "basic"}, Action: "update"},
+				{Name: "config", Path: []string{"config"}, Action: "update"},
+			},
+			expected: []PropertyChange{
+				{Name: "config", Path: []string{"config"}, Action: "update"},
+				{Name: "config", Path: []string{"config", "basic"}, Action: "update"},
+				{Name: "config", Path: []string{"config", "nested", "deep"}, Action: "update"},
+			},
+		},
+		{
+			name: "Natural sort ordering with numbers",
+			input: []PropertyChange{
+				{Name: "prop10", Path: []string{"prop10"}, Action: "update"},
+				{Name: "prop2", Path: []string{"prop2"}, Action: "update"},
+				{Name: "prop1", Path: []string{"prop1"}, Action: "update"},
+				{Name: "prop20", Path: []string{"prop20"}, Action: "update"},
+			},
+			expected: []PropertyChange{
+				{Name: "prop1", Path: []string{"prop1"}, Action: "update"},
+				{Name: "prop2", Path: []string{"prop2"}, Action: "update"},
+				{Name: "prop10", Path: []string{"prop10"}, Action: "update"},
+				{Name: "prop20", Path: []string{"prop20"}, Action: "update"},
+			},
+		},
+		{
+			name: "Action type tiebreaker for identical names and paths",
+			input: []PropertyChange{
+				{Name: "prop", Path: []string{"prop"}, Action: "add"},
+				{Name: "prop", Path: []string{"prop"}, Action: "remove"},
+				{Name: "prop", Path: []string{"prop"}, Action: "update"},
+			},
+			expected: []PropertyChange{
+				{Name: "prop", Path: []string{"prop"}, Action: "remove"},
+				{Name: "prop", Path: []string{"prop"}, Action: "update"},
+				{Name: "prop", Path: []string{"prop"}, Action: "add"},
+			},
+		},
+		{
+			name: "Mixed properties with special characters",
+			input: []PropertyChange{
+				{Name: "user_data", Path: []string{"user_data"}, Action: "update"},
+				{Name: "user-name", Path: []string{"user-name"}, Action: "update"},
+				{Name: "user.config", Path: []string{"user.config"}, Action: "update"},
+				{Name: "user", Path: []string{"user"}, Action: "update"},
+			},
+			expected: []PropertyChange{
+				{Name: "user", Path: []string{"user"}, Action: "update"},
+				{Name: "user-name", Path: []string{"user-name"}, Action: "update"},
+				{Name: "user.config", Path: []string{"user.config"}, Action: "update"},
+				{Name: "user_data", Path: []string{"user_data"}, Action: "update"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			analysis := &PropertyChangeAnalysis{Changes: tc.input}
+			analyzer.sortPropertiesAlphabetically(analysis)
+
+			assert.Equal(t, len(tc.expected), len(analysis.Changes), "Length should match")
+
+			for i, expected := range tc.expected {
+				actual := analysis.Changes[i]
+				assert.Equal(t, expected.Name, actual.Name, "Property name at index %d should match", i)
+				assert.Equal(t, expected.Path, actual.Path, "Property path at index %d should match", i)
+				assert.Equal(t, expected.Action, actual.Action, "Property action at index %d should match", i)
+			}
+		})
+	}
+}
+
+// TestNaturalSort tests the natural sorting implementation
+func TestNaturalSort(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		s1       string
+		s2       string
+		expected bool
+	}{
+		{
+			name:     "Simple alphabetical order",
+			s1:       "apple",
+			s2:       "banana",
+			expected: true,
+		},
+		{
+			name:     "Numbers should sort numerically",
+			s1:       "item2",
+			s2:       "item10",
+			expected: true,
+		},
+		{
+			name:     "Mixed text and numbers",
+			s1:       "version1.2.3",
+			s2:       "version1.10.1",
+			expected: true,
+		},
+		{
+			name:     "Same prefix with numbers",
+			s1:       "prop1",
+			s2:       "prop2",
+			expected: true,
+		},
+		{
+			name:     "Equal strings",
+			s1:       "same",
+			s2:       "same",
+			expected: false,
+		},
+		{
+			name:     "Leading numbers",
+			s1:       "2item",
+			s2:       "10item",
+			expected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.naturalSort(tc.s1, tc.s2)
+			assert.Equal(t, tc.expected, result, "Natural sort result should match expected")
+		})
+	}
+}
+
+// TestSplitNatural tests the natural string splitting functionality
+func TestSplitNatural(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "Simple text",
+			input:    "hello",
+			expected: []string{"hello"},
+		},
+		{
+			name:     "Simple number",
+			input:    "123",
+			expected: []string{"123"},
+		},
+		{
+			name:     "Text with number",
+			input:    "item123",
+			expected: []string{"item", "123"},
+		},
+		{
+			name:     "Number then text",
+			input:    "123item",
+			expected: []string{"123", "item"},
+		},
+		{
+			name:     "Complex mixed",
+			input:    "version1.2.3",
+			expected: []string{"version", "1", ".", "2", ".", "3"},
+		},
+		{
+			name:     "Multiple numbers",
+			input:    "item123test456",
+			expected: []string{"item", "123", "test", "456"},
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.splitNatural(tc.input)
+			assert.Equal(t, tc.expected, result, "Split result should match expected")
+		})
+	}
+}
+
+// TestAnalyzePropertyChangesWithSorting tests the integration of sorting with property analysis
+func TestAnalyzePropertyChangesWithSorting(t *testing.T) {
+	analyzer := NewAnalyzer(nil, &config.Config{})
+
+	// Create a test resource change with unsorted properties
+	resourceChange := &tfjson.ResourceChange{
+		Address: "test.resource",
+		Type:    "test_resource",
+		Name:    "resource",
+		Change: &tfjson.Change{
+			Before: map[string]any{
+				"zebra_config":  "old_value",
+				"apple_setting": "old_value",
+				"banana_option": "old_value",
+			},
+			After: map[string]any{
+				"zebra_config":  "new_value",
+				"apple_setting": "new_value",
+				"banana_option": "new_value",
+			},
+		},
+	}
+
+	result := analyzer.analyzePropertyChanges(resourceChange)
+
+	// Verify that properties are sorted alphabetically
+	assert.True(t, len(result.Changes) >= 3, "Should have at least 3 property changes")
+
+	// Properties should be sorted alphabetically: apple_setting, banana_option, zebra_config
+	propertyNames := make([]string, len(result.Changes))
+	for i, change := range result.Changes {
+		propertyNames[i] = change.Name
+	}
+
+	// Check that properties are in alphabetical order
+	for i := 1; i < len(propertyNames); i++ {
+		assert.True(t, strings.ToLower(propertyNames[i-1]) <= strings.ToLower(propertyNames[i]),
+			"Properties should be in alphabetical order: %v", propertyNames)
+	}
+}
+
+// TestMaskSensitiveValue tests the sensitive value masking functionality
+func TestMaskSensitiveValue(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name        string
+		value       any
+		isSensitive bool
+		expected    any
+	}{
+		{
+			name:        "Non-sensitive value should not be masked",
+			value:       "normal_value",
+			isSensitive: false,
+			expected:    "normal_value",
+		},
+		{
+			name:        "Sensitive primitive string should be masked",
+			value:       "secret_password",
+			isSensitive: true,
+			expected:    "(sensitive value)",
+		},
+		{
+			name:        "Sensitive primitive number should be masked",
+			value:       12345,
+			isSensitive: true,
+			expected:    "(sensitive value)",
+		},
+		{
+			name:        "Sensitive primitive boolean should be masked",
+			value:       true,
+			isSensitive: true,
+			expected:    "(sensitive value)",
+		},
+		{
+			name:        "Sensitive map should preserve structure",
+			value:       map[string]any{"key": "value"},
+			isSensitive: true,
+			expected:    map[string]any{"key": "value"},
+		},
+		{
+			name:        "Sensitive slice should preserve structure",
+			value:       []any{"item1", "item2"},
+			isSensitive: true,
+			expected:    []any{"item1", "item2"},
+		},
+		{
+			name:        "Nil value should remain nil",
+			value:       nil,
+			isSensitive: true,
+			expected:    nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.maskSensitiveValue(tc.value, tc.isSensitive)
+			assert.Equal(t, tc.expected, result, "Masked value should match expected")
+		})
+	}
+}
+
+// TestCompareObjectsWithSensitiveMasking tests the integration of sensitive masking with property comparison
+func TestCompareObjectsWithSensitiveMasking(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	// Test case: property change with sensitive values
+	analysis := &PropertyChangeAnalysis{Changes: []PropertyChange{}}
+
+	// Create test data with sensitive values
+	before := map[string]any{
+		"password": "old_secret",
+		"username": "normal_user",
+	}
+	after := map[string]any{
+		"password": "new_secret",
+		"username": "normal_user",
+	}
+
+	// Sensitive flags indicating "password" is sensitive
+	beforeSensitive := map[string]any{
+		"password": true,
+		"username": false,
+	}
+	afterSensitive := map[string]any{
+		"password": true,
+		"username": false,
+	}
+
+	// Call compareObjects with sensitive data
+	analyzer.compareObjects("", before, after, beforeSensitive, afterSensitive, nil, []string{}, analysis)
+
+	// Verify that sensitive values are masked while non-sensitive values are preserved
+	passwordFound := false
+	usernameFound := false
+
+	for _, change := range analysis.Changes {
+		switch change.Name {
+		case "password":
+			passwordFound = true
+			assert.True(t, change.Sensitive, "Password property should be marked as sensitive")
+			assert.Equal(t, "(sensitive value)", change.Before, "Sensitive before value should be masked")
+			assert.Equal(t, "(sensitive value)", change.After, "Sensitive after value should be masked")
+		case "username":
+			usernameFound = true
+			assert.False(t, change.Sensitive, "Username property should not be marked as sensitive")
+			assert.Equal(t, "normal_user", change.Before, "Non-sensitive before value should not be masked")
+			assert.Equal(t, "normal_user", change.After, "Non-sensitive after value should not be masked")
+		}
+	}
+
+	// Only password should change since username values are identical
+	assert.True(t, passwordFound, "Should find password change")
+	assert.False(t, usernameFound, "Should not find username change since values are identical")
+}
+
+// TestCompareObjectsWithNestedSensitiveValues tests sensitive masking in nested structures
+func TestCompareObjectsWithNestedSensitiveValues(t *testing.T) {
+	analyzer := &Analyzer{}
+	analysis := &PropertyChangeAnalysis{Changes: []PropertyChange{}}
+
+	// Test nested structure with some sensitive leaf values
+	before := map[string]any{
+		"config": map[string]any{
+			"api_key":  "old_key",
+			"endpoint": "https://api.example.com",
+			"settings": map[string]any{
+				"timeout": 30,
+				"secret":  "old_secret",
+			},
+		},
+	}
+	after := map[string]any{
+		"config": map[string]any{
+			"api_key":  "new_key",
+			"endpoint": "https://api.example.com",
+			"settings": map[string]any{
+				"timeout": 60,
+				"secret":  "new_secret",
+			},
+		},
+	}
+
+	// Sensitive flags - api_key and secret are sensitive
+	beforeSensitive := map[string]any{
+		"config": map[string]any{
+			"api_key":  true,
+			"endpoint": false,
+			"settings": map[string]any{
+				"timeout": false,
+				"secret":  true,
+			},
+		},
+	}
+	afterSensitive := map[string]any{
+		"config": map[string]any{
+			"api_key":  true,
+			"endpoint": false,
+			"settings": map[string]any{
+				"timeout": false,
+				"secret":  true,
+			},
+		},
+	}
+
+	analyzer.compareObjects("", before, after, beforeSensitive, afterSensitive, nil, []string{}, analysis)
+
+	// Check that sensitive leaf values are masked while structure is preserved
+	changesByName := make(map[string]PropertyChange)
+	for _, change := range analysis.Changes {
+		changesByName[change.Name] = change
+	}
+
+	// api_key should be masked
+	if apiKeyChange, exists := changesByName["api_key"]; exists {
+		assert.True(t, apiKeyChange.Sensitive, "api_key should be marked as sensitive")
+		assert.Equal(t, "(sensitive value)", apiKeyChange.Before, "Sensitive api_key before value should be masked")
+		assert.Equal(t, "(sensitive value)", apiKeyChange.After, "Sensitive api_key after value should be masked")
+	}
+
+	// timeout should not be masked
+	if timeoutChange, exists := changesByName["timeout"]; exists {
+		assert.False(t, timeoutChange.Sensitive, "timeout should not be marked as sensitive")
+		assert.Equal(t, 30, timeoutChange.Before, "Non-sensitive timeout before value should not be masked")
+		assert.Equal(t, 60, timeoutChange.After, "Non-sensitive timeout after value should not be masked")
+	}
+
+	// secret should be masked
+	if secretChange, exists := changesByName["secret"]; exists {
+		assert.True(t, secretChange.Sensitive, "secret should be marked as sensitive")
+		assert.Equal(t, "(sensitive value)", secretChange.Before, "Sensitive secret before value should be masked")
+		assert.Equal(t, "(sensitive value)", secretChange.After, "Sensitive secret after value should be masked")
+	}
+}
