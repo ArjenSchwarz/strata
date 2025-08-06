@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **No-op resource and output detection for Output Refinements feature**:
+  - Added `IsNoOp` field to `ResourceChange` struct for internal no-op resource tracking
+  - Added `IsNoOp` field to `OutputChange` struct for internal no-op output tracking  
+  - Enhanced resource analysis to automatically mark resources with no changes (`ChangeTypeNoOp`)
+  - Enhanced output analysis to detect outputs with identical before/after values using deep equality comparison
 - **Property Sorting and Sensitive Value Masking**:
   - Implemented alphabetical property sorting within resources (case-insensitive) with natural sort ordering for numbers and special characters
   - Added path hierarchy sorting for same-named properties to ensure consistent ordering

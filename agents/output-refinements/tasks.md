@@ -32,15 +32,15 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write unit tests for masking behavior across all scenarios
 
 ### 3. No-Op Resource and Output Detection  
-- [ ] 3.1 Add `IsNoOp bool` field to `ResourceChange` struct in `lib/plan/models.go`
+- [x] 3.1 Add `IsNoOp bool` field to `ResourceChange` struct in `lib/plan/models.go`
   - Add JSON tag with `json:"-"` to exclude from output serialization
   - Update model to support internal no-op tracking
 
-- [ ] 3.2 Add `IsNoOp bool` field to `OutputChange` struct in `lib/plan/models.go`  
+- [x] 3.2 Add `IsNoOp bool` field to `OutputChange` struct in `lib/plan/models.go`  
   - Add JSON tag with `json:"-"` for internal use only
   - Support detection of outputs with identical before/after values
 
-- [ ] 3.3 Enhance `AnalyzePlan` function in `lib/plan/analyzer.go` to detect no-op resources and outputs
+- [x] 3.3 Enhance `AnalyzePlan` function in `lib/plan/analyzer.go` to detect no-op resources and outputs
   - Mark resources with `ChangeTypeNoOp` by setting `IsNoOp = true`
   - Detect output changes where before and after values are identical using `reflect.DeepEqual` (Requirement 4.1)
   - Write unit tests for no-op detection logic
