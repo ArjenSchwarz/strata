@@ -75,12 +75,12 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	// Check if values are sensitive and mask immediately (requirement 5.1, 5.2)
 	isSensitive := a.isSensitive(path, beforeSensitive) || a.isSensitive(path, afterSensitive)
 
-	// Apply immediate sensitive value masking for security by default
-	maskedBefore := a.maskSensitiveValue(before, isSensitive)
-	maskedAfter := a.maskSensitiveValue(after, isSensitive)
+	// Apply immediate sensitive value processing for security by default
+	processedBefore := a.maskSensitiveValue(before, isSensitive)
+	processedAfter := a.maskSensitiveValue(after, isSensitive)
 
 	// Handle nil cases - but only return early if not unknown
-	if maskedBefore == nil && maskedAfter == nil && !isUnknown {
+	if processedBefore == nil && processedAfter == nil && !isUnknown {
 		return
 	}
 
@@ -95,22 +95,22 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Helper function to check if this is a nested object property that should be treated as a single change
-	shouldTreatAsNestedObject := func(maskedBefore, maskedAfter any, path string) bool {
+	shouldTreatAsNestedObject := func(processedBefore, processedAfter any, path string) bool {
 		// Never treat root-level objects as nested (empty path means root level)
 		if path == "" {
 			return false
 		}
 
 		// Check if both values are maps (nested objects)
-		beforeMap, beforeIsMap := maskedBefore.(map[string]any)
-		afterMap, afterIsMap := maskedAfter.(map[string]any)
+		beforeMap, beforeIsMap := processedBefore.(map[string]any)
+		afterMap, afterIsMap := processedAfter.(map[string]any)
 
 		if !beforeIsMap && !afterIsMap {
 			return false
 		}
 
 		// Handle cases where one is nil (complete addition/removal of nested object)
-		if (maskedBefore == nil && afterIsMap) || (maskedAfter == nil && beforeIsMap) {
+		if (processedBefore == nil && afterIsMap) || (processedAfter == nil && beforeIsMap) {
 			return true
 		}
 
@@ -151,33 +151,33 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Determine action type
-	determineAction := func(maskedBefore, maskedAfter any) string {
+	determineAction := func(processedBefore, processedAfter any) string {
 		// For unknown values, if before is nil, it's an add; otherwise it's an update
 		if isUnknown {
-			if maskedBefore == nil {
+			if processedBefore == nil {
 				return actionAdd
 			}
 			return actionUpdate
 		}
-		if maskedBefore == nil {
+		if processedBefore == nil {
 			return actionAdd
 		}
-		if maskedAfter == nil {
+		if processedAfter == nil {
 			return "remove"
 		}
 		return actionUpdate
 	}
 
 	// Handle nested objects first - check if this should be treated as a single nested property change
-	_, beforeIsMap := maskedBefore.(map[string]any)
-	_, afterIsMap := maskedAfter.(map[string]any)
+	_, beforeIsMap := processedBefore.(map[string]any)
+	_, afterIsMap := processedAfter.(map[string]any)
 
-	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(maskedBefore, maskedAfter, path) {
+	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(processedBefore, processedAfter, path) {
 		// Only create a PropertyChange if the objects are actually different (compare originals to detect changes)
-		if !equals(before, after) {
+		if !reflect.DeepEqual(before, after) {
 			propertyPath := a.parsePath(path)
 			triggersReplacement := false
-			action := determineAction(maskedBefore, maskedAfter)
+			action := determineAction(processedBefore, processedAfter)
 
 			// Check replacement paths if provided
 			if len(replacePathStrings) > 0 {
@@ -185,7 +185,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			}
 
 			// Handle unknown values override logic (requirement 1.6)
-			displayAfter := maskedAfter
+			displayAfter := processedAfter
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
@@ -195,7 +195,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
-				Before:              maskedBefore,
+				Before:              processedBefore,
 				After:               displayAfter,
 				Action:              action,
 				TriggersReplacement: triggersReplacement,
@@ -209,9 +209,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Property changes - only record for leaf values, not complex objects
-	action := determineAction(maskedBefore, maskedAfter)
+	action := determineAction(processedBefore, processedAfter)
 	// Create a property change if there's an actual change, or if the property is unknown (compare originals to detect changes)
-	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(maskedBefore) && !isComplexType(maskedAfter)
+	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(processedBefore) && !isComplexType(processedAfter)
 	if shouldCreateChange {
 		propertyPath := a.parsePath(path)
 		triggersReplacement := false
@@ -222,7 +222,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		}
 
 		// Handle unknown values for leaf properties (requirement 1.6)
-		displayAfter := maskedAfter
+		displayAfter := processedAfter
 		unknownType := ""
 		if isUnknown {
 			displayAfter = a.getUnknownValueDisplay()
@@ -232,7 +232,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		analysis.Changes = append(analysis.Changes, PropertyChange{
 			Name:                a.extractPropertyName(path),
 			Path:                propertyPath,
-			Before:              maskedBefore,
+			Before:              processedBefore,
 			After:               displayAfter,
 			Action:              action,
 			TriggersReplacement: triggersReplacement,
@@ -242,7 +242,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		})
 
 		// For leaf values, don't recurse further
-		if !isComplexType(maskedBefore) && !isComplexType(maskedAfter) {
+		if !isComplexType(processedBefore) && !isComplexType(processedAfter) {
 			return
 		}
 	}
@@ -1180,7 +1180,7 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 		afterVal := afterMap[propName]
 
 		// If property has changed and is sensitive, add to list
-		if !equals(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
+		if !reflect.DeepEqual(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
 			sensitiveProps = append(sensitiveProps, propName)
 		}
 	}
@@ -1375,7 +1375,7 @@ func (a *Analyzer) getTopChangedProperties(change *tfjson.ResourceChange, limit 
 		afterVal := afterMap[propName]
 
 		// If property exists in before and values differ, it's changed
-		if existsBefore && !equals(beforeVal, afterVal) {
+		if existsBefore && !reflect.DeepEqual(beforeVal, afterVal) {
 			properties = append(properties, propName)
 			count++
 		}
@@ -1495,7 +1495,7 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 	}
 
 	// If values are equal, no change
-	if equals(before, after) {
+	if reflect.DeepEqual(before, after) {
 		return nil
 	}
 
@@ -1580,7 +1580,7 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 				afterVal = afterSlice[i]
 			}
 
-			if !equals(beforeVal, afterVal) {
+			if !reflect.DeepEqual(beforeVal, afterVal) {
 				err := a.compareValues(beforeVal, afterVal, indexPath, depth+1, maxDepth, callback)
 				if err != nil {
 					return err
@@ -1771,65 +1771,4 @@ func (a *Analyzer) isValueUnknown(afterUnknown any, path string) bool {
 // getUnknownValueDisplay returns the exact Terraform syntax for unknown values
 func (a *Analyzer) getUnknownValueDisplay() string {
 	return "(known after apply)"
-}
-
-// equals is a helper to compare two values, handling maps and slices specially
-func equals(a, b any) bool {
-	// Handle nil cases
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-
-	// Handle maps specially since they're not directly comparable
-	// Check if both are maps
-	aMap, aIsMap := a.(map[string]any)
-	bMap, bIsMap := b.(map[string]any)
-
-	if aIsMap && bIsMap {
-		// If maps have different lengths, they're not equal
-		if len(aMap) != len(bMap) {
-			return false
-		}
-
-		// Check each key-value pair
-		for k, aVal := range aMap {
-			bVal, exists := bMap[k]
-			if !exists {
-				return false
-			}
-
-			// Recursively compare values
-			if !equals(aVal, bVal) {
-				return false
-			}
-		}
-		return true
-	}
-
-	// Handle slices specially since they're not directly comparable
-	aSlice, aIsSlice := a.([]any)
-	bSlice, bIsSlice := b.([]any)
-
-	if aIsSlice && bIsSlice {
-		// If slices have different lengths, they're not equal
-		if len(aSlice) != len(bSlice) {
-			return false
-		}
-
-		// Check each element
-		for i, aVal := range aSlice {
-			bVal := bSlice[i]
-			// Recursively compare values
-			if !equals(aVal, bVal) {
-				return false
-			}
-		}
-		return true
-	}
-
-	// For non-map and non-slice types, use direct comparison
-	return a == b
 }

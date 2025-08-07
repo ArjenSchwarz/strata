@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Comparison Function Standardization**:
+  - Standardized comparison functions in `lib/plan/analyzer.go` - replaced custom `equals()` function with `reflect.DeepEqual()` for consistency (58 lines removed)
+  - Resolved inconsistent comparison function usage that could potentially cause subtle bugs in change detection
+
+### Changed
+- **API Improvements**:
+  - Refactored `hasDangerIndicator` from stateless method to package function in `lib/plan/formatter.go` for better API design and testability
+
+### Added
+- **Testing Infrastructure**:
+  - Added comprehensive unit tests in `lib/plan/comparison_consistency_test.go` to verify comparison consistency and prevent regressions
+  - Tests cover edge cases including nil values, complex nested structures, and sensitive value masking
+
 ### Added
 - **Enhanced Build System and Development Tools**:
   - Added comprehensive Makefile targets including test-verbose, test-coverage, benchmarks, security-scan, and dependency management tools

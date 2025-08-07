@@ -136,6 +136,38 @@ Each implementation task includes specific unit tests to ensure:
 
 Integration tests will validate the complete feature using real Terraform plan files and ensure performance requirements are met (<5% impact on plan summary generation time).
 
+## PR Comment Remediation Tasks
+
+### 10. Critical Issue Resolution (BLOCKING)
+- [x] 10.1 **CRITICAL**: Investigate inconsistent comparison function usage in `lib/plan/analyzer.go`
+  - ✅ Analyzed comparison functions and found they behave identically for typical use cases
+  - ✅ **FIXED**: Replaced all 5 uses of custom `equals()` function with `reflect.DeepEqual()`
+  - ✅ **REMOVED**: Deleted unused `equals()` function (58 lines removed)
+  - ✅ **STANDARDIZED**: All change detection now uses consistent `reflect.DeepEqual()` semantics
+  - ✅ **VERIFIED**: Added comprehensive unit tests in `comparison_consistency_test.go`
+  - ✅ **VALIDATED**: All tests pass, no regressions detected
+  - **Resolution**: The inconsistency has been completely eliminated
+
+### 11. Code Quality Improvements (HIGH PRIORITY)
+- [x] 11.1 **HIGH**: Fix misleading variable names in `compareObjects` function (`lib/plan/analyzer.go:79-80`)
+  - Rename `maskedBefore`/`maskedAfter` to `processedBefore`/`processedAfter` or `displayBefore`/`displayAfter`
+  - **Issue**: Current names are misleading since masking only occurs for primitive values, not complex objects
+  - **Impact**: Could confuse future maintainers in security-sensitive code
+  - Update related comments and documentation to reflect accurate behavior
+
+- [x] 11.2 **MEDIUM**: Refactor stateless method to package function (`lib/plan/formatter.go:132`)
+  - Convert `ActionSortTransformer.hasDangerIndicator()` to package-level function
+  - **Issue**: Method appears stateless but is called on transformer instance, misleading API design
+  - **Benefits**: Improved testability, reusability, and clearer API semantics
+  - Update all call sites to use the new package-level function
+
+### 12. Review Process Improvements (ONGOING)
+- [ ] 12.1 **MEDIUM**: Establish technical review standards for positive assessments
+  - **Issue**: Comprehensive positive review (PR Comment #4) lacked specific technical justification
+  - **Risk**: Could prevent proper scrutiny of complex security-sensitive code
+  - Require all positive reviews to include specific technical evidence and concrete examples
+  - Implement checklist for critical code paths (security, performance, correctness)
+
 ## Implementation Notes
 
 - All enhancements build incrementally on existing components following the pragmatic design approach
@@ -143,3 +175,4 @@ Integration tests will validate the complete feature using real Terraform plan f
 - Each task references specific requirements from the requirements document
 - Implementation maintains full backward compatibility while fixing existing sorting regressions
 - Focus on test-driven development with comprehensive coverage for all new functionality
+- **CRITICAL**: Task 10.1 blocks PR merge and must be completed first

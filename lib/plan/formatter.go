@@ -129,8 +129,8 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 		rowJ := dataRows[sortedIndices[j]]
 
 		// First: Check for danger indicators using enhanced method
-		dangerI := t.hasDangerIndicator(rowI)
-		dangerJ := t.hasDangerIndicator(rowJ)
+		dangerI := hasDangerIndicator(rowI)
+		dangerJ := hasDangerIndicator(rowJ)
 
 		// If one is dangerous and the other isn't, dangerous comes first
 		if dangerI != dangerJ {
@@ -170,7 +170,8 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 
 // hasDangerIndicator checks if a table row contains danger indicators
 // Enhanced for Task 6.1 from Output Refinements feature
-func (t *ActionSortTransformer) hasDangerIndicator(row string) bool {
+// Refactored from ActionSortTransformer method to package function for Task 11.2
+func hasDangerIndicator(row string) bool {
 	// First check for explicit danger indicators in content
 	// Be careful not to match "Add" in words like "address"
 	if strings.Contains(row, "⚠️") ||
