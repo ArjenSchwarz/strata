@@ -101,6 +101,8 @@ type ChangeStatistics struct {
 	HighRisk     int `json:"high_risk"`    // HIGH RISK: Sensitive resources with danger flag
 	Unmodified   int `json:"unmodified"`   // UNMODIFIED: Resources with no changes (no-op)
 	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories
+	// Output change statistics (excludes no-ops per requirement 4.5)
+	OutputChanges int `json:"output_changes"` // OUTPUT CHANGES: Total number of output changes (excludes no-ops)
 }
 
 // IsDestructive returns true if the change type is considered destructive

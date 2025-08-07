@@ -396,13 +396,140 @@ func TestCalculateStatistics(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.calculateStatistics(tc.changes)
+			result := analyzer.calculateStatistics(tc.changes, []OutputChange{})
 			assert.Equal(t, tc.expected.ToAdd, result.ToAdd, "ToAdd mismatch")
 			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
 			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
 			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
 			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
 			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
+			assert.Equal(t, tc.expected.OutputChanges, result.OutputChanges, "OutputChanges mismatch")
+		})
+	}
+}
+
+// TestCalculateStatisticsWithOutputChanges tests statistics behavior with output changes, specifically verifying that no-op outputs are excluded
+func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
+	// Create analyzer with empty config for this test
+	analyzer := &Analyzer{
+		config: &config.Config{},
+	}
+
+	testCases := []struct {
+		name     string
+		changes  []ResourceChange
+		outputs  []OutputChange
+		expected ChangeStatistics
+	}{
+		{
+			name:    "No changes should have all zeros including OutputChanges",
+			changes: []ResourceChange{},
+			outputs: []OutputChange{},
+			expected: ChangeStatistics{
+				ToAdd:         0,
+				ToChange:      0,
+				ToDestroy:     0,
+				Replacements:  0,
+				HighRisk:      0,
+				Unmodified:    0,
+				Total:         0,
+				OutputChanges: 0,
+			},
+		},
+		{
+			name:    "Only output changes should count non-no-op outputs",
+			changes: []ResourceChange{},
+			outputs: []OutputChange{
+				{Name: "output1", ChangeType: ChangeTypeUpdate, IsNoOp: false},
+				{Name: "output2", ChangeType: ChangeTypeCreate, IsNoOp: false},
+				{Name: "output3", ChangeType: ChangeTypeNoOp, IsNoOp: true}, // Should be excluded
+			},
+			expected: ChangeStatistics{
+				ToAdd:         0,
+				ToChange:      0,
+				ToDestroy:     0,
+				Replacements:  0,
+				HighRisk:      0,
+				Unmodified:    0,
+				Total:         0,
+				OutputChanges: 2, // Only non-no-op outputs
+			},
+		},
+		{
+			name: "Mixed resource and output changes should count correctly",
+			changes: []ResourceChange{
+				{ChangeType: ChangeTypeCreate},
+				{ChangeType: ChangeTypeUpdate},
+				{ChangeType: ChangeTypeNoOp}, // Should count in Unmodified but not Total
+			},
+			outputs: []OutputChange{
+				{Name: "output1", ChangeType: ChangeTypeUpdate, IsNoOp: false},
+				{Name: "output2", ChangeType: ChangeTypeNoOp, IsNoOp: true}, // Should be excluded from OutputChanges
+				{Name: "output3", ChangeType: ChangeTypeDelete, IsNoOp: false},
+			},
+			expected: ChangeStatistics{
+				ToAdd:         1,
+				ToChange:      1,
+				ToDestroy:     0,
+				Replacements:  0,
+				HighRisk:      0,
+				Unmodified:    1, // No-op resource counts in Unmodified
+				Total:         2, // Only non-no-op resources
+				OutputChanges: 2, // Only non-no-op outputs
+			},
+		},
+		{
+			name:    "All no-op outputs should result in zero OutputChanges",
+			changes: []ResourceChange{},
+			outputs: []OutputChange{
+				{Name: "output1", ChangeType: ChangeTypeNoOp, IsNoOp: true},
+				{Name: "output2", ChangeType: ChangeTypeNoOp, IsNoOp: true},
+				{Name: "output3", ChangeType: ChangeTypeNoOp, IsNoOp: true},
+			},
+			expected: ChangeStatistics{
+				ToAdd:         0,
+				ToChange:      0,
+				ToDestroy:     0,
+				Replacements:  0,
+				HighRisk:      0,
+				Unmodified:    0,
+				Total:         0,
+				OutputChanges: 0, // All outputs are no-ops, so excluded
+			},
+		},
+		{
+			name: "Resource no-ops should not affect output statistics",
+			changes: []ResourceChange{
+				{ChangeType: ChangeTypeNoOp}, // Resource no-op
+				{ChangeType: ChangeTypeNoOp}, // Another resource no-op
+			},
+			outputs: []OutputChange{
+				{Name: "output1", ChangeType: ChangeTypeUpdate, IsNoOp: false}, // Non-no-op output
+			},
+			expected: ChangeStatistics{
+				ToAdd:         0,
+				ToChange:      0,
+				ToDestroy:     0,
+				Replacements:  0,
+				HighRisk:      0,
+				Unmodified:    2, // Resource no-ops count in Unmodified
+				Total:         0, // No-op resources don't count in Total
+				OutputChanges: 1, // Non-no-op output counts
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.calculateStatistics(tc.changes, tc.outputs)
+			assert.Equal(t, tc.expected.ToAdd, result.ToAdd, "ToAdd mismatch")
+			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
+			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
+			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
+			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
+			assert.Equal(t, tc.expected.Unmodified, result.Unmodified, "Unmodified mismatch")
+			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
+			assert.Equal(t, tc.expected.OutputChanges, result.OutputChanges, "OutputChanges mismatch")
 		})
 	}
 }

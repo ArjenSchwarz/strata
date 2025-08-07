@@ -727,7 +727,7 @@ func (a *Analyzer) GenerateSummary(planFile string) *PlanSummary {
 		summary.CreatedAt = createdAt
 	}
 
-	summary.Statistics = a.calculateStatistics(summary.ResourceChanges)
+	summary.Statistics = a.calculateStatistics(summary.ResourceChanges, summary.OutputChanges)
 	return summary
 }
 
@@ -935,10 +935,11 @@ func (a *Analyzer) isOutputSensitive(oc *tfjson.Change) bool {
 	return false
 }
 
-// calculateStatistics generates statistics from the resource changes
-func (a *Analyzer) calculateStatistics(changes []ResourceChange) ChangeStatistics {
+// calculateStatistics generates statistics from the resource changes and output changes
+func (a *Analyzer) calculateStatistics(changes []ResourceChange, outputs []OutputChange) ChangeStatistics {
 	stats := ChangeStatistics{}
 
+	// Count resource changes
 	for _, change := range changes {
 		// Count by change type
 		switch change.ChangeType {
@@ -957,6 +958,13 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange) ChangeStatistic
 		// Count high-risk changes (any resource with the dangerous flag set)
 		if change.IsDangerous {
 			stats.HighRisk++
+		}
+	}
+
+	// Count output changes (excluding no-ops per requirement 4.5)
+	for _, output := range outputs {
+		if !output.IsNoOp {
+			stats.OutputChanges++
 		}
 	}
 

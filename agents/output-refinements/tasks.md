@@ -91,25 +91,25 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write unit tests for enhanced table transformation
 
 ### 7. Statistics Handling for No-Ops
-- [ ] 7.1 Ensure statistics calculation in `AnalyzePlan` continues to count all resources including no-ops
+- [x] 7.1 Ensure statistics calculation in `AnalyzePlan` continues to count all resources including no-ops
   - Verify that `ChangeStatistics` includes no-op resources regardless of display settings (Requirement 3.7)
   - Exclude no-op outputs from output change counts in statistics (Requirement 4.5)
   - Write unit tests to verify statistics behavior with hidden no-ops
 
 ### 8. Integration Testing and Validation
-- [ ] 8.1 Create comprehensive integration tests in `test/integration/output_refinements_test.go`
+- [x] 8.1 Create comprehensive integration tests in `test/integration/output_refinements_test.go`
   - Test complete workflow with real Terraform plan files containing sensitive values, no-ops, and mixed change types
   - Verify all output formats (table, JSON, HTML, Markdown) handle enhancements correctly
   - Test configuration precedence between CLI flags and config file settings
   - Validate backward compatibility with existing plan files and configurations
 
-- [ ] 8.2 Create edge case tests for all enhancement scenarios
+- [x] 8.2 Create edge case tests for all enhancement scenarios
   - Test empty plans with only no-op resources and outputs
   - Test plans with mixed sensitive/non-sensitive properties in nested structures
   - Test sorting with identical resource addresses and various combinations of danger/action states
   - Test performance with large plans (1000+ resources) to ensure <5% impact
 
-- [ ] 8.3 Update existing unit tests to accommodate enhanced behavior
+- [x] 8.3 Update existing unit tests to accommodate enhanced behavior
   - Review and update formatter tests to work with new sorting and filtering behavior
   - Update analyzer tests to verify property sorting and sensitive masking
   - Ensure all existing functionality continues to work with enhancements

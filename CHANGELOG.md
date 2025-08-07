@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Statistics Calculation Enhancement**:
+  - Enhanced `calculateStatistics` method to properly handle output changes by accepting both resource changes and output changes as parameters
+  - Added output change counting that excludes no-op outputs per requirement 4.5, ensuring statistics accurately reflect only meaningful changes
+  - Updated all callers of `calculateStatistics` to pass output changes for comprehensive statistics tracking
+
+### Added
+- **Comprehensive Testing Infrastructure for Output Refinements**:
+  - Added `output_refinements_edge_cases_test.go` with extensive edge case testing including empty plans, no-op only plans, complex sensitive structures, and identical resource addresses
+  - Added `output_refinements_integration_test.go` with complete end-to-end integration tests covering real Terraform plan workflows and all output formats
+  - Added `output_refinements_test_compatibility_test.go` with backward compatibility validation ensuring existing functionality remains unaffected
+  - Added `testdata/output_refinements_plan.json` with comprehensive test data for validation scenarios
+  - Performance testing with large plans (1000+ resources) to ensure <5% performance impact
+  - Enhanced unit tests for statistics behavior with output changes, verifying no-op exclusion logic
+
 ### Added
 - **Enhanced ActionSortTransformer for Table Output**:
   - Enhanced `hasDangerIndicator` method with improved danger detection logic to identify dangerous resources in table rows using existing danger column regex patterns and handle edge cases where danger indicators might be ambiguous
