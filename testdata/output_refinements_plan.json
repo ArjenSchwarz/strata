@@ -1,0 +1,197 @@
+{
+    "format_version": "1.2",
+    "terraform_version": "1.6.2",
+    "variables": {
+        "environment": {
+            "value": "testing"
+        },
+        "sensitive_key": {
+            "value": "super-secret-key",
+            "sensitive": true
+        }
+    },
+    "planned_values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_instance.web_server",
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web_server",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "ami": "ami-0c02fb55956c7d316",
+                        "instance_type": "t3.medium",
+                        "user_data": "#!/bin/bash\necho 'Hello World'\n",
+                        "tags": {
+                            "Environment": "testing",
+                            "Name": "web-server"
+                        }
+                    }
+                },
+                {
+                    "address": "aws_rds_instance.database",
+                    "mode": "managed",
+                    "type": "aws_rds_instance",
+                    "name": "database",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 1,
+                    "values": {
+                        "allocated_storage": 20,
+                        "engine": "mysql",
+                        "instance_class": "db.t3.micro",
+                        "password": "secret-password",
+                        "tags": {
+                            "Environment": "testing"
+                        }
+                    }
+                },
+                {
+                    "address": "aws_s3_bucket.assets",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket",
+                    "name": "assets",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "bucket": "my-assets-bucket",
+                        "tags": {
+                            "Environment": "testing"
+                        }
+                    }
+                }
+            ]
+        },
+        "outputs": {
+            "instance_ip": {
+                "value": "10.0.1.100",
+                "type": "string"
+            },
+            "database_endpoint": {
+                "value": "db.example.com",
+                "type": "string",
+                "sensitive": true
+            },
+            "bucket_name": {
+                "value": "my-assets-bucket",
+                "type": "string"
+            }
+        }
+    },
+    "resource_changes": [
+        {
+            "address": "aws_instance.web_server",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "web_server",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["update"],
+                "before": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.small",
+                    "user_data": "#!/bin/bash\necho 'Hello'\n",
+                    "tags": {
+                        "Environment": "testing",
+                        "Name": "web-server"
+                    }
+                },
+                "after": {
+                    "ami": "ami-0c02fb55956c7d316",
+                    "instance_type": "t3.medium",
+                    "user_data": "#!/bin/bash\necho 'Hello World'\n",
+                    "tags": {
+                        "Environment": "testing",
+                        "Name": "web-server"
+                    }
+                },
+                "before_sensitive": {
+                    "user_data": false
+                },
+                "after_sensitive": {
+                    "user_data": true
+                }
+            }
+        },
+        {
+            "address": "aws_rds_instance.database",
+            "mode": "managed",
+            "type": "aws_rds_instance",
+            "name": "database",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["delete", "create"],
+                "before": {
+                    "allocated_storage": 20,
+                    "engine": "mysql",
+                    "instance_class": "db.t3.micro",
+                    "password": "old-password",
+                    "tags": {
+                        "Environment": "testing"
+                    }
+                },
+                "after": {
+                    "allocated_storage": 20,
+                    "engine": "mysql",
+                    "instance_class": "db.t3.micro",
+                    "password": "secret-password",
+                    "tags": {
+                        "Environment": "testing"
+                    }
+                },
+                "before_sensitive": {
+                    "password": true
+                },
+                "after_sensitive": {
+                    "password": true
+                }
+            }
+        },
+        {
+            "address": "aws_s3_bucket.assets",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "assets",
+            "provider_name": "registry.terraform.io/hashicorp/aws",
+            "change": {
+                "actions": ["no-op"],
+                "before": {
+                    "bucket": "my-assets-bucket",
+                    "tags": {
+                        "Environment": "testing"
+                    }
+                },
+                "after": {
+                    "bucket": "my-assets-bucket",
+                    "tags": {
+                        "Environment": "testing"
+                    }
+                }
+            }
+        }
+    ],
+    "output_changes": {
+        "instance_ip": {
+            "actions": ["update"],
+            "before": "10.0.1.50",
+            "after": "10.0.1.100",
+            "before_sensitive": false,
+            "after_sensitive": false
+        },
+        "database_endpoint": {
+            "actions": ["update"],
+            "before": "old-db.example.com",
+            "after": "db.example.com",
+            "before_sensitive": true,
+            "after_sensitive": true
+        },
+        "bucket_name": {
+            "actions": ["no-op"],
+            "before": "my-assets-bucket",
+            "after": "my-assets-bucket",
+            "before_sensitive": false,
+            "after_sensitive": false
+        }
+    }
+}
