@@ -265,7 +265,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		builder := output.New()
 		builder = builder.Text("No changes detected")
 		doc := builder.Build()
-		
+
 		stdoutFormat := f.getFormatFromConfig(outputConfig.Format)
 		stdoutOptions := []output.OutputOption{
 			output.WithFormat(stdoutFormat),
@@ -317,7 +317,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	// If no conditions above are met, we show only Plan Information and Summary Statistics tables
 
 	// Output Changes table - placed after resource changes section (requirement 2.1)
-	// Use filtered summary for display  
+	// Use filtered summary for display
 	if err := f.handleOutputDisplay(&filteredSummary, builder); err != nil {
 		return err
 	}
@@ -915,7 +915,9 @@ func (f *Formatter) getDangerDisplay(change ResourceChange) string {
 func (f *Formatter) addResourceChangesWithProgressiveDisclosure(builder *output.Builder, summary *PlanSummary) *output.Builder {
 	// Create table with collapsible formatters for detailed information
 	if len(summary.ResourceChanges) > 0 {
-		tableData := f.prepareResourceTableData(summary.ResourceChanges)
+		// Apply priority sorting before preparing table data (Requirements 2.1, 2.2, 2.3)
+		sortedResources := f.sortResourcesByPriority(summary.ResourceChanges)
+		tableData := f.prepareResourceTableData(sortedResources)
 
 		// Use NewTableContent consistently to match working example pattern
 		schema := f.getResourceTableSchema()
@@ -1000,8 +1002,10 @@ func (f *Formatter) addGroupedResourceChangesWithCollapsibleSections(builder *ou
 			continue
 		}
 
+		// Apply priority sorting within this provider group (Requirement 2.4)
+		sortedResources := f.sortResourcesByPriority(resources)
 		// Prepare table data for this provider's resources
-		tableData := f.prepareResourceTableData(resources)
+		tableData := f.prepareResourceTableData(sortedResources)
 		schema := f.getResourceTableSchema()
 
 		// Determine if this provider section should auto-expand based on high-risk changes
@@ -1234,7 +1238,9 @@ func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *outp
 
 // addProviderGroupTable creates a table for a specific provider group
 func (f *Formatter) addProviderGroupTable(providerName string, resources []ResourceChange, builder *output.Builder) {
-	groupData := f.prepareResourceTableData(resources)
+	// Apply priority sorting within this provider group (Requirement 2.4)
+	sortedResources := f.sortResourcesByPriority(resources)
+	groupData := f.prepareResourceTableData(sortedResources)
 	// Requirement 1.1: Only create table if data exists after filtering no-ops
 	if len(groupData) > 0 {
 		schema := f.getResourceTableSchema()
@@ -1260,7 +1266,9 @@ func (f *Formatter) addProviderGroupTable(providerName string, resources []Resou
 
 // addStandardResourceTable creates a standard resource changes table without grouping
 func (f *Formatter) addStandardResourceTable(summary *PlanSummary, builder *output.Builder) {
-	tableData := f.prepareResourceTableData(summary.ResourceChanges)
+	// Apply priority sorting before preparing table data (Requirements 2.1, 2.2, 2.3)
+	sortedResources := f.sortResourcesByPriority(summary.ResourceChanges)
+	tableData := f.prepareResourceTableData(sortedResources)
 	// Requirement 1.1: Only create table if data exists after filtering no-ops
 	if len(tableData) > 0 {
 		schema := f.getResourceTableSchema()
@@ -1447,4 +1455,40 @@ func (f *Formatter) filterNoOpOutputs(outputs []OutputChange) []OutputChange {
 		}
 	}
 	return filtered
+}
+
+// sortResourcesByPriority sorts resources by danger, action priority, and alphabetically
+// This implements Task 5.1 from the Output Refinements feature (Requirements 2.1, 2.2, 2.3, 2.4)
+func (f *Formatter) sortResourcesByPriority(resources []ResourceChange) []ResourceChange {
+	// Make a copy to avoid modifying the original slice
+	sorted := make([]ResourceChange, len(resources))
+	copy(sorted, resources)
+
+	sort.Slice(sorted, func(i, j int) bool {
+		ri, rj := sorted[i], sorted[j]
+
+		// First: Sort by danger/sensitivity (dangerous resources first - Requirement 2.1)
+		if ri.IsDangerous != rj.IsDangerous {
+			return ri.IsDangerous // Dangerous first
+		}
+
+		// Second: Sort by action type: delete > replace > update > create (Requirement 2.2)
+		actionPriority := map[ChangeType]int{
+			ChangeTypeDelete:  0, // Highest priority
+			ChangeTypeReplace: 1,
+			ChangeTypeUpdate:  2,
+			ChangeTypeCreate:  3,
+			ChangeTypeNoOp:    4, // Lowest priority
+		}
+
+		pi, pj := actionPriority[ri.ChangeType], actionPriority[rj.ChangeType]
+		if pi != pj {
+			return pi < pj
+		}
+
+		// Third: Alphabetical by resource address (Requirement 2.3)
+		return ri.Address < rj.Address
+	})
+
+	return sorted
 }

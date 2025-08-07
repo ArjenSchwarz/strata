@@ -2294,3 +2294,206 @@ func verifyOutputHeaders(t *testing.T, format, _ string) {
 	// Format-specific verification logic would go here
 	t.Logf("Verified output headers for %s format: %v", format, expectedHeaders)
 }
+
+// TestFormatter_sortResourcesByPriority tests the resource priority sorting implementation
+// This tests Requirements 2.1, 2.2, 2.3 from the Output Refinements feature
+func TestFormatter_sortResourcesByPriority(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			ShowDetails:      true,
+			HighlightDangers: true,
+		},
+	}
+	formatter := NewFormatter(cfg)
+
+	// Create test resources with different combinations of danger and action types
+	resources := []ResourceChange{
+		{
+			Address:     "aws_instance.web_server_3",
+			Type:        "aws_instance",
+			ChangeType:  ChangeTypeCreate,
+			IsDangerous: false,
+		},
+		{
+			Address:     "aws_rds_instance.database",
+			Type:        "aws_rds_instance",
+			ChangeType:  ChangeTypeDelete,
+			IsDangerous: true,
+		},
+		{
+			Address:     "aws_instance.web_server_1",
+			Type:        "aws_instance",
+			ChangeType:  ChangeTypeUpdate,
+			IsDangerous: false,
+		},
+		{
+			Address:     "aws_security_group.app",
+			Type:        "aws_security_group",
+			ChangeType:  ChangeTypeReplace,
+			IsDangerous: false,
+		},
+		{
+			Address:     "aws_s3_bucket.sensitive_data",
+			Type:        "aws_s3_bucket",
+			ChangeType:  ChangeTypeReplace,
+			IsDangerous: true,
+		},
+		{
+			Address:     "aws_instance.web_server_2",
+			Type:        "aws_instance",
+			ChangeType:  ChangeTypeUpdate,
+			IsDangerous: true,
+		},
+		{
+			Address:     "aws_instance.app_server",
+			Type:        "aws_instance",
+			ChangeType:  ChangeTypeNoOp,
+			IsDangerous: false,
+		},
+		{
+			Address:     "aws_vpc.main",
+			Type:        "aws_vpc",
+			ChangeType:  ChangeTypeDelete,
+			IsDangerous: false,
+		},
+	}
+
+	// Sort resources using the method under test
+	sorted := formatter.sortResourcesByPriority(resources)
+
+	// Expected order based on sorting requirements:
+	// 1. Dangerous first (IsDangerous = true), then non-dangerous
+	// 2. Within each danger group: delete > replace > update > create > no-op
+	// 3. Within same danger + action: alphabetical by address
+	expectedOrder := []string{
+		// Dangerous resources first, sorted by action priority then alphabetically
+		"aws_rds_instance.database",    // dangerous + delete
+		"aws_s3_bucket.sensitive_data", // dangerous + replace
+		"aws_instance.web_server_2",    // dangerous + update
+		// Non-dangerous resources, sorted by action priority then alphabetically
+		"aws_vpc.main",              // non-dangerous + delete
+		"aws_security_group.app",    // non-dangerous + replace
+		"aws_instance.web_server_1", // non-dangerous + update
+		"aws_instance.web_server_3", // non-dangerous + create
+		"aws_instance.app_server",   // non-dangerous + no-op
+	}
+
+	// Verify the sorting order
+	if len(sorted) != len(expectedOrder) {
+		t.Fatalf("Expected %d resources, got %d", len(expectedOrder), len(sorted))
+	}
+
+	for i, expected := range expectedOrder {
+		if sorted[i].Address != expected {
+			t.Errorf("Position %d: expected %s, got %s", i, expected, sorted[i].Address)
+		}
+	}
+
+	// Verify the sorting criteria are correctly applied
+	t.Run("dangerous_resources_first", func(t *testing.T) {
+		// Find the first non-dangerous resource
+		firstNonDangerousIndex := -1
+		for i, resource := range sorted {
+			if !resource.IsDangerous {
+				firstNonDangerousIndex = i
+				break
+			}
+		}
+
+		if firstNonDangerousIndex == -1 {
+			return // All resources are dangerous
+		}
+
+		// Verify all resources before the first non-dangerous are dangerous
+		for i := 0; i < firstNonDangerousIndex; i++ {
+			if !sorted[i].IsDangerous {
+				t.Errorf("Resource at position %d (%s) should be dangerous", i, sorted[i].Address)
+			}
+		}
+
+		// Verify all resources after are non-dangerous
+		for i := firstNonDangerousIndex; i < len(sorted); i++ {
+			if sorted[i].IsDangerous {
+				t.Errorf("Resource at position %d (%s) should not be dangerous", i, sorted[i].Address)
+			}
+		}
+	})
+
+	t.Run("action_priority_within_danger_groups", func(t *testing.T) {
+		actionPriority := map[ChangeType]int{
+			ChangeTypeDelete:  0,
+			ChangeTypeReplace: 1,
+			ChangeTypeUpdate:  2,
+			ChangeTypeCreate:  3,
+			ChangeTypeNoOp:    4,
+		}
+
+		// Check dangerous resources are sorted by action priority
+		dangerousResources := []ResourceChange{}
+		nonDangerousResources := []ResourceChange{}
+
+		for _, resource := range sorted {
+			if resource.IsDangerous {
+				dangerousResources = append(dangerousResources, resource)
+			} else {
+				nonDangerousResources = append(nonDangerousResources, resource)
+			}
+		}
+
+		// Verify action ordering within dangerous group
+		for i := 1; i < len(dangerousResources); i++ {
+			prevPriority := actionPriority[dangerousResources[i-1].ChangeType]
+			currPriority := actionPriority[dangerousResources[i].ChangeType]
+			if prevPriority > currPriority {
+				t.Errorf("Dangerous resources not sorted by action priority: %s (%d) before %s (%d)",
+					dangerousResources[i-1].Address, prevPriority,
+					dangerousResources[i].Address, currPriority)
+			}
+		}
+
+		// Verify action ordering within non-dangerous group
+		for i := 1; i < len(nonDangerousResources); i++ {
+			prevPriority := actionPriority[nonDangerousResources[i-1].ChangeType]
+			currPriority := actionPriority[nonDangerousResources[i].ChangeType]
+			if prevPriority > currPriority {
+				t.Errorf("Non-dangerous resources not sorted by action priority: %s (%d) before %s (%d)",
+					nonDangerousResources[i-1].Address, prevPriority,
+					nonDangerousResources[i].Address, currPriority)
+			}
+		}
+	})
+
+	t.Run("alphabetical_within_same_danger_and_action", func(t *testing.T) {
+		// Group resources by danger status and action type
+		groups := make(map[string][]ResourceChange)
+
+		for _, resource := range sorted {
+			key := fmt.Sprintf("%t_%s", resource.IsDangerous, resource.ChangeType)
+			groups[key] = append(groups[key], resource)
+		}
+
+		// Verify alphabetical ordering within each group
+		for key, group := range groups {
+			for i := 1; i < len(group); i++ {
+				if group[i-1].Address > group[i].Address {
+					t.Errorf("Resources in group %s not sorted alphabetically: %s before %s",
+						key, group[i-1].Address, group[i].Address)
+				}
+			}
+		}
+	})
+
+	// Verify original slice is not modified (testing immutability)
+	t.Run("original_slice_unchanged", func(t *testing.T) {
+		if &resources[0] == &sorted[0] {
+			t.Error("sortResourcesByPriority should return a new slice, not modify original")
+		}
+
+		// Verify original order is preserved
+		originalFirstAddress := "aws_instance.web_server_3"
+		if resources[0].Address != originalFirstAddress {
+			t.Errorf("Original slice was modified: expected first element to be %s, got %s",
+				originalFirstAddress, resources[0].Address)
+		}
+	})
+}
