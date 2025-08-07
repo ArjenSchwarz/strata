@@ -115,11 +115,11 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Ensure all existing functionality continues to work with enhancements
 
 ### 9. Documentation and Configuration Updates
-- [ ] 9.1 Update CLI help text in `cmd/plan_summary.go` to document the new `--show-no-ops` flag
+- [x] 9.1 Update CLI help text in `cmd/plan_summary.go` to document the new `--show-no-ops` flag
   - Provide clear explanation of flag behavior and interaction with configuration
   - Include examples of usage scenarios
 
-- [ ] 9.2 Update default `strata.yaml` configuration file to include new option with documentation
+- [x] 9.2 Update default `strata.yaml` configuration file to include new option with documentation
   - Add commented example: `# show-no-ops: false  # Show no-op resources (default: false)`
   - Ensure configuration documentation reflects all available options
 

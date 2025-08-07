@@ -4,6 +4,7 @@ table:
 plan:
   show-details: true
   highlight-dangers: true
+  # show-no-ops: false               # Show no-op resources in the summary (default: false)
 
   # Collapsible sections configuration
   expandable_sections:

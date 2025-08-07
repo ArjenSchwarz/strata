@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced Build System and Development Tools**:
+  - Added comprehensive Makefile targets including test-verbose, test-coverage, benchmarks, security-scan, and dependency management tools
+  - Added sample testing targets (list-samples, run-all-samples) for improved development workflow
+  - Added development utilities including go-functions target for code analysis and enhanced help documentation
+  - Enhanced project documentation with complete build system guide, GitHub Action integration details, and testing strategy documentation
+  - Added performance integration test file with large plan testing capabilities
+
+### Changed
+- **Documentation Improvements**:
+  - Updated CLAUDE.md with comprehensive project structure overview, enhanced build system documentation, and GitHub Action implementation details
+  - Enhanced README.md with updated version information, detailed example output showcasing dangerous change detection, and improved installation instructions
+  - Updated default strata.yaml configuration with show-no-ops option documentation and proper commenting
+- **Build System Enhancements**:
+  - Expanded Makefile with 20+ new targets for comprehensive development workflow support
+  - Enhanced help system with categorized target descriptions and usage examples
+  - Added code quality targets (fmt, vet, lint, check) and security analysis support
+
+### Removed
+- **Test Code Cleanup**:
+  - Removed disabled memory usage tracking test in performance_integration_test.go that was marked for future implementation
+
 ### Changed
 - **Statistics Calculation Enhancement**:
   - Enhanced `calculateStatistics` method to properly handle output changes by accepting both resource changes and output changes as parameters

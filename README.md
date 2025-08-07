@@ -13,22 +13,22 @@ Strata provides version information through both a global flag and a dedicated c
 ```shell
 # Quick version check
 $ strata --version
-strata version 1.0.0
+strata version dev
 
 # Detailed version information
 $ strata version
-strata version 1.0.0
-Built: 2025-01-24T10:30:00Z
-Commit: f2a261e
-Go: go1.24.1
+strata version dev
+Built: 2025-08-07T10:30:00Z
+Commit: ca2545d
+Go: go1.24.5
 
 # JSON output for scripts
 $ strata version --output json
 {
-  "version": "1.0.0",
-  "build_time": "2025-01-24T10:30:00Z",
-  "git_commit": "f2a261e",
-  "go_version": "go1.24.1"
+  "version": "dev",
+  "build_time": "2025-08-07T10:30:00Z",
+  "git_commit": "ca2545d",
+  "go_version": "go1.24.5"
 }
 ```
 
@@ -124,6 +124,49 @@ This will analyze the plan file and display a comprehensive summary with the fol
 4. **Progressive Disclosure** - Collapsible sections for property changes, dependencies, and risk analysis
 5. **Provider Grouping** - Smart grouping by provider for large plans (when threshold is met)
 6. **Danger Highlights** - Warning indicators for potentially risky changes with auto-expansion
+
+#### Example Output
+
+Here's an example of what the output looks like when analyzing a plan with dangerous changes:
+
+```markdown
+### Plan Information
+
+| Plan File | Version | Workspace | Backend | Created |
+| --- | --- | --- | --- | --- |
+| samples/danger-sample.json | 1.8.5 | default | local (terraform.tfstate) | 2025-06-14 21:56:47 |
+
+
+### Summary Statistics
+
+| Total Changes | Added | Removed | Modified | Replacements | High Risk | Unmodified |
+| --- | --- | --- | --- | --- | --- | --- |
+| 4 | 1 | 0 | 2 | 1 | 2 | 0 |
+
+
+### Resource Changes
+
+| Action | Resource | Type | ID | Replacement | Module | Danger | Property Changes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ⚠️ Replace | aws\_db\_instance.main | aws\_db\_instance | myapp-db-20240315 | Always | - | ⚠️ Database replacement | <details><summary>28 properties changed</summary><br/>  ~ allocated\_storage = 20 -> 100<br>  ~ apply\_immediately = false -> true<br>  ~ arn = "arn:aws:rds:us-west-2:123456789012:db:myapp-db-20240315" -> (known after apply)<br>  ~ availability\_zone = "us-west-2a" -> (known after apply)<br>  ~ backup\_retention\_period = 7 -> 14<br>  ~ backup\_window = "03:00-04:00" -> "02:00-03:00"<br>  ~ ca\_cert\_identifier = "rds-ca-2019" -> (known after apply)<br>  ~ db\_name = "myapp" -> "myapp\_prod"<br>  ~ db\_subnet\_group\_name = "myapp-subnet-group" -> "myapp-prod-subnet-group"<br>  ~ endpoint = "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com" -> (known after apply)<br>  ~ engine\_version = "14.9" -> "15.4"<br>  ~ hosted\_zone\_id = "Z1PVIF0B656C1W" -> (known after apply)<br>  ~ id = "myapp-db-20240315" -> (known after apply)<br>  ~ identifier = "myapp-db-20240315" -> (known after apply)<br>  ~ instance\_class = "db.t3.micro" -> "db.t3.small"<br>  ~ kms\_key\_id = "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012" -> (known after apply)<br>  ~ latest\_restorable\_time = "2024-06-13T10:30:00Z" -> (known after apply)<br>  ~ license\_model = "postgresql-license" -> (known after apply)<br>  ~ maintenance\_window = "sun:05:00-sun:06:00" -> "sat:04:00-sat:05:00"<br>  ~ monitoring\_role\_arn = "arn:aws:iam::123456789012:role/rds-monitoring-role" -> (known after apply)<br>  ~ multi\_az = false -> true<br>  ~ option\_group\_name = "default:postgres-14" -> (known after apply)<br>  ~ parameter\_group\_name = "default.postgres14" -> "default.postgres15"<br>  ~ resource\_id = "db-ABCDEFGHIJKLMNOPQRSTUVWXYZ" -> (known after apply)<br>  ~ status = "available" -> (known after apply)<br>  ~ storage\_type = "gp2" -> "gp3"<br>  ~ tags = {<br>        Environment = "staging"<br>        Name = "MyApp Database"<br>        Project = "MyApp"<br>    } -> {<br>        Environment = "production"<br>        Name = "MyApp Database"<br>        Project = "MyApp"<br>    }<br>  ~ username = "myapp\_user" -> "myapp\_admin"</details> |
+| ⚠️ Modify | aws\_instance.web\_server | aws\_instance | i-0123456789abcdef0 | Never | - | ⚠️ User data modification | <details><summary>2 properties changed</summary><br/>  ~ user\_data = "c765373c203b8c0853e42c00b04e3532ee6854c6" -> "f4a3c0d8b47c9e1f5a2b8d6e9c3f1a5e7b9d2c4f"<br>  ~ user\_data\_replace\_on\_change = false -> true</details> |
+| Modify | aws\_security\_group.web\_sg | aws\_security\_group | sg-0123456789abcdef0 | Never | - |  | <details><summary>1 properties changed</summary><br/>  ~ tags = {<br>        Environment = "staging"<br>        Name = "MyApp Web Security Group"<br>        Project = "MyApp"<br>    } -> {<br>        Environment = "production"<br>        Name = "MyApp Web Security Group"<br>        Project = "MyApp"<br>    }</details> |
+| Add | aws\_iam\_instance\_profile.app\_profile | aws\_iam\_instance\_profile | - | Never | - |  | <details><summary>4 properties changed</summary><br/>  + name = "myapp-ec2-profile"<br>  + path = "/"<br>  + role = "myapp-ec2-role"<br>  + tags = {<br>        Environment = "production"<br>        Name = "MyApp EC2 Instance Profile"<br>        Project = "MyApp"<br>    }</details> |
+
+
+### Output Changes
+
+| Name | Action | Current | Planned | Sensitive |
+| --- | --- | --- | --- | --- |
+| database\_endpoint | Modify | "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com:5432" | (known after apply) |  |
+| iam\_profile\_name | Add | - | "myapp-ec2-profile" |  |
+```
+
+This example showcases:
+- **Danger Detection**: The RDS instance replacement and EC2 user data modification are flagged as high-risk
+- **Progressive Disclosure**: Property changes are collapsed by default but fully accessible via expandable details
+- **Comprehensive Analysis**: All 28 property changes in the database replacement are captured and displayed
+- **Clear Categorization**: Changes are sorted by risk level with dangerous changes appearing first
 
 ### Enhanced Summary Features
 
@@ -461,7 +504,7 @@ permissions:
 ## Installation
 
 ### Prerequisites
-- Go 1.24.1 or higher
+- Go 1.24.5 or higher
 - Terraform 1.6+ (for testing)
 
 ### From Source

@@ -39,21 +39,38 @@ strata/
 ├── cmd/                  # Command-line interface definitions
 │   ├── root.go           # Root command and global flags
 │   ├── plan.go           # Plan command group
-│   └── plan_summary.go   # Plan summary subcommand
+│   ├── plan_summary.go   # Plan summary subcommand
+│   └── version.go        # Version command
 ├── config/               # Configuration management
-│   └── config.go         # Configuration structures and helpers
+│   ├── config.go         # Configuration structures and helpers
+│   └── validation.go     # Configuration validation
 ├── docs/                 # Documentation
 │   ├── implementation/   # Implementation details and design docs
-│   └── research/         # Research notes and references
+│   ├── research/         # Research notes and references
+│   └── github-action.md  # GitHub Action documentation
 ├── lib/                  # Core library code
+│   ├── action/           # GitHub Action shell modules
+│   │   ├── binary.sh     # Binary management
+│   │   ├── files.sh      # File operations
+│   │   ├── github.sh     # GitHub integration
+│   │   ├── security.sh   # Security validations
+│   │   ├── strata.sh     # Strata execution
+│   │   └── utils.sh      # Utility functions
 │   └── plan/             # Terraform plan processing
 │       ├── analyzer.go   # Plan analysis logic
 │       ├── formatter.go  # Output formatting
 │       ├── models.go     # Data structures
 │       └── parser.go     # Plan file parsing
-├── main.go               # Application entry point
-├── strata.yaml           # Default configuration file
-└── go.mod                # Go module definition
+├── samples/              # Test plan files for development
+├── test/                 # Test scripts and integration tests
+├── testdata/            # Test data for unit tests
+├── agents/              # Feature development documentation
+├── action.yml           # GitHub Action definition
+├── action.sh            # GitHub Action entry point
+├── Makefile             # Build and development tasks
+├── main.go              # Application entry point
+├── strata.yaml          # Default configuration file
+└── go.mod               # Go module definition
 ```
 
 ## Architecture Patterns
@@ -81,6 +98,49 @@ User Input → Command Layer → Library Layer → Output Formatting → User Di
 - Terraform 1.6+ (for testing)
 
 ### Build System
+
+The project uses a comprehensive Makefile for development tasks. Key targets include:
+
+```bash
+# Build targets
+make build                    # Build with version info
+make build-release VERSION=1.2.3  # Build release version
+make install                  # Install the application
+make clean                    # Clean build artifacts and coverage files
+
+# Testing targets
+make test                     # Run Go unit tests
+make test-verbose             # Run tests with verbose output and coverage
+make test-coverage            # Generate test coverage report (HTML)
+make benchmarks               # Run benchmark tests
+make test-action              # Run GitHub Action tests
+make test-action-unit         # Run GitHub Action unit tests
+make test-action-integration  # Run GitHub Action integration tests
+
+# Code quality targets
+make fmt                      # Format Go code
+make vet                      # Run go vet for static analysis
+make lint                     # Run linter (requires golangci-lint)
+make check                    # Run full validation suite (fmt, vet, lint, test)
+make security-scan            # Run security analysis (requires gosec)
+
+# Sample testing targets
+make list-samples             # List available sample files
+make run-sample SAMPLE=<filename>         # Run sample plan file
+make run-sample-details SAMPLE=<filename> # Run sample with details
+make run-all-samples          # Test all sample files quickly
+
+# Dependency management
+make deps-tidy                # Clean up go.mod and go.sum
+make deps-update              # Update dependencies to latest versions
+
+# Development utilities
+make go-functions             # List all Go functions in the project
+make update-v1-tag            # Update v1 tag for GitHub Action
+make help                     # Show all available targets with descriptions
+```
+
+Alternative direct Go commands:
 ```bash
 # Build the project
 go build -o strata
@@ -260,10 +320,26 @@ type PlanSummary struct {
 
 Before finishing any task, always run the following commands:
 
-1. `gofmt` - Format Go code according to standards
+**Using Makefile (recommended):**
+1. `make check` - Run full validation suite (fmt, vet, lint, test)
+2. `make build` - Confirm the project builds
+
+**Individual validation steps:**
+1. `make fmt` - Format Go code according to standards
+2. `make vet` - Run go vet for static analysis
+3. `make test` - Run all Go tests
+4. `make lint` - Check for code quality issues (requires golangci-lint)
+
+**Alternative direct commands:**
+1. `gofmt ./...` - Format Go code according to standards
 2. `go test ./... -v` - Run all tests with verbose output
 3. `golangci-lint run` - Check for code quality issues
-4. Optionally `go build -o strata` - Confirm the project builds
+4. `go build -o strata` - Confirm the project builds
+
+**For GitHub Action changes:**
+- `make test-action` - Run both unit and integration tests for GitHub Action
+- `make test-action-unit` - Run unit tests for Action shell modules  
+- `make test-action-integration` - Run integration tests with sample plans
 
 ## Development Hooks
 
@@ -317,14 +393,80 @@ This feature integrates with the existing plan analysis workflow and highlights 
 
 ## Testing Strategy
 
+### Go Unit Tests
 - Unit tests are placed alongside the code they test
 - Test files are named with `_test.go` suffix
 - Table-driven tests are preferred for testing multiple scenarios
 - Focus on high test coverage, especially in critical paths
+- Use `make test` or `go test ./...` to run all Go tests
+
+### GitHub Action Tests
+The project includes comprehensive testing for the GitHub Action:
+
+#### Unit Tests (`make test-action-unit`)
+- Tests individual shell modules in `lib/action/`
+- Validates security measures, input sanitization, and utility functions
+- Tests binary management and file operations
+- Located in `test/action_test.sh`
+
+#### Integration Tests (`make test-action-integration`)
+- End-to-end tests with real Terraform plan files
+- Tests complete workflow from plan file to output generation
+- Validates GitHub-specific integrations (PR comments, step summaries)
+- Uses sample plan files from `samples/` directory
+- Located in `test/integration_test.sh`
+
+#### Test Infrastructure
+- Comprehensive test scripts in `test/` directory
+- Sample Terraform plan files in `samples/` for development and testing
+- Test data for unit tests in `testdata/` directory
+- Makefile targets for easy test execution
 
 ## Documentation Philosophy
 
 Documentation is aimed at aiding understanding rather than being overly concise. When new functionality is created, ensure the README file is updated to include relevant information for users.
+
+## GitHub Action
+
+Strata provides a GitHub Action for seamless CI/CD integration:
+
+### Action Definition (`action.yml`)
+The action accepts the following inputs:
+- `plan-file`: Path to Terraform plan file (required)
+- `output-format`: Output format (table, json, markdown) - default: markdown
+- `config-file`: Path to custom Strata config file (optional)
+- `show-details`: Show detailed change information - default: false
+- `expand-all`: Expand all collapsible sections - default: false
+- `github-token`: GitHub token for PR comments - default: `${{ github.token }}`
+- `comment-on-pr`: Whether to comment on PR - default: true
+- `update-comment`: Update existing comment vs create new - default: true
+- `comment-header`: Custom header for PR comments - default: "🏗️ Terraform Plan Summary"
+
+### Action Outputs
+- `summary`: Plan summary text
+- `has-changes`: Whether the plan contains changes
+- `has-dangers`: Whether dangerous changes were detected
+- `json-summary`: Full summary in JSON format
+- `change-count`: Total number of changes
+- `danger-count`: Number of dangerous changes
+
+### Usage Example
+```yaml
+- name: Analyze Terraform Plan
+  uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+    output-format: markdown
+    show-details: true
+```
+
+### Action Implementation (`action.sh`)
+The action is implemented with modular shell scripts:
+- **Security-first design** with input validation and sanitization
+- **Modular architecture** with separate modules for different concerns
+- **Comprehensive error handling** with structured output
+- **GitHub integration** for PR comments and step summaries
+- **Binary caching** for improved performance
 
 ## License
 

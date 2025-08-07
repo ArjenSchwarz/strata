@@ -123,66 +123,6 @@ func TestPerformanceLimitsWithLargePlans(t *testing.T) {
 	}
 }
 
-// TestMemoryUsageTracking tests that memory usage is properly tracked and limited
-// Note: This test is disabled as memory limits need more sophisticated implementation
-func TestMemoryUsageTracking_Disabled(t *testing.T) {
-	t.Skip("Memory limits need more sophisticated implementation")
-	return
-
-	// Original test code below (disabled)
-	cfg := &config.Config{
-		Plan: config.PlanConfig{
-			PerformanceLimits: config.PerformanceLimitsConfig{
-				MaxPropertiesPerResource: 1000,  // High limit
-				MaxPropertySize:          1024,  // 1KB per property
-				MaxTotalMemory:           10240, // 10KB total - low to trigger limits
-			},
-		},
-	}
-
-	// Create a plan with large property values that will exceed memory limits
-	plan := generatePlanWithLargeProperties(5, 10, 2048) // 5 resources, 10 props each, 2KB per prop
-
-	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
-
-	if summary == nil {
-		t.Fatal("Expected summary even with memory limits")
-	}
-
-	// Check that memory limits were applied
-	foundTruncation := false
-	totalMemoryUsed := 0
-
-	for i, change := range summary.ResourceChanges {
-		if change.Type == "" {
-			continue
-		}
-
-		planChange := plan.ResourceChanges[i]
-		analysis := analyzer.analyzePropertyChanges(planChange)
-
-		if analysis.Truncated {
-			foundTruncation = true
-		}
-
-		totalMemoryUsed += analysis.TotalSize
-	}
-
-	if !foundTruncation {
-		t.Error("Expected memory limits to trigger truncation")
-	}
-
-	// Memory usage should be kept under reasonable bounds
-	maxMemoryLimit := int(cfg.Plan.PerformanceLimits.MaxTotalMemory * 2)
-	if totalMemoryUsed > maxMemoryLimit {
-		t.Errorf("Total memory usage %d exceeds reasonable bounds (2x limit %d)",
-			totalMemoryUsed, maxMemoryLimit)
-	}
-
-	t.Logf("Total memory used: %d bytes, limit: %d bytes", totalMemoryUsed, cfg.Plan.PerformanceLimits.MaxTotalMemory)
-}
-
 // TestFormatterPerformanceWithLargePlans tests formatter performance with large datasets
 func TestFormatterPerformanceWithLargePlans(t *testing.T) {
 	// Generate a large plan
