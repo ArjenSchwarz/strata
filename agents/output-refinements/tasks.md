@@ -78,13 +78,13 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write unit tests for sorting integration
 
 ### 6. Enhanced ActionSortTransformer for Table Output
-- [ ] 6.1 Enhance `hasDangerIndicator` method in `lib/plan/formatter.go` ActionSortTransformer
+- [x] 6.1 Enhance `hasDangerIndicator` method in `lib/plan/formatter.go` ActionSortTransformer
   - Improve danger detection logic to identify dangerous resources in table rows
   - Use existing danger column regex patterns for detection
   - Handle edge cases where danger indicators might be ambiguous
   - Write unit tests for danger indicator detection
 
-- [ ] 6.2 Update `Transform` method in ActionSortTransformer to implement enhanced table sorting
+- [x] 6.2 Update `Transform` method in ActionSortTransformer to implement enhanced table sorting
   - Sort table rows first by danger indicators, then by action priority, then alphabetically
   - Maintain existing action priority mapping (delete=0, replace=1, update=2, create=3, noop=4)
   - Ensure transformation works correctly with filtered content
