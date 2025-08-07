@@ -64,14 +64,14 @@ Convert the feature design into a series of prompts for implementing the Output 
   - Write integration tests for complete filtering workflow
 
 ### 5. Resource Priority Sorting Implementation  
-- [ ] 5.1 Implement `sortResourcesByPriority` method in `lib/plan/formatter.go` for danger and action-based sorting
+- [x] 5.1 Implement `sortResourcesByPriority` method in `lib/plan/formatter.go` for danger and action-based sorting
   - Sort first by `IsDangerous` flag with dangerous resources first (Requirement 2.1)
   - Sort second by action type: delete > replace > update > create (Requirement 2.2)
   - Sort third alphabetically by resource address as tiebreaker (Requirement 2.3) 
   - Apply sorting within provider groups independently when provider grouping is enabled (Requirement 2.4)
   - Write unit tests for all sorting priority scenarios
 
-- [ ] 5.2 Integrate priority sorting into `FormatPlan` method in `lib/plan/formatter.go`
+- [x] 5.2 Integrate priority sorting into `FormatPlan` method in `lib/plan/formatter.go`
   - Call `sortResourcesByPriority` after filtering but before format-specific rendering
   - Ensure sorting works correctly with existing provider grouping feature
   - Preserve existing progressive disclosure and collapsible sections functionality
