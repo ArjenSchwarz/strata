@@ -12,10 +12,9 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
-// TestActionSortTransformer_hasDangerIndicator tests the enhanced danger detection
-// Task 6.1 from Output Refinements feature
-func TestActionSortTransformer_hasDangerIndicator(t *testing.T) {
-	transformer := &ActionSortTransformer{}
+// TestHasDangerIndicator tests the enhanced danger detection package function
+// Task 6.1 from Output Refinements feature, refactored for Task 11.2
+func TestHasDangerIndicator(t *testing.T) {
 
 	tests := []struct {
 		name     string
@@ -105,7 +104,7 @@ func TestActionSortTransformer_hasDangerIndicator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := transformer.hasDangerIndicator(tt.row)
+			result := hasDangerIndicator(tt.row)
 			if result != tt.expected {
 				t.Errorf("hasDangerIndicator() = %v, expected %v for row: %s", result, tt.expected, tt.row)
 			}
