@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Enhanced ActionSortTransformer for Table Output**:
+  - Enhanced `hasDangerIndicator` method with improved danger detection logic to identify dangerous resources in table rows using existing danger column regex patterns and handle edge cases where danger indicators might be ambiguous
+  - Updated `Transform` method to implement enhanced table sorting that sorts table rows first by danger indicators, then by action priority (delete=0, replace=1, update=2, create=3, noop=4), then alphabetically by resource address
+  - Added `extractAction`, `getActionPriority`, and `extractResourceAddress` helper methods for robust table data extraction and sorting logic
+  - Comprehensive unit tests for danger indicator detection, table sorting, action extraction, and resource address parsing with edge case handling
+  - Completed tasks 6.1 and 6.2 from Output Refinements feature implementation
+
+### Added
 - **No-Op Filtering Implementation for Output Refinements feature**:
   - Implemented `filterNoOps` method in `lib/plan/formatter.go` for resource filtering that removes resources with `ChangeTypeNoOp` when `ShowNoOps` is false
   - Implemented `filterNoOpOutputs` method in `lib/plan/formatter.go` for output filtering that removes outputs with `IsNoOp == true` when `ShowNoOps` is false

@@ -122,23 +122,38 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 		sortedIndices[i] = i
 	}
 
+	// Enhanced sorting for Task 6.2 from Output Refinements feature
+	// Sort by: 1) danger indicators, 2) action priority, 3) alphabetically
 	sort.Slice(sortedIndices, func(i, j int) bool {
-		dangerI := isDangerousRow(dataRows[sortedIndices[i]])
-		dangerJ := isDangerousRow(dataRows[sortedIndices[j]])
+		rowI := dataRows[sortedIndices[i]]
+		rowJ := dataRows[sortedIndices[j]]
+
+		// First: Check for danger indicators using enhanced method
+		dangerI := t.hasDangerIndicator(rowI)
+		dangerJ := t.hasDangerIndicator(rowJ)
 
 		// If one is dangerous and the other isn't, dangerous comes first
 		if dangerI != dangerJ {
 			return dangerI
 		}
 
-		// If both have same danger status, sort by action priority
-		actionI := extractActionFromTableRow(dataRows[sortedIndices[i]])
-		actionJ := extractActionFromTableRow(dataRows[sortedIndices[j]])
+		// Second: Sort by action priority (delete > replace > update > create)
+		actionI := t.extractAction(rowI)
+		actionJ := t.extractAction(rowJ)
 
-		priorityI := getActionSortPriority(actionI)
-		priorityJ := getActionSortPriority(actionJ)
+		priorityI := t.getActionPriority(actionI)
+		priorityJ := t.getActionPriority(actionJ)
 
-		return priorityI < priorityJ
+		if priorityI != priorityJ {
+			return priorityI < priorityJ
+		}
+
+		// Third: Alphabetical sort by resource address
+		// Extract resource address from the row (typically second column)
+		addressI := t.extractResourceAddress(rowI)
+		addressJ := t.extractResourceAddress(rowJ)
+
+		return addressI < addressJ
 	})
 
 	// Create a new lines array with sorted data rows
@@ -153,8 +168,55 @@ func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, for
 	return []byte(strings.Join(newLines, "\n")), nil
 }
 
-// extractActionFromTableRow extracts the action from a table row
-func extractActionFromTableRow(row string) string {
+// hasDangerIndicator checks if a table row contains danger indicators
+// Enhanced for Task 6.1 from Output Refinements feature
+func (t *ActionSortTransformer) hasDangerIndicator(row string) bool {
+	// First check for explicit danger indicators in content
+	// Be careful not to match "Add" in words like "address"
+	if strings.Contains(row, "⚠️") ||
+		strings.Contains(row, "Sensitive") ||
+		strings.Contains(row, "Dangerous") ||
+		strings.Contains(row, "High Risk") ||
+		strings.Contains(row, "Critical") {
+		return true
+	}
+
+	// Check for non-empty DANGER column (last column)
+	// A table row must have at least 4 columns to have a danger column:
+	// | action | resource | properties | danger |
+	// When split, this becomes: ["", "action", "resource", "properties", "danger", ""]
+	// So we need at least 5 parts for a danger column to exist
+	parts := strings.Split(row, "|")
+
+	// Only check for danger column if there are enough columns
+	// Minimum table is: | action | resource | so 4 parts when split
+	// With danger column: | action | resource | props | danger | so 6 parts
+	if len(parts) >= 5 {
+		// Get the last non-empty column index
+		lastColIndex := len(parts) - 1
+		if strings.TrimSpace(parts[lastColIndex]) == "" && lastColIndex > 0 {
+			lastColIndex--
+		}
+
+		// The danger column would be at index 4 or higher (after action, resource, props)
+		// Only check if we have enough columns for a danger column
+		if lastColIndex >= 3 {
+			lastCol := strings.TrimSpace(parts[lastColIndex])
+			// Column is dangerous if it has content other than "-" or empty
+			if lastCol != "" && lastCol != "-" {
+				return true
+			}
+		}
+	}
+
+	// Don't use regex fallback if there are too few columns
+	// This prevents false positives on short rows
+	return false
+}
+
+// extractAction extracts the action from a table row
+// Enhanced for Task 6.2 from Output Refinements feature
+func (t *ActionSortTransformer) extractAction(row string) string {
 	// Use cached regex to find action words at the beginning of table cells
 	matches := actionStartRegex.FindStringSubmatch(row)
 	if len(matches) > 1 {
@@ -175,32 +237,34 @@ func extractActionFromTableRow(row string) string {
 	return "Unknown"
 }
 
-// isDangerousRow checks if a table row represents a dangerous/sensitive resource
-func isDangerousRow(row string) bool {
-	// Look for danger indicators in the DANGER column (last column typically)
-	// Check for warning emoji or danger-related text
-	return strings.Contains(row, "⚠️") ||
-		strings.Contains(row, "Sensitive") ||
-		strings.Contains(row, "Dangerous") ||
-		strings.Contains(row, "High Risk") ||
-		// Look for non-empty DANGER column (anything after the last | that's not just whitespace)
-		dangerColumnRegex.MatchString(strings.TrimSpace(row))
+// getActionPriority returns priority for sorting (lower = higher priority)
+// Enhanced for Task 6.2 from Output Refinements feature
+func (t *ActionSortTransformer) getActionPriority(action string) int {
+	// Map action priority: delete=0, replace=1, update=2, create=3, noop=4
+	switch action {
+	case tableActionRemove, "Delete":
+		return 0 // Highest priority
+	case tableActionReplace:
+		return 1
+	case tableActionModify, "Update":
+		return 2
+	case tableActionAdd, "Create":
+		return 3
+	default:
+		return 4 // Lowest priority (including no-op)
+	}
 }
 
-// getActionSortPriority returns priority for sorting (lower = higher priority)
-func getActionSortPriority(action string) int {
-	switch action {
-	case tableActionRemove:
-		return 1
-	case tableActionReplace:
-		return 2
-	case tableActionModify:
-		return 3
-	case tableActionAdd:
-		return 4
-	default:
-		return 5
+// extractResourceAddress extracts the resource address from a table row
+// Typically the second column in the table
+func (t *ActionSortTransformer) extractResourceAddress(row string) string {
+	// Split by | and get the second column (resource address)
+	parts := strings.Split(row, "|")
+	if len(parts) >= 3 {
+		// Index 0 is empty (before first |), index 1 is action, index 2 is resource
+		return strings.TrimSpace(parts[2])
 	}
+	return ""
 }
 
 // NewFormatter creates a new formatter instance
