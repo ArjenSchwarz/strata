@@ -7,102 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- **Comparison Function Standardization**:
-  - Standardized comparison functions in `lib/plan/analyzer.go` - replaced custom `equals()` function with `reflect.DeepEqual()` for consistency (58 lines removed)
-  - Resolved inconsistent comparison function usage that could potentially cause subtle bugs in change detection
-
-### Changed
-- **API Improvements**:
-  - Refactored `hasDangerIndicator` from stateless method to package function in `lib/plan/formatter.go` for better API design and testability
+## [1.2.4] - 2025-08-08
 
 ### Added
-- **Testing Infrastructure**:
-  - Added comprehensive unit tests in `lib/plan/comparison_consistency_test.go` to verify comparison consistency and prevent regressions
-  - Tests cover edge cases including nil values, complex nested structures, and sensitive value masking
+- **Output Refinements Feature**:
+  - Implemented comprehensive output refinements feature addressing issues #17-#21
+  - Added `ShowNoOps` field to `PlanConfig` struct with `--show-no-ops` CLI flag for configurable no-op display control
+  - Added `IsNoOp` field to `ResourceChange` and `OutputChange` structs for internal no-op resource tracking
+  - Implemented `filterNoOps` and `filterNoOpOutputs` methods for filtering based on configuration
+  - Enhanced `OutputSummary` method to integrate no-op filtering with "No changes detected" message when appropriate
+  - Added alphabetical property sorting (case-insensitive) with natural sort ordering and path hierarchy sorting
+  - Implemented immediate sensitive value masking with `maskSensitiveValue` helper function for security by default
+  - Enhanced ActionSortTransformer with improved danger detection and table sorting by danger indicators, action priority, then alphabetically
 
-### Added
-- **Enhanced Build System and Development Tools**:
-  - Added comprehensive Makefile targets including test-verbose, test-coverage, benchmarks, security-scan, and dependency management tools
+- **Enhanced Testing Infrastructure**:
+  - Added comprehensive unit tests in `lib/plan/comparison_consistency_test.go` for comparison consistency validation
+  - Added extensive Output Refinements test suite with edge cases, integration tests, and backward compatibility validation
+  - Added performance testing with large plans (1000+ resources) to ensure <5% performance impact
+  - Enhanced unit tests for statistics behavior with output changes and no-op exclusion logic
+
+- **Build System and Development Tools**:
+  - Added comprehensive Makefile targets (test-verbose, test-coverage, benchmarks, security-scan, dependency management)
   - Added sample testing targets (list-samples, run-all-samples) for improved development workflow
   - Added development utilities including go-functions target for code analysis and enhanced help documentation
-  - Enhanced project documentation with complete build system guide, GitHub Action integration details, and testing strategy documentation
-  - Added performance integration test file with large plan testing capabilities
 
 ### Changed
-- **Documentation Improvements**:
-  - Updated CLAUDE.md with comprehensive project structure overview, enhanced build system documentation, and GitHub Action implementation details
-  - Enhanced README.md with updated version information, detailed example output showcasing dangerous change detection, and improved installation instructions
+- **Code Quality and API Improvements**:
+  - Standardized comparison functions in `lib/plan/analyzer.go` - replaced custom `equals()` with `reflect.DeepEqual()` (58 lines removed)
+  - Refactored `hasDangerIndicator` from stateless method to package function for better API design and testability
+  - Enhanced `calculateStatistics` method to properly handle output changes with no-op exclusion logic
+  - Updated all callers of `calculateStatistics` to pass output changes for comprehensive statistics tracking
+
+- **Documentation and Configuration**:
+  - Updated CLAUDE.md with comprehensive project structure, build system documentation, and GitHub Action implementation details
+  - Enhanced README.md with version information, detailed example output, and improved installation instructions
   - Updated default strata.yaml configuration with show-no-ops option documentation and proper commenting
-- **Build System Enhancements**:
-  - Expanded Makefile with 20+ new targets for comprehensive development workflow support
-  - Enhanced help system with categorized target descriptions and usage examples
-  - Added code quality targets (fmt, vet, lint, check) and security analysis support
+  - Updated Claude settings to include mcp__devtools__search_packages in allowlist
 
 ### Removed
 - **Test Code Cleanup**:
-  - Removed disabled memory usage tracking test in performance_integration_test.go that was marked for future implementation
+  - Removed disabled memory usage tracking test in performance_integration_test.go marked for future implementation
 
-### Changed
-- **Statistics Calculation Enhancement**:
-  - Enhanced `calculateStatistics` method to properly handle output changes by accepting both resource changes and output changes as parameters
-  - Added output change counting that excludes no-op outputs per requirement 4.5, ensuring statistics accurately reflect only meaningful changes
-  - Updated all callers of `calculateStatistics` to pass output changes for comprehensive statistics tracking
-
-### Added
-- **Comprehensive Testing Infrastructure for Output Refinements**:
-  - Added `output_refinements_edge_cases_test.go` with extensive edge case testing including empty plans, no-op only plans, complex sensitive structures, and identical resource addresses
-  - Added `output_refinements_integration_test.go` with complete end-to-end integration tests covering real Terraform plan workflows and all output formats
-  - Added `output_refinements_test_compatibility_test.go` with backward compatibility validation ensuring existing functionality remains unaffected
-  - Added `testdata/output_refinements_plan.json` with comprehensive test data for validation scenarios
-  - Performance testing with large plans (1000+ resources) to ensure <5% performance impact
-  - Enhanced unit tests for statistics behavior with output changes, verifying no-op exclusion logic
-
-### Added
-- **Enhanced ActionSortTransformer for Table Output**:
-  - Enhanced `hasDangerIndicator` method with improved danger detection logic to identify dangerous resources in table rows using existing danger column regex patterns and handle edge cases where danger indicators might be ambiguous
-  - Updated `Transform` method to implement enhanced table sorting that sorts table rows first by danger indicators, then by action priority (delete=0, replace=1, update=2, create=3, noop=4), then alphabetically by resource address
-  - Added `extractAction`, `getActionPriority`, and `extractResourceAddress` helper methods for robust table data extraction and sorting logic
-  - Comprehensive unit tests for danger indicator detection, table sorting, action extraction, and resource address parsing with edge case handling
-  - Completed tasks 6.1 and 6.2 from Output Refinements feature implementation
-
-### Added
-- **No-Op Filtering Implementation for Output Refinements feature**:
-  - Implemented `filterNoOps` method in `lib/plan/formatter.go` for resource filtering that removes resources with `ChangeTypeNoOp` when `ShowNoOps` is false
-  - Implemented `filterNoOpOutputs` method in `lib/plan/formatter.go` for output filtering that removes outputs with `IsNoOp == true` when `ShowNoOps` is false
-  - Enhanced `OutputSummary` method to integrate no-op filtering based on `f.config.Plan.ShowNoOps` configuration
-  - Added "No changes detected" message display when no actual changes exist after filtering
-  - Ensured statistics remain unchanged and count all resources including no-ops (preserves original behavior)
-  - Completed tasks 4.1, 4.2, and 4.3 from Output Refinements feature implementation
-
-- **No-op resource and output detection for Output Refinements feature**:
-  - Added `IsNoOp` field to `ResourceChange` struct for internal no-op resource tracking
-  - Added `IsNoOp` field to `OutputChange` struct for internal no-op output tracking  
-  - Enhanced resource analysis to automatically mark resources with no changes (`ChangeTypeNoOp`)
+### Fixed
+- **Comparison Function Standardization**:
+  - Resolved inconsistent comparison function usage that could potentially cause subtle bugs in change detection
   - Enhanced output analysis to detect outputs with identical before/after values using deep equality comparison
-- **Property Sorting and Sensitive Value Masking**:
-  - Implemented alphabetical property sorting within resources (case-insensitive) with natural sort ordering for numbers and special characters
-  - Added path hierarchy sorting for same-named properties to ensure consistent ordering
-  - Implemented immediate sensitive value masking during property extraction for security by default
-  - Added `maskSensitiveValue` helper function that returns "(sensitive value)" for primitive types while preserving structure for nested objects
-  - Enhanced property comparison logic to mask sensitive values immediately in `compareObjects` function
-  - Added comprehensive unit tests for property sorting, natural sort ordering, sensitive value masking, and nested structure handling
-
-- **No-Op Resources Display Control**:
-  - Added `ShowNoOps` field to `PlanConfig` struct with `mapstructure:"show-no-ops"` tag for YAML configuration support
-  - Added `--show-no-ops` CLI flag to plan summary command with boolean override capability
-  - Implemented CLI flag precedence over configuration file setting for flexible usage
-  - Added comprehensive unit tests for flag parsing, configuration loading, and precedence behavior
-
-- **Output Refinements Feature Documentation**:
-  - Added comprehensive design documentation for output refinements feature addressing issues #17-#21 with property sorting, no-op display control, and sensitive value masking
-  - Added detailed decision log documenting architectural choices, security considerations, and stakeholder feedback integration
-  - Added complete requirements specification covering property sorting improvements, sensitivity-based resource ordering, configurable no-op display, and comprehensive sensitive value masking
-  - Added implementation task breakdown with phased development approach and testing strategy
-
-### Changed
-- **Development Tool Configuration**:
-  - Updated Claude settings to include mcp__devtools__search_packages in allowlist for enhanced package management capabilities
 
 ## [1.2.3] - 2025-08-06
 

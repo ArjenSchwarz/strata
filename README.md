@@ -58,7 +58,7 @@ The enhanced summary visualization provides collapsible sections that allow you 
 - See essential information (resource name, change type, risk level) by default
 - Expand sections to view all property changes (no longer limited to 3)
 - Access detailed risk analysis and mitigation suggestions
-- View resource dependencies and relationships  
+- View resource dependencies and relationships
 - Group resources by provider when working with large plans
 
 Global Expand Control:
@@ -67,7 +67,7 @@ Use the --expand-all flag to expand all collapsible sections at once:
 
 Provider Grouping:
 Large plans are automatically grouped by provider for better organization:
-- Only groups when resource count meets threshold (default: 10)  
+- Only groups when resource count meets threshold (default: 10)
 - Skips grouping if all resources are from the same provider
 - High-risk provider groups are auto-expanded
 
@@ -129,7 +129,6 @@ This will analyze the plan file and display a comprehensive summary with the fol
 
 Here's an example of what the output looks like when analyzing a plan with dangerous changes:
 
-```markdown
 ### Plan Information
 
 | Plan File | Version | Workspace | Backend | Created |
@@ -160,7 +159,7 @@ Here's an example of what the output looks like when analyzing a plan with dange
 | --- | --- | --- | --- | --- |
 | database\_endpoint | Modify | "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com:5432" | (known after apply) |  |
 | iam\_profile\_name | Add | - | "myapp-ec2-profile" |  |
-```
+
 
 This example showcases:
 - **Danger Detection**: The RDS instance replacement and EC2 user data modification are flagged as high-risk
@@ -349,15 +348,15 @@ plan:
   show-details: true
   highlight-dangers: true
   always-show-sensitive: true        # Always show sensitive resources even when details are disabled
-  
+
   # Enhanced summary visualization settings
   expandable_sections:
     enabled: true                    # Enable collapsible sections (default: true)
     auto_expand_dangerous: true      # Auto-expand high-risk sections (default: true)
     show_dependencies: true          # Show dependency information (default: true)
-  
+
   grouping:
-    enabled: true                    # Enable provider grouping (default: true)  
+    enabled: true                    # Enable provider grouping (default: true)
     threshold: 10                    # Minimum resources to trigger grouping (default: 10)
 
 # File output configuration
@@ -434,13 +433,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
-      
+
     - name: Terraform Plan
       run: terraform plan -out=terraform.tfplan
-      
+
     - name: Analyze Plan with Strata
       uses: ArjenSchwarz/strata@v1
       with:
@@ -598,7 +597,7 @@ Strata v1.0 represents a major milestone with comprehensive Terraform plan analy
 - **Auto-Expansion**: High-risk changes and sensitive properties automatically expand for immediate visibility
 - **Cross-Format Adaptation**: Collapsible content adapts appropriately to each output format (Markdown, HTML, Table, JSON)
 
-### Advanced Capabilities  
+### Advanced Capabilities
 - **File Output System**: Dual output support with dynamic file naming using placeholders
 - **GitHub Action Integration**: Seamless CI/CD integration with PR comments and step summaries
 - **Enhanced GitHub Actions**: Support for `expand-all` parameter in GitHub Action workflows
