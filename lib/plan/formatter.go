@@ -736,7 +736,10 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 				change.Name, f.formatValue(change.Before, change.Sensitive))
 		}
 	case "update":
-		if isComplexValue(change.Before) || isComplexValue(change.After) {
+		// Check if this is a nested object change that should use nested formatting
+		if f.shouldUseNestedFormat(change.Before, change.After) {
+			line = f.formatNestedObjectChange(change)
+		} else if isComplexValue(change.Before) || isComplexValue(change.After) {
 			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
 			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
 			line = fmt.Sprintf("  ~ %s = %s -> %s",
@@ -751,7 +754,13 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 		return ""
 	}
 
-	return line + replacementIndicator
+	// Only add replacement indicator for non-nested formats
+	// (nested formats handle this internally)
+	if change.Action != "update" || !f.shouldUseNestedFormat(change.Before, change.After) {
+		line += replacementIndicator
+	}
+
+	return line
 }
 
 // formatValue formats a property value according to Terraform's formatting conventions
@@ -866,6 +875,91 @@ func (f *Formatter) hasSensitive(changes []PropertyChange) bool {
 		}
 	}
 	return false
+}
+
+// shouldUseNestedFormat determines if a property change should use the nested format
+// instead of showing complete before/after values
+func (f *Formatter) shouldUseNestedFormat(before, after any) bool {
+	// Check if both values are maps (nested objects)
+	beforeMap, beforeIsMap := before.(map[string]any)
+	afterMap, afterIsMap := after.(map[string]any)
+
+	// Only use nested format for map-to-map changes
+	if !beforeIsMap || !afterIsMap {
+		return false
+	}
+
+	// Use nested format if both maps have content (avoid for completely empty objects)
+	return len(beforeMap) > 0 || len(afterMap) > 0
+}
+
+// formatNestedObjectChange formats a nested object change in Terraform-style diff format
+func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
+	beforeMap, _ := change.Before.(map[string]any)
+	afterMap, _ := change.After.(map[string]any)
+
+	// Get all unique keys from both maps
+	allKeys := make(map[string]bool)
+	for key := range beforeMap {
+		allKeys[key] = true
+	}
+	for key := range afterMap {
+		allKeys[key] = true
+	}
+
+	// Sort keys for consistent output
+	var keys []string
+	for key := range allKeys {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var lines []string
+
+	// Add the opening line with the property name
+	replacementIndicator := ""
+	if change.TriggersReplacement {
+		replacementIndicator = " # forces replacement"
+	}
+	lines = append(lines, fmt.Sprintf("  ~ %s {%s", change.Name, replacementIndicator))
+
+	// Process each key
+	for _, key := range keys {
+		beforeValue, hasBeforeValue := beforeMap[key]
+		afterValue, hasAfterValue := afterMap[key]
+
+		if !hasBeforeValue && hasAfterValue {
+			// Added property
+			formattedValue := f.formatValue(afterValue, change.Sensitive)
+			lines = append(lines, fmt.Sprintf("      + %s = %s", key, formattedValue))
+		} else if hasBeforeValue && !hasAfterValue {
+			// Removed property
+			formattedValue := f.formatValue(beforeValue, change.Sensitive)
+			lines = append(lines, fmt.Sprintf("      - %s = %s", key, formattedValue))
+		} else if hasBeforeValue && hasAfterValue {
+			// Check if the value actually changed
+			if !f.valuesEqual(beforeValue, afterValue) {
+				// Modified property
+				beforeFormatted := f.formatValue(beforeValue, change.Sensitive)
+				afterFormatted := f.formatValue(afterValue, change.Sensitive)
+				lines = append(lines, fmt.Sprintf("      ~ %s = %s -> %s", key, beforeFormatted, afterFormatted))
+			} else {
+				// Unchanged property (uncomment if we want to show unchanged properties)
+				// formattedValue := f.formatValue(afterValue, change.Sensitive)
+				// lines = append(lines, fmt.Sprintf("        %s = %s", key, formattedValue))
+			}
+		}
+	}
+
+	// Add the closing brace
+	lines = append(lines, "    }")
+
+	return strings.Join(lines, "\n")
+}
+
+// valuesEqual compares two values for equality
+func (f *Formatter) valuesEqual(a, b any) bool {
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
 // prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
