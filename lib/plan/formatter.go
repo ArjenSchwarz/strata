@@ -3,6 +3,7 @@ package plan
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -943,10 +944,6 @@ func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
 				beforeFormatted := f.formatValue(beforeValue, change.Sensitive)
 				afterFormatted := f.formatValue(afterValue, change.Sensitive)
 				lines = append(lines, fmt.Sprintf("      ~ %s = %s -> %s", key, beforeFormatted, afterFormatted))
-			} else {
-				// Unchanged property (uncomment if we want to show unchanged properties)
-				// formattedValue := f.formatValue(afterValue, change.Sensitive)
-				// lines = append(lines, fmt.Sprintf("        %s = %s", key, formattedValue))
 			}
 		}
 	}
@@ -959,7 +956,7 @@ func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
 
 // valuesEqual compares two values for equality
 func (f *Formatter) valuesEqual(a, b any) bool {
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+	return reflect.DeepEqual(a, b)
 }
 
 // prepareResourceTableData transforms ResourceChange data for go-output v2 table display with collapsible content
