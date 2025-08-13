@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2025-08-13
+
 ### Changed
 - **Formatter Code Quality**:
   - Refactored formatter indentation to use Unicode En space constants for consistent spacing across all output formats
