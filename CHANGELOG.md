@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2025-08-13
+
+### Added
+- **Development Documentation**:
+  - Added comprehensive GitHub Copilot instructions for Strata development (`.github/copilot-instructions.md`)
+  - Enhanced formatting capabilities for better property change display
+
+### Changed
+- **Nested Property Formatting**:
+  - Improved nested property formatting with better visual hierarchy for complex objects
+  - Enhanced property change display with clearer structure for nested values like maps and arrays
+  - Added comprehensive test suite for nested property formatting validation
+
 ## [1.2.4] - 2025-08-08
 
 ### Added
