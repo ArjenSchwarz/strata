@@ -17,6 +17,9 @@ const (
 	formatTable         = "table"
 	noPropertiesChanged = "No properties changed"
 	truncatedIndicator  = " [truncated]"
+	// Unicode En space (U+2002) constants for consistent indentation across output formats
+	indent       = "\u2002\u2002"             // 2 En spaces - basic indentation level
+	nestedIndent = "\u2002\u2002\u2002\u2002" // 4 En spaces - nested indentation level
 
 	// Action constants for table sorting
 	tableActionRemove  = "Remove"
@@ -722,32 +725,32 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 	switch change.Action {
 	case "add":
 		if isComplexValue(change.After) {
-			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
-			line = fmt.Sprintf("  + %s = %s", change.Name, afterValue)
+			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, nestedIndent)
+			line = fmt.Sprintf("%s+ %s = %s", indent, change.Name, afterValue)
 		} else {
-			line = fmt.Sprintf("  + %s = %s",
-				change.Name, f.formatValue(change.After, change.Sensitive))
+			line = fmt.Sprintf("%s+ %s = %s",
+				indent, change.Name, f.formatValue(change.After, change.Sensitive))
 		}
 	case "remove":
 		if isComplexValue(change.Before) {
-			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
-			line = fmt.Sprintf("  - %s = %s", change.Name, beforeValue)
+			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, nestedIndent)
+			line = fmt.Sprintf("%s- %s = %s", indent, change.Name, beforeValue)
 		} else {
-			line = fmt.Sprintf("  - %s = %s",
-				change.Name, f.formatValue(change.Before, change.Sensitive))
+			line = fmt.Sprintf("%s- %s = %s",
+				indent, change.Name, f.formatValue(change.Before, change.Sensitive))
 		}
 	case "update":
 		// Check if this is a nested object change that should use nested formatting
 		if f.shouldUseNestedFormat(change.Before, change.After) {
 			line = f.formatNestedObjectChange(change)
 		} else if isComplexValue(change.Before) || isComplexValue(change.After) {
-			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
-			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, "\u2002\u2002\u2002\u2002")
-			line = fmt.Sprintf("  ~ %s = %s -> %s",
-				change.Name, beforeValue, afterValue)
+			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, nestedIndent)
+			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, nestedIndent)
+			line = fmt.Sprintf("%s~ %s = %s -> %s",
+				indent, change.Name, beforeValue, afterValue)
 		} else {
-			line = fmt.Sprintf("  ~ %s = %s -> %s",
-				change.Name,
+			line = fmt.Sprintf("%s~ %s = %s -> %s",
+				indent, change.Name,
 				f.formatValue(change.Before, change.Sensitive),
 				f.formatValue(change.After, change.Sensitive))
 		}
@@ -832,7 +835,7 @@ func (f *Formatter) formatNestedMap(v map[string]any, baseIndent string) string 
 	lines = append(lines, "{")
 	for _, key := range keys {
 		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
-		nextIndent := baseIndent + "\u2002\u2002\u2002\u2002"
+		nextIndent := baseIndent + nestedIndent
 		// Check if the value is complex (map or slice) to handle nested structures properly
 		isValueNested := false
 		switch v[key].(type) {
@@ -841,7 +844,7 @@ func (f *Formatter) formatNestedMap(v map[string]any, baseIndent string) string 
 		}
 		value := f.formatValueWithContext(v[key], false, isValueNested, nextIndent)
 		// Use Unicode En spaces for consistent indentation across all formats
-		lines = append(lines, fmt.Sprintf("%s\u2002\u2002\u2002\u2002%s = %s", baseIndent, key, value))
+		lines = append(lines, fmt.Sprintf("%s%s%s = %s", baseIndent, nestedIndent, key, value))
 	}
 	lines = append(lines, baseIndent+"}")
 	return strings.Join(lines, "\n")
@@ -853,7 +856,7 @@ func (f *Formatter) formatNestedArray(v []any, baseIndent string) string {
 	lines = append(lines, "[")
 	for i, item := range v {
 		// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
-		nextIndent := baseIndent + "\u2002\u2002"
+		nextIndent := baseIndent + indent
 		// Check if the item is complex (map or slice) to handle nested structures properly
 		isItemNested := false
 		switch item.(type) {
@@ -862,7 +865,7 @@ func (f *Formatter) formatNestedArray(v []any, baseIndent string) string {
 		}
 		value := f.formatValueWithContext(item, false, isItemNested, nextIndent)
 		// Use Unicode En spaces for consistent indentation across all formats
-		lines = append(lines, fmt.Sprintf("%s\u2002\u2002[%d] = %s", baseIndent, i, value))
+		lines = append(lines, fmt.Sprintf("%s%s[%d] = %s", baseIndent, indent, i, value))
 	}
 	lines = append(lines, baseIndent+"]")
 	return strings.Join(lines, "\n")
@@ -922,7 +925,8 @@ func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
 	if change.TriggersReplacement {
 		replacementIndicator = " # forces replacement"
 	}
-	lines = append(lines, fmt.Sprintf("  ~ %s {%s", change.Name, replacementIndicator))
+	// Use Unicode En spaces (U+2002) for consistent spacing across formats
+	lines = append(lines, fmt.Sprintf("%s~ %s {%s", indent, change.Name, replacementIndicator))
 
 	// Process each key
 	for _, key := range keys {
@@ -930,26 +934,26 @@ func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
 		afterValue, hasAfterValue := afterMap[key]
 
 		if !hasBeforeValue && hasAfterValue {
-			// Added property
+			// Added property - use Unicode En spaces for indentation
 			formattedValue := f.formatValue(afterValue, change.Sensitive)
-			lines = append(lines, fmt.Sprintf("      + %s = %s", key, formattedValue))
+			lines = append(lines, fmt.Sprintf("%s+ %s = %s", nestedIndent, key, formattedValue))
 		} else if hasBeforeValue && !hasAfterValue {
-			// Removed property
+			// Removed property - use Unicode En spaces for indentation
 			formattedValue := f.formatValue(beforeValue, change.Sensitive)
-			lines = append(lines, fmt.Sprintf("      - %s = %s", key, formattedValue))
+			lines = append(lines, fmt.Sprintf("%s- %s = %s", nestedIndent, key, formattedValue))
 		} else if hasBeforeValue && hasAfterValue {
 			// Check if the value actually changed
 			if !f.valuesEqual(beforeValue, afterValue) {
-				// Modified property
+				// Modified property - use Unicode En spaces for indentation
 				beforeFormatted := f.formatValue(beforeValue, change.Sensitive)
 				afterFormatted := f.formatValue(afterValue, change.Sensitive)
-				lines = append(lines, fmt.Sprintf("      ~ %s = %s -> %s", key, beforeFormatted, afterFormatted))
+				lines = append(lines, fmt.Sprintf("%s~ %s = %s -> %s", nestedIndent, key, beforeFormatted, afterFormatted))
 			}
 		}
 	}
 
-	// Add the closing brace
-	lines = append(lines, "    }")
+	// Add the closing brace with Unicode En spaces to match the opening
+	lines = append(lines, indent+"}")
 
 	return strings.Join(lines, "\n")
 }

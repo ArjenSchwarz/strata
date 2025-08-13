@@ -1670,7 +1670,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     "t2.micro",
 				Sensitive: false,
 			},
-			expected: `  + instance_type = "t2.micro"`,
+			expected: `  + instance_type = "t2.micro"`,
 		},
 		{
 			name: "remove action with string value",
@@ -1680,7 +1680,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				Before:    "old_value",
 				Sensitive: false,
 			},
-			expected: `  - old_property = "old_value"`,
+			expected: `  - old_property = "old_value"`,
 		},
 		{
 			name: "update action with string values",
@@ -1691,7 +1691,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     "t2.small",
 				Sensitive: false,
 			},
-			expected: `  ~ instance_type = "t2.micro" -> "t2.small"`,
+			expected: `  ~ instance_type = "t2.micro" -> "t2.small"`,
 		},
 		{
 			name: "update action with sensitive values",
@@ -1702,7 +1702,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     "new_secret",
 				Sensitive: true,
 			},
-			expected: `  ~ password = (sensitive value) -> (sensitive value)`,
+			expected: `  ~ password = (sensitive value) -> (sensitive value)`,
 		},
 		{
 			name: "add action with number value",
@@ -1712,7 +1712,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     8080,
 				Sensitive: false,
 			},
-			expected: `  + port = 8080`,
+			expected: `  + port = 8080`,
 		},
 		{
 			name: "update action with nil to value",
@@ -1723,7 +1723,7 @@ func TestFormatPropertyChange(t *testing.T) {
 				After:     map[string]any{"env": "prod"},
 				Sensitive: false,
 			},
-			expected: `  ~ tags = null -> { env = "prod" }`,
+			expected: `  ~ tags = null -> { env = "prod" }`,
 		},
 		{
 			name: "unknown action",
@@ -2045,9 +2045,10 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			if tt.propAnalysis.Count > 0 {
 				// Details should be a string containing Terraform diff prefixes
 				if detailsStr, ok := details.(string); ok {
-					hasTerraformPrefix := strings.Contains(detailsStr, "  +") ||
-						strings.Contains(detailsStr, "  -") ||
-						strings.Contains(detailsStr, "  ~")
+					// Check for Unicode En spaces (U+2002) used in formatting
+					hasTerraformPrefix := strings.Contains(detailsStr, "\u2002\u2002+") ||
+						strings.Contains(detailsStr, "\u2002\u2002-") ||
+						strings.Contains(detailsStr, "\u2002\u2002~")
 					if !hasTerraformPrefix {
 						t.Errorf("Expected Terraform diff-style formatting in details: %q", detailsStr)
 					}
@@ -2092,13 +2093,13 @@ func TestPropertyChangesFormatterTerraform_WithDifferentActions(t *testing.T) {
 
 	// Check for all three Terraform diff prefixes
 	if detailsStr, ok := details.(string); ok {
-		if !strings.Contains(detailsStr, "  + new_property = \"new_value\"") {
+		if !strings.Contains(detailsStr, "\u2002\u2002+ new_property = \"new_value\"") {
 			t.Errorf("Expected add prefix in details: %q", detailsStr)
 		}
-		if !strings.Contains(detailsStr, "  - removed_property = \"old_value\"") {
+		if !strings.Contains(detailsStr, "\u2002\u2002- removed_property = \"old_value\"") {
 			t.Errorf("Expected remove prefix in details: %q", detailsStr)
 		}
-		if !strings.Contains(detailsStr, "  ~ updated_property = \"old_value\" -> \"new_value\"") {
+		if !strings.Contains(detailsStr, "\u2002\u2002~ updated_property = \"old_value\" -> \"new_value\"") {
 			t.Errorf("Expected update prefix in details: %q", detailsStr)
 		}
 	} else {

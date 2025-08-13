@@ -47,7 +47,9 @@
       "mcp__devtools__internet_search",
       "mcp__devtools__fetch_url",
       "mcp__devtools__resolve_library_id",
-      "mcp__devtools__search_packages"
+      "mcp__devtools__search_packages",
+      "Bash(/dev/null)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

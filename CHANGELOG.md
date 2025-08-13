@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Formatter Code Quality**:
+  - Refactored formatter indentation to use Unicode En space constants for consistent spacing across all output formats
+  - Added `indent` and `nestedIndent` constants to eliminate magic number usage and improve code maintainability
+  - Updated all property change formatting to use standardized indentation constants
+  - Enhanced test suite to validate consistent Unicode En space formatting across all formatter functions
+
+### Fixed
+- **Nested Property Indentation**:
+  - Fixed incorrect indentation for nested property changes in formatter output
+  - Corrected nested object change formatting to use proper Unicode En space alignment
+  - Resolved inconsistent spacing in nested map and array property displays
+
 ## [1.2.5] - 2025-08-13
 
 ### Added

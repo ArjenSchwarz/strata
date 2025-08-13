@@ -101,7 +101,8 @@ func TestFormatterCreateActionDisplay(t *testing.T) {
 	}
 
 	// Ensure we have the + prefix for new resources (Terraform diff-style)
-	if !strings.Contains(resultStr, "  +") {
+	// Using Unicode En spaces (U+2002) for consistency
+	if !strings.Contains(resultStr, "\u2002\u2002+") {
 		t.Errorf("Create action should contain diff-style + prefix, but got:\n%s", resultStr)
 	}
 }

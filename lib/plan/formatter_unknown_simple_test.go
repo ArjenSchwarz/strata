@@ -170,7 +170,7 @@ func TestPropertyChangeFormattingWithUnknownValues(t *testing.T) {
 				Action:    "add",
 				IsUnknown: true,
 			},
-			expected: "  + id = (known after apply)",
+			expected: "  + id = (known after apply)",
 		},
 		{
 			name: "update to unknown",
@@ -181,7 +181,7 @@ func TestPropertyChangeFormattingWithUnknownValues(t *testing.T) {
 				Action:    "update",
 				IsUnknown: true,
 			},
-			expected: `  ~ endpoint = "old.example.com" -> (known after apply)`,
+			expected: `  ~ endpoint = "old.example.com" -> (known after apply)`,
 		},
 		{
 			name: "complex structure becoming unknown",
@@ -192,7 +192,7 @@ func TestPropertyChangeFormattingWithUnknownValues(t *testing.T) {
 				Action:    "update",
 				IsUnknown: true,
 			},
-			expected: `  ~ security_groups = [ "sg-123", "sg-456" ] -> (known after apply)`,
+			expected: `  ~ security_groups = [ "sg-123", "sg-456" ] -> (known after apply)`,
 		},
 		{
 			name: "simple unknown value without quotes",
@@ -202,7 +202,7 @@ func TestPropertyChangeFormattingWithUnknownValues(t *testing.T) {
 				Action:    "add",
 				IsUnknown: true,
 			},
-			expected: `  + simple_value = (known after apply)`,
+			expected: `  + simple_value = (known after apply)`,
 		},
 	}
 

@@ -75,7 +75,7 @@ func TestFormatPropertyChange_UnknownValue(t *testing.T) {
 				Action:    "update",
 				IsUnknown: true,
 			},
-			expected: `  ~ instance_id = "i-1234567890" -> (known after apply)`,
+			expected: `  ~ instance_id = "i-1234567890" -> (known after apply)`,
 		},
 		{
 			name: "new property with unknown value",
@@ -85,7 +85,7 @@ func TestFormatPropertyChange_UnknownValue(t *testing.T) {
 				Action:    "add",
 				IsUnknown: true,
 			},
-			expected: `  + arn = (known after apply)`,
+			expected: `  + arn = (known after apply)`,
 		},
 		{
 			name: "property remaining unknown",
@@ -96,7 +96,7 @@ func TestFormatPropertyChange_UnknownValue(t *testing.T) {
 				Action:    "update",
 				IsUnknown: true,
 			},
-			expected: `  ~ vpc_id = (known after apply) -> (known after apply)`,
+			expected: `  ~ vpc_id = (known after apply) -> (known after apply)`,
 		},
 		{
 			name: "complex value becoming unknown",
@@ -107,7 +107,7 @@ func TestFormatPropertyChange_UnknownValue(t *testing.T) {
 				Action:    "update",
 				IsUnknown: true,
 			},
-			expected: `  ~ security_groups = [ "sg-123", "sg-456" ] -> (known after apply)`,
+			expected: `  ~ security_groups = [ "sg-123", "sg-456" ] -> (known after apply)`,
 		},
 		{
 			name: "unknown value with replacement",
@@ -119,7 +119,7 @@ func TestFormatPropertyChange_UnknownValue(t *testing.T) {
 				TriggersReplacement: true,
 				IsUnknown:           true,
 			},
-			expected: `  ~ availability_zone = "us-east-1a" -> (known after apply) # forces replacement`,
+			expected: `  ~ availability_zone = "us-east-1a" -> (known after apply) # forces replacement`,
 		},
 	}
 

@@ -30,9 +30,9 @@ func TestFormatPropertyChange_NestedObjects(t *testing.T) {
 				},
 				Sensitive: false,
 			},
-			expected: `  ~ tags {
-      ~ Environment = "development" -> "production"
-    }`,
+			expected: `  ~ tags {
+    ~ Environment = "development" -> "production"
+  }`,
 		},
 		{
 			name: "nested object with added property",
@@ -48,10 +48,10 @@ func TestFormatPropertyChange_NestedObjects(t *testing.T) {
 				},
 				Sensitive: false,
 			},
-			expected: `  ~ tags {
-      ~ Environment = "development" -> "production"
-      + Version = "v2"
-    }`,
+			expected: `  ~ tags {
+    ~ Environment = "development" -> "production"
+    + Version = "v2"
+  }`,
 		},
 		{
 			name: "nested object with removed property",
@@ -67,10 +67,10 @@ func TestFormatPropertyChange_NestedObjects(t *testing.T) {
 				},
 				Sensitive: false,
 			},
-			expected: `  ~ tags {
-      ~ Environment = "development" -> "production"
-      - Version = "v1"
-    }`,
+			expected: `  ~ tags {
+    ~ Environment = "development" -> "production"
+    - Version = "v1"
+  }`,
 		},
 		{
 			name: "nested object with replacement trigger",
@@ -86,9 +86,9 @@ func TestFormatPropertyChange_NestedObjects(t *testing.T) {
 				Sensitive:           false,
 				TriggersReplacement: true,
 			},
-			expected: `  ~ config { # forces replacement
-      ~ size = "small" -> "large"
-    }`,
+			expected: `  ~ config { # forces replacement
+    ~ size = "small" -> "large"
+  }`,
 		},
 		{
 			name: "simple property change (non-nested)",
@@ -99,7 +99,7 @@ func TestFormatPropertyChange_NestedObjects(t *testing.T) {
 				After:     "t3.medium",
 				Sensitive: false,
 			},
-			expected: `  ~ instance_type = "t3.small" -> "t3.medium"`,
+			expected: `  ~ instance_type = "t3.small" -> "t3.medium"`,
 		},
 	}
 
@@ -266,7 +266,7 @@ func TestFormatNestedObjectChange_Integration(t *testing.T) {
 	assert.Contains(t, result, "~ Environment = \"development\" -> \"production\"")
 	assert.Contains(t, result, "+ Owner = \"team-a\"")
 	assert.Contains(t, result, "- Version = \"v1\"")
-	assert.Contains(t, result, "    }")
+	assert.Contains(t, result, "\u2002\u2002}")
 
 	// Check that unchanged values (Name) are not shown
 	assert.NotContains(t, result, "Name = \"Test Instance\"")
