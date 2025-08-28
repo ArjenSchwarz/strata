@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive project memories including code style conventions, codebase structure, project guidelines, and suggested commands
   - Added Serena project configuration (`.serena/project.yml`) for Go language support
   - Added additional auto-approvals to Claude settings for formatting and testing commands
+  - Added MCP IDE integration and DevTools find_long_files tool to Claude auto-approval list
 - **Code Cleanup and Modernization Feature**:
   - Added comprehensive feature specification for automated code modernization, Go version upgrade, and test suite improvements
   - Added requirements document outlining 13 major requirement areas including automated modernization, Go 1.25.0 upgrade, and test suite compliance with Go testing best practices
   - Added decision log documenting 11 key decisions including tool selection, version targets, implementation phases, and test file organization standards
   - Added detailed implementation plan with 6-phase approach for minimizing risk during modernization efforts
+  - Added simplified design document with practical 3-phase approach using standard Go tooling, reducing implementation time from 11 days to 3 days
 
 ## [1.2.7] - 2025-08-28
 

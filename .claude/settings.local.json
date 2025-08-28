@@ -63,7 +63,9 @@
       "mcp__serena__search_for_pattern",
       "mcp__serena__write_memory",
       "Bash(make fmt:*)",
-      "Bash(make test:*)"
+      "Bash(make test:*)",
+      "mcp__ide__executeCode",
+      "mcp__devtools__find_long_files"
     ],
     "deny": []
   }
