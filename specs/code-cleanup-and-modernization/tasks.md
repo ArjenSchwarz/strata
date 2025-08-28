@@ -28,19 +28,23 @@ This document contains the implementation tasks for modernizing the Strata codeb
 
 ### Phase 2: Test Organization and Helper Functions
 
-- [ ] **4. Split config/validation_test.go file**
+- [x] **4. Split config/validation_test.go file**
   - Split validation_test.go (1,006 lines) into multiple files by validation category
-  - Create validation_config_test.go for configuration validation tests
-  - Create validation_plan_test.go for plan validation tests  
-  - Create validation_output_test.go for output validation tests
+  - Create validation_file_test.go for file validator tests (304 lines)
+  - Create validation_config_test.go for configuration tests (121 lines)
+  - Create validation_result_test.go for result and error tests (117 lines)
+  - Create validation_security_test.go for security tests (490 lines)
   - Use move_code_section.py script to safely move test functions
   - References requirements 7.1, 7.2, 7.3, 7.5
 
-- [ ] **5. Split lib/plan/analyzer_test.go file**
+- [x] **5. Split lib/plan/analyzer_test.go file**
   - Split analyzer_test.go (5,335 lines) into focused test files
-  - Create analyzer_resource_test.go for resource change analysis tests
-  - Create analyzer_statistics_test.go for statistics calculation tests
-  - Create analyzer_properties_test.go for property analysis tests
+  - Create analyzer_test.go for core resource analysis tests (1,029 lines)
+  - Create analyzer_statistics_test.go for statistics calculation tests (319 lines)
+  - Create analyzer_properties_test.go for property analysis tests (503 lines)
+  - Create analyzer_objects_test.go for object comparison tests (326 lines)
+  - Create analyzer_outputs_test.go for output processing tests (1,374 lines)
+  - Create analyzer_utils_test.go for utility functions tests (1,833 lines)
   - Use move_code_section.py script to organize test functions by functionality
   - References requirements 7.1, 7.2, 7.3
 
