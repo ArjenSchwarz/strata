@@ -50,7 +50,20 @@
       "mcp__devtools__search_packages",
       "Bash(/dev/null)",
       "Bash(python3:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(modernize:*)",
+      "WebSearch",
+      "mcp__devtools__q-developer-agent",
+      "Read(/Users/arjenschwarz/.claude/language-rules/**)",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__serena__onboarding",
+      "mcp__serena__list_dir",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__find_symbol",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__write_memory",
+      "Bash(make fmt:*)",
+      "Bash(make test:*)"
     ],
     "deny": []
   }
