@@ -261,8 +261,8 @@ func TestVersionHelperFunctions(t *testing.T) {
 
 	t.Run("getVersionString", func(t *testing.T) {
 		tests := []struct {
-			input    string
-			expected string
+			input string
+			want  string
 		}{
 			{"", "dev"},
 			{"1.2.3", "1.2.3"},
@@ -270,18 +270,20 @@ func TestVersionHelperFunctions(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			Version = tt.input
-			result := getVersionString()
-			if result != tt.expected {
-				t.Errorf("getVersionString() with input %q: expected %q, got %q", tt.input, tt.expected, result)
-			}
+			t.Run(tt.input, func(t *testing.T) {
+				Version = tt.input
+				got := getVersionString()
+				if got != tt.want {
+					t.Errorf("getVersionString() with input %q: want %q, got %q", tt.input, tt.want, got)
+				}
+			})
 		}
 	})
 
 	t.Run("getBuildTimeString", func(t *testing.T) {
 		tests := []struct {
-			input    string
-			expected string
+			input string
+			want  string
 		}{
 			{"", "unknown"},
 			{"unknown", "unknown"},
@@ -289,18 +291,20 @@ func TestVersionHelperFunctions(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			BuildTime = tt.input
-			result := getBuildTimeString()
-			if result != tt.expected {
-				t.Errorf("getBuildTimeString() with input %q: expected %q, got %q", tt.input, tt.expected, result)
-			}
+			t.Run(tt.input, func(t *testing.T) {
+				BuildTime = tt.input
+				got := getBuildTimeString()
+				if got != tt.want {
+					t.Errorf("getBuildTimeString() with input %q: want %q, got %q", tt.input, tt.want, got)
+				}
+			})
 		}
 	})
 
 	t.Run("getGitCommitString", func(t *testing.T) {
 		tests := []struct {
-			input    string
-			expected string
+			input string
+			want  string
 		}{
 			{"", "unknown"},
 			{"unknown", "unknown"},
@@ -308,11 +312,13 @@ func TestVersionHelperFunctions(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			GitCommit = tt.input
-			result := getGitCommitString()
-			if result != tt.expected {
-				t.Errorf("getGitCommitString() with input %q: expected %q, got %q", tt.input, tt.expected, result)
-			}
+			t.Run(tt.input, func(t *testing.T) {
+				GitCommit = tt.input
+				got := getGitCommitString()
+				if got != tt.want {
+					t.Errorf("getGitCommitString() with input %q: want %q, got %q", tt.input, tt.want, got)
+				}
+			})
 		}
 	})
 }

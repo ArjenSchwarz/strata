@@ -66,7 +66,7 @@ This document contains the implementation tasks for modernizing the Strata codeb
 
 ### Phase 3: Test Cleanup and Naming Standardization
 
-- [ ] **8. Migrate defer cleanup to t.Cleanup() pattern**
+- [x] **8. Migrate defer cleanup to t.Cleanup() pattern**
   - Find all instances of defer os.Remove() in test files
   - Replace with t.Cleanup(func() { os.Remove(...) })
   - Find all instances of defer os.RemoveAll() in test files
@@ -74,14 +74,14 @@ This document contains the implementation tasks for modernizing the Strata codeb
   - Preserve original cleanup order and error handling
   - References requirements 4.1, 4.2, 4.3, 4.4
 
-- [ ] **9. Standardize test variable naming conventions**
+- [x] **9. Standardize test variable naming conventions**
   - Replace all "expected" variables with "want" in test files
   - Replace all "result" and "actual" variables with "got" in test files
   - Update assertion messages to use new variable names
   - Ensure "tc" is used for test case variables in table-driven tests
   - References requirements 5.1, 5.2, 5.3, 5.4, 5.6
 
-- [ ] **10. Ensure all subtests use t.Run()**
+- [x] **10. Ensure all subtests use t.Run()**
   - Identify table-driven tests not using t.Run()
   - Wrap each test case execution with t.Run(name, func(t *testing.T) {...})
   - Add descriptive names for each subtest

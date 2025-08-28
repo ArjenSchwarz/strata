@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Test Code Modernization and Standards Compliance**:
+  - Migrated test cleanup patterns from `defer` to `t.Cleanup()` for proper resource management and test isolation
+  - Standardized test variable naming conventions: replaced "expected" with "want" and "result" with "got" throughout test suite
+  - Enhanced table-driven tests to use `t.Run()` for proper subtest organization and individual test case isolation
+  - Improved test maintainability by following Go testing best practices for resource cleanup and variable naming
+
+### Changed
 - **Test Suite Organization and Maintainability**:
   - Refactored large `formatter_test.go` (over 1400 lines) into focused, maintainable test files following Go testing best practices
   - Split basic formatter tests into `formatter_basic_test.go` (865 lines) covering core functionality, validation, output summary, and expand-all features  

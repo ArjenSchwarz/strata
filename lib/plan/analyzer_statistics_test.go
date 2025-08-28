@@ -22,14 +22,14 @@ func TestCalculateStatistics(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name     string
-		changes  []ResourceChange
-		expected ChangeStatistics
+		name    string
+		changes []ResourceChange
+		want    ChangeStatistics
 	}{
 		{
 			name:    "Empty changes should have all zeros",
 			changes: []ResourceChange{},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     0,
 				ToDestroy:    0,
@@ -43,7 +43,7 @@ func TestCalculateStatistics(t *testing.T) {
 			changes: []ResourceChange{
 				{ChangeType: ChangeTypeCreate, ReplacementType: ReplacementNever},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        1,
 				ToChange:     0,
 				ToDestroy:    0,
@@ -57,7 +57,7 @@ func TestCalculateStatistics(t *testing.T) {
 			changes: []ResourceChange{
 				{ChangeType: ChangeTypeUpdate, ReplacementType: ReplacementNever},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     1,
 				ToDestroy:    0,
@@ -71,7 +71,7 @@ func TestCalculateStatistics(t *testing.T) {
 			changes: []ResourceChange{
 				{ChangeType: ChangeTypeDelete, ReplacementType: ReplacementNever},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     0,
 				ToDestroy:    1,
@@ -85,7 +85,7 @@ func TestCalculateStatistics(t *testing.T) {
 			changes: []ResourceChange{
 				{ChangeType: ChangeTypeReplace, ReplacementType: ReplacementAlways},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     0,
 				ToDestroy:    0,
@@ -103,7 +103,7 @@ func TestCalculateStatistics(t *testing.T) {
 					IsDangerous: true,
 				},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     0,
 				ToDestroy:    0,
@@ -121,7 +121,7 @@ func TestCalculateStatistics(t *testing.T) {
 					IsDangerous: false,
 				},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     1,
 				ToDestroy:    0,
@@ -139,7 +139,7 @@ func TestCalculateStatistics(t *testing.T) {
 					IsDangerous: true,
 				},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        0,
 				ToChange:     0,
 				ToDestroy:    0,
@@ -166,7 +166,7 @@ func TestCalculateStatistics(t *testing.T) {
 					IsDangerous: true,
 				},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:        1,
 				ToChange:     1,
 				ToDestroy:    1,
@@ -179,14 +179,14 @@ func TestCalculateStatistics(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.calculateStatistics(tc.changes, []OutputChange{})
-			assert.Equal(t, tc.expected.ToAdd, result.ToAdd, "ToAdd mismatch")
-			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
-			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
-			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
-			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
-			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
-			assert.Equal(t, tc.expected.OutputChanges, result.OutputChanges, "OutputChanges mismatch")
+			got := analyzer.calculateStatistics(tc.changes, []OutputChange{})
+			assert.Equal(t, tc.want.ToAdd, got.ToAdd, "ToAdd mismatch")
+			assert.Equal(t, tc.want.ToChange, got.ToChange, "ToChange mismatch")
+			assert.Equal(t, tc.want.ToDestroy, got.ToDestroy, "ToDestroy mismatch")
+			assert.Equal(t, tc.want.Replacements, got.Replacements, "Replacements mismatch")
+			assert.Equal(t, tc.want.HighRisk, got.HighRisk, "HighRisk mismatch")
+			assert.Equal(t, tc.want.Total, got.Total, "Total mismatch")
+			assert.Equal(t, tc.want.OutputChanges, got.OutputChanges, "OutputChanges mismatch")
 		})
 	}
 }
@@ -199,16 +199,16 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name     string
-		changes  []ResourceChange
-		outputs  []OutputChange
-		expected ChangeStatistics
+		name    string
+		changes []ResourceChange
+		outputs []OutputChange
+		want    ChangeStatistics
 	}{
 		{
 			name:    "No changes should have all zeros including OutputChanges",
 			changes: []ResourceChange{},
 			outputs: []OutputChange{},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:         0,
 				ToChange:      0,
 				ToDestroy:     0,
@@ -227,7 +227,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 				{Name: "output2", ChangeType: ChangeTypeCreate, IsNoOp: false},
 				{Name: "output3", ChangeType: ChangeTypeNoOp, IsNoOp: true}, // Should be excluded
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:         0,
 				ToChange:      0,
 				ToDestroy:     0,
@@ -250,7 +250,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 				{Name: "output2", ChangeType: ChangeTypeNoOp, IsNoOp: true}, // Should be excluded from OutputChanges
 				{Name: "output3", ChangeType: ChangeTypeDelete, IsNoOp: false},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:         1,
 				ToChange:      1,
 				ToDestroy:     0,
@@ -269,7 +269,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 				{Name: "output2", ChangeType: ChangeTypeNoOp, IsNoOp: true},
 				{Name: "output3", ChangeType: ChangeTypeNoOp, IsNoOp: true},
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:         0,
 				ToChange:      0,
 				ToDestroy:     0,
@@ -289,7 +289,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 			outputs: []OutputChange{
 				{Name: "output1", ChangeType: ChangeTypeUpdate, IsNoOp: false}, // Non-no-op output
 			},
-			expected: ChangeStatistics{
+			want: ChangeStatistics{
 				ToAdd:         0,
 				ToChange:      0,
 				ToDestroy:     0,
@@ -304,15 +304,15 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.calculateStatistics(tc.changes, tc.outputs)
-			assert.Equal(t, tc.expected.ToAdd, result.ToAdd, "ToAdd mismatch")
-			assert.Equal(t, tc.expected.ToChange, result.ToChange, "ToChange mismatch")
-			assert.Equal(t, tc.expected.ToDestroy, result.ToDestroy, "ToDestroy mismatch")
-			assert.Equal(t, tc.expected.Replacements, result.Replacements, "Replacements mismatch")
-			assert.Equal(t, tc.expected.HighRisk, result.HighRisk, "HighRisk mismatch")
-			assert.Equal(t, tc.expected.Unmodified, result.Unmodified, "Unmodified mismatch")
-			assert.Equal(t, tc.expected.Total, result.Total, "Total mismatch")
-			assert.Equal(t, tc.expected.OutputChanges, result.OutputChanges, "OutputChanges mismatch")
+			got := analyzer.calculateStatistics(tc.changes, tc.outputs)
+			assert.Equal(t, tc.want.ToAdd, got.ToAdd, "ToAdd mismatch")
+			assert.Equal(t, tc.want.ToChange, got.ToChange, "ToChange mismatch")
+			assert.Equal(t, tc.want.ToDestroy, got.ToDestroy, "ToDestroy mismatch")
+			assert.Equal(t, tc.want.Replacements, got.Replacements, "Replacements mismatch")
+			assert.Equal(t, tc.want.HighRisk, got.HighRisk, "HighRisk mismatch")
+			assert.Equal(t, tc.want.Unmodified, got.Unmodified, "Unmodified mismatch")
+			assert.Equal(t, tc.want.Total, got.Total, "Total mismatch")
+			assert.Equal(t, tc.want.OutputChanges, got.OutputChanges, "OutputChanges mismatch")
 		})
 	}
 }
