@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2025-08-28
+
+### Fixed
+- **Terraform Plan Parsing**:
+  - Fixed issue where Strata couldn't properly handle plan files in subdirectories
+  - Changed parser to use `filepath.Base()` when executing `terraform show` to ensure the correct relative path is used within the plan's directory context
+
+### Changed
+- **Documentation Organization**:
+  - Reorganized feature specifications from `agents/` directory to `specs/` directory for better project structure
+  - Added new LLM analysis feature specifications with requirements and decision log documentation
+
 ## [1.2.6] - 2025-08-13
 
 ### Changed
