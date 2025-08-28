@@ -15,7 +15,7 @@ import (
 // BenchmarkAnalysis_SmallPlan benchmarks analysis with a small plan (10 resources)
 func BenchmarkAnalysis_SmallPlan(b *testing.B) {
 	planPath := createBenchmarkPlan("small_benchmark_plan.json", 10)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
@@ -31,7 +31,7 @@ func BenchmarkAnalysis_SmallPlan(b *testing.B) {
 // BenchmarkAnalysis_MediumPlan benchmarks analysis with a medium plan (100 resources)
 func BenchmarkAnalysis_MediumPlan(b *testing.B) {
 	planPath := createBenchmarkPlan("medium_benchmark_plan.json", 100)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
@@ -47,7 +47,7 @@ func BenchmarkAnalysis_MediumPlan(b *testing.B) {
 // BenchmarkAnalysis_LargePlan benchmarks analysis with a large plan (1000 resources)
 func BenchmarkAnalysis_LargePlan(b *testing.B) {
 	planPath := createBenchmarkPlan("large_benchmark_plan.json", 1000)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
@@ -63,7 +63,7 @@ func BenchmarkAnalysis_LargePlan(b *testing.B) {
 // BenchmarkFormatting_ProgressiveDisclosure benchmarks the progressive disclosure formatter
 func BenchmarkFormatting_ProgressiveDisclosure(b *testing.B) {
 	planPath := createBenchmarkPlan("format_benchmark_plan.json", 100)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	cfg.Plan.ExpandableSections.Enabled = true
@@ -89,7 +89,7 @@ func BenchmarkFormatting_ProgressiveDisclosure(b *testing.B) {
 // BenchmarkFormatting_GroupedSections benchmarks the grouped sections formatter
 func BenchmarkFormatting_GroupedSections(b *testing.B) {
 	planPath := createBenchmarkPlan("grouped_benchmark_plan.json", 200)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	cfg.Plan.ExpandableSections.Enabled = true
@@ -132,7 +132,7 @@ func BenchmarkPropertyAnalysis(b *testing.B) {
 	for _, tt := range tests {
 		b.Run(tt.name, func(b *testing.B) {
 			planPath := createPropertyBenchmarkPlan(fmt.Sprintf("prop_%s.json", tt.name), tt.properties, tt.size)
-			defer os.RemoveAll(filepath.Dir(planPath))
+			b.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 			cfg := getBenchmarkConfig()
 			analyzer := NewAnalyzer(nil, cfg)
@@ -183,7 +183,7 @@ func TestPerformanceTargets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			planPath := createBenchmarkPlan(fmt.Sprintf("perf_%d.json", tt.resources), tt.resources)
-			defer os.RemoveAll(filepath.Dir(planPath))
+			t.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 			cfg := getBenchmarkConfig()
 			analyzer := NewAnalyzer(nil, cfg)
@@ -218,7 +218,7 @@ func TestMemoryUsage(t *testing.T) {
 
 	// Process a large plan
 	planPath := createBenchmarkPlan("memory_test_plan.json", 1000)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	t.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
@@ -258,7 +258,7 @@ func TestMemoryUsage(t *testing.T) {
 func TestPerformanceLimitsEnforcement(t *testing.T) {
 	// Create a plan with many large properties that should trigger limits
 	planPath := createPropertyBenchmarkPlan("limits_test.json", 200, 2000)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	t.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	// Set very restrictive limits
 	cfg := getBenchmarkConfig()
@@ -296,7 +296,7 @@ func TestCollapsibleFormatterPerformance(t *testing.T) {
 	}
 
 	planPath := createBenchmarkPlan("formatter_perf.json", 100)
-	defer os.RemoveAll(filepath.Dir(planPath))
+	t.Cleanup(func() { os.RemoveAll(filepath.Dir(planPath)) })
 
 	// Test with collapsible sections disabled
 	cfg1 := getBenchmarkConfig()

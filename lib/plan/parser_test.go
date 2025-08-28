@@ -12,23 +12,23 @@ import (
 
 func TestParser_extractWorkspaceInfo(t *testing.T) {
 	tests := []struct {
-		name     string
-		plan     *tfjson.Plan
-		expected string
+		name string
+		plan *tfjson.Plan
+		want string
 	}{
 		{
-			name:     "default workspace",
-			plan:     &tfjson.Plan{},
-			expected: "default",
+			name: "default workspace",
+			plan: &tfjson.Plan{},
+			want: "default",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
-			result := p.extractWorkspaceInfo(tt.plan)
-			if result != tt.expected {
-				t.Errorf("extractWorkspaceInfo() = %v, want %v", result, tt.expected)
+			got := p.extractWorkspaceInfo(tt.plan)
+			if got != tt.want {
+				t.Errorf("extractWorkspaceInfo() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -36,14 +36,14 @@ func TestParser_extractWorkspaceInfo(t *testing.T) {
 
 func TestParser_extractBackendInfo(t *testing.T) {
 	tests := []struct {
-		name     string
-		plan     *tfjson.Plan
-		expected BackendInfo
+		name string
+		plan *tfjson.Plan
+		want BackendInfo
 	}{
 		{
 			name: "default backend",
 			plan: &tfjson.Plan{},
-			expected: BackendInfo{
+			want: BackendInfo{
 				Type:     "local",
 				Location: "terraform.tfstate",
 				Config:   make(map[string]any),
@@ -54,12 +54,12 @@ func TestParser_extractBackendInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
-			result := p.extractBackendInfo(tt.plan)
-			if result.Type != tt.expected.Type {
-				t.Errorf("extractBackendInfo().Type = %v, want %v", result.Type, tt.expected.Type)
+			got := p.extractBackendInfo(tt.plan)
+			if got.Type != tt.want.Type {
+				t.Errorf("extractBackendInfo().Type = %v, want %v", got.Type, tt.want.Type)
 			}
-			if result.Location != tt.expected.Location {
-				t.Errorf("extractBackendInfo().Location = %v, want %v", result.Location, tt.expected.Location)
+			if got.Location != tt.want.Location {
+				t.Errorf("extractBackendInfo().Location = %v, want %v", got.Location, tt.want.Location)
 			}
 		})
 	}

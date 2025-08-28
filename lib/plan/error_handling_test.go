@@ -38,7 +38,7 @@ func TestMalformedTerraformPlans(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filename, err)
 		}
-		defer os.Remove(path) // Clean up after test
+		t.Cleanup(func() { os.Remove(path) }) // Clean up after test
 	}
 
 	cfg := getErrorTestConfig()
@@ -184,7 +184,7 @@ func TestGracefulDegradation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	defer os.Remove(testFile)
+	t.Cleanup(func() { os.Remove(testFile) })
 
 	cfg := getErrorTestConfig()
 	analyzer := NewAnalyzer(nil, cfg)
@@ -283,7 +283,7 @@ func TestMemoryLimits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	defer os.Remove(testFile)
+	t.Cleanup(func() { os.Remove(testFile) })
 
 	// Test with very restrictive limits
 	cfg := getErrorTestConfig()

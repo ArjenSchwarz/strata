@@ -57,63 +57,63 @@ func TestConfig_ResolvePlaceholders(t *testing.T) {
 	}()
 
 	tests := []struct {
-		name     string
-		input    string
-		expected func(string) bool // Function to validate the result
+		name  string
+		input string
+		want  func(string) bool // Function to validate the got
 	}{
 		{
 			name:  "timestamp placeholder",
 			input: "report-$TIMESTAMP.json",
-			expected: func(result string) bool {
-				return strings.HasPrefix(result, "report-") &&
-					strings.HasSuffix(result, ".json") &&
-					strings.Contains(result, "T") // Timestamp format contains T
+			want: func(got string) bool {
+				return strings.HasPrefix(got, "report-") &&
+					strings.HasSuffix(got, ".json") &&
+					strings.Contains(got, "T") // Timestamp format contains T
 			},
 		},
 		{
 			name:  "AWS region placeholder",
 			input: "report-$AWS_REGION.json",
-			expected: func(result string) bool {
-				return result == "report-us-east-1.json"
+			want: func(got string) bool {
+				return got == "report-us-east-1.json"
 			},
 		},
 		{
 			name:  "AWS account ID placeholder",
 			input: "report-$AWS_ACCOUNTID.json",
-			expected: func(result string) bool {
-				return result == "report-123456789012.json"
+			want: func(got string) bool {
+				return got == "report-123456789012.json"
 			},
 		},
 
 		{
 			name:  "multiple placeholders",
 			input: "$AWS_REGION-$AWS_ACCOUNTID.json",
-			expected: func(result string) bool {
-				return result == "us-east-1-123456789012.json"
+			want: func(got string) bool {
+				return got == "us-east-1-123456789012.json"
 			},
 		},
 		{
 			name:  "no placeholders",
 			input: "simple-report.json",
-			expected: func(result string) bool {
-				return result == "simple-report.json"
+			want: func(got string) bool {
+				return got == "simple-report.json"
 			},
 		},
 		{
 			name:  "timestamp with other placeholders",
 			input: "$TIMESTAMP-$AWS_REGION.json",
-			expected: func(result string) bool {
-				return strings.Contains(result, "us-east-1.json") &&
-					strings.Contains(result, "T") // Timestamp format
+			want: func(got string) bool {
+				return strings.Contains(got, "us-east-1.json") &&
+					strings.Contains(got, "T") // Timestamp format
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := config.resolvePlaceholders(tt.input)
-			if !tt.expected(result) {
-				t.Errorf("resolvePlaceholders() = %v, validation failed for input %v", result, tt.input)
+			got := config.resolvePlaceholders(tt.input)
+			if !tt.want(got) {
+				t.Errorf("resolvePlaceholders() = %v, validation failed for input %v", got, tt.input)
 			}
 		})
 	}
