@@ -75,8 +75,8 @@ func TestOutputRefinements_EdgeCases_OnlyNoOps(t *testing.T) {
 				Name:    "static",
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionNoop},
-					Before:  map[string]interface{}{"bucket": "my-bucket"},
-					After:   map[string]interface{}{"bucket": "my-bucket"},
+					Before:  map[string]any{"bucket": "my-bucket"},
+					After:   map[string]any{"bucket": "my-bucket"},
 				},
 			},
 			{
@@ -85,8 +85,8 @@ func TestOutputRefinements_EdgeCases_OnlyNoOps(t *testing.T) {
 				Name:    "logs",
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionNoop},
-					Before:  map[string]interface{}{"bucket": "logs-bucket"},
-					After:   map[string]interface{}{"bucket": "logs-bucket"},
+					Before:  map[string]any{"bucket": "logs-bucket"},
+					After:   map[string]any{"bucket": "logs-bucket"},
 				},
 			},
 		},
@@ -204,61 +204,61 @@ func TestOutputRefinements_EdgeCases_ComplexSensitiveStructures(t *testing.T) {
 				Name:    "complex",
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
-						"tags": map[string]interface{}{
+					Before: map[string]any{
+						"tags": map[string]any{
 							"Name":        "instance",
 							"Environment": "prod",
 							"Secret":      "old-secret-value",
 						},
 						"user_data": "old-script-content",
-						"metadata": map[string]interface{}{
+						"metadata": map[string]any{
 							"startup_script": "old-startup",
-							"ssh_keys": []interface{}{
+							"ssh_keys": []any{
 								"ssh-rsa AAAAB3...",
 								"ssh-rsa BBBBB4...",
 							},
 						},
 					},
-					After: map[string]interface{}{
-						"tags": map[string]interface{}{
+					After: map[string]any{
+						"tags": map[string]any{
 							"Name":        "instance",
 							"Environment": "prod",
 							"Secret":      "new-secret-value",
 						},
 						"user_data": "new-script-content",
-						"metadata": map[string]interface{}{
+						"metadata": map[string]any{
 							"startup_script": "new-startup",
-							"ssh_keys": []interface{}{
+							"ssh_keys": []any{
 								"ssh-rsa AAAAB3...",
 								"ssh-rsa CCCCC5...", // Changed key
 							},
 						},
 					},
-					BeforeSensitive: map[string]interface{}{
-						"tags": map[string]interface{}{
+					BeforeSensitive: map[string]any{
+						"tags": map[string]any{
 							"Name":        false,
 							"Environment": false,
 							"Secret":      true, // Sensitive
 						},
 						"user_data": true, // Entire user_data is sensitive
-						"metadata": map[string]interface{}{
+						"metadata": map[string]any{
 							"startup_script": false,
-							"ssh_keys": []interface{}{
+							"ssh_keys": []any{
 								true,  // First SSH key is sensitive
 								false, // Second SSH key is not
 							},
 						},
 					},
-					AfterSensitive: map[string]interface{}{
-						"tags": map[string]interface{}{
+					AfterSensitive: map[string]any{
+						"tags": map[string]any{
 							"Name":        false,
 							"Environment": false,
 							"Secret":      true, // Still sensitive
 						},
 						"user_data": true, // Still entirely sensitive
-						"metadata": map[string]interface{}{
+						"metadata": map[string]any{
 							"startup_script": false,
-							"ssh_keys": []interface{}{
+							"ssh_keys": []any{
 								true, // First SSH key still sensitive
 								true, // Second SSH key now sensitive too
 							},
@@ -447,7 +447,7 @@ func TestOutputRefinements_EdgeCases_LargePlansPerformance(t *testing.T) {
 	resourceChanges := make([]*tfjson.ResourceChange, resourceCount)
 	outputChanges := make(map[string]*tfjson.Change, outputCount)
 
-	for i := 0; i < resourceCount; i++ {
+	for i := range resourceCount {
 		changeType := tfjson.ActionCreate
 		if i%5 == 0 {
 			changeType = tfjson.ActionUpdate
@@ -463,13 +463,13 @@ func TestOutputRefinements_EdgeCases_LargePlansPerformance(t *testing.T) {
 			Name:    fmt.Sprintf("web_%d", i),
 			Change: &tfjson.Change{
 				Actions: tfjson.Actions{changeType},
-				Before:  map[string]interface{}{"instance_type": "t2.micro"},
-				After:   map[string]interface{}{"instance_type": "t2.small"},
+				Before:  map[string]any{"instance_type": "t2.micro"},
+				After:   map[string]any{"instance_type": "t2.small"},
 			},
 		}
 	}
 
-	for i := 0; i < outputCount; i++ {
+	for i := range outputCount {
 		outputChanges[fmt.Sprintf("output_%d", i)] = &tfjson.Change{
 			Actions: tfjson.Actions{tfjson.ActionCreate},
 			Before:  nil,
@@ -620,7 +620,7 @@ func TestOutputRefinements_EdgeCases_PropertySortingComplexScenarios(t *testing.
 			copy(sortedChanges, analysis.Changes)
 
 			// Apply the same sorting logic as analyzePropertyChanges
-			for i := 0; i < len(sortedChanges); i++ {
+			for i := range sortedChanges {
 				for j := i + 1; j < len(sortedChanges); j++ {
 					iName := strings.ToLower(sortedChanges[i].Name)
 					jName := strings.ToLower(sortedChanges[j].Name)

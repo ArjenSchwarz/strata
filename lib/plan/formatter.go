@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -283,10 +284,8 @@ func NewFormatter(cfg *config.Config) *Formatter {
 func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
 	supportedFormats := []string{formatTable, "json", "html", "markdown"}
 	lowercaseFormat := strings.ToLower(outputFormat)
-	for _, format := range supportedFormats {
-		if lowercaseFormat == format {
-			return nil
-		}
+	if slices.Contains(supportedFormats, lowercaseFormat) {
+		return nil
 	}
 	return fmt.Errorf("unsupported output format '%s'. Supported formats: %s", outputFormat, strings.Join(supportedFormats, ", "))
 }

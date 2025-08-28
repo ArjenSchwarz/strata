@@ -49,7 +49,7 @@ type ResourceChange struct {
 	Provider         string                 `json:"provider,omitempty"`          // Provider name extracted from resource type (e.g., "aws", "azurerm")
 	TopChanges       []string               `json:"top_changes,omitempty"`       // First 3 changed properties for updates (only shown if show_context=true)
 	ReplacementHints []string               `json:"replacement_hints,omitempty"` // Human-readable replacement reasons (always shown)
-	PropertyChanges  PropertyChangeAnalysis `json:"property_changes,omitempty"`  // Detailed property change analysis
+	PropertyChanges  PropertyChangeAnalysis `json:"property_changes"`            // Detailed property change analysis
 	// New fields for unknown values (requirement 1.2, 1.5)
 	HasUnknownValues  bool     `json:"has_unknown_values"` // Whether resource contains unknown properties (requirement 1.2)
 	UnknownProperties []string `json:"unknown_properties"` // List of unknown property paths (requirement 1.5)

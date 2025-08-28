@@ -65,7 +65,9 @@
       "Bash(make fmt:*)",
       "Bash(make test:*)",
       "mcp__ide__executeCode",
-      "mcp__devtools__find_long_files"
+      "mcp__devtools__find_long_files",
+      "mcp__serena__find_file",
+      "Bash(make:*)"
     ],
     "deny": []
   }

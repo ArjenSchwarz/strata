@@ -113,7 +113,7 @@ func testPropertySortingBackwardCompatibility(t *testing.T) {
 	copy(sortedChanges, changes)
 
 	// Apply sorting (simple bubble sort as used in the analyzer)
-	for i := 0; i < len(sortedChanges); i++ {
+	for i := range sortedChanges {
 		for j := i + 1; j < len(sortedChanges); j++ {
 			iName := sortedChanges[i].Name
 			jName := sortedChanges[j].Name

@@ -46,7 +46,7 @@ func TestParser_extractBackendInfo(t *testing.T) {
 			expected: BackendInfo{
 				Type:     "local",
 				Location: "terraform.tfstate",
-				Config:   make(map[string]interface{}),
+				Config:   make(map[string]any),
 			},
 		},
 	}

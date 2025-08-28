@@ -219,7 +219,7 @@ func TestComparisonConsistency_NoMoreEqualsFunction(t *testing.T) {
 		},
 		{
 			name: "interface_map_vs_any_map",
-			a:    map[string]interface{}{"key": "value"},
+			a:    map[string]any{"key": "value"},
 			b:    map[string]any{"key": "value"},
 		},
 	}

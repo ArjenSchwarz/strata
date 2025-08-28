@@ -340,12 +340,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			})
 		} else {
 			// Compare each element for same-sized arrays
-			maxLen := len(beforeVal)
-			if len(afterSlice) > maxLen {
-				maxLen = len(afterSlice)
-			}
+			maxLen := max(len(afterSlice), len(beforeVal))
 
-			for i := 0; i < maxLen; i++ {
+			for i := range maxLen {
 				newPath := fmt.Sprintf("%s[%d]", path, i)
 
 				var beforeItem, afterItem any
@@ -468,12 +465,9 @@ func (a *Analyzer) naturalSort(s1, s2 string) bool {
 	parts1 := a.splitNatural(s1)
 	parts2 := a.splitNatural(s2)
 
-	minLen := len(parts1)
-	if len(parts2) < minLen {
-		minLen = len(parts2)
-	}
+	minLen := min(len(parts2), len(parts1))
 
-	for i := 0; i < minLen; i++ {
+	for i := range minLen {
 		part1, part2 := parts1[i], parts2[i]
 
 		// Try to parse as numbers
@@ -542,10 +536,9 @@ func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
 	// Calculate total size and enforce memory limits
 	totalSize := 0
 	for i, change := range analysis.Changes {
-		size := a.estimateValueSize(change.Before) + a.estimateValueSize(change.After)
-		if size > MaxPropertyValueSize {
-			size = MaxPropertyValueSize // Cap individual property size
-		}
+		size := min(a.estimateValueSize(change.Before)+a.estimateValueSize(change.After),
+			// Cap individual property size
+			MaxPropertyValueSize)
 		analysis.Changes[i].Size = size
 
 		if totalSize+size > MaxTotalPropertyMemory {
@@ -593,9 +586,9 @@ func (a *Analyzer) parsePath(path string) []string {
 	// e.g., "tags[0].name" becomes ["tags", "0", "name"]
 	// e.g., "matrix[1][2]" becomes ["matrix", "1", "2"]
 	result := []string{}
-	parts := strings.Split(path, ".")
+	parts := strings.SplitSeq(path, ".")
 
-	for _, part := range parts {
+	for part := range parts {
 		if strings.Contains(part, "[") {
 			// Handle multiple array indices in one part like "matrix[1][2]"
 			remaining := part
@@ -1562,12 +1555,9 @@ func (a *Analyzer) compareValues(before, after any, path []string, depth, maxDep
 	afterSlice, afterIsSlice := after.([]any)
 
 	if beforeIsSlice && afterIsSlice {
-		maxLen := len(beforeSlice)
-		if len(afterSlice) > maxLen {
-			maxLen = len(afterSlice)
-		}
+		maxLen := max(len(afterSlice), len(beforeSlice))
 
-		for i := 0; i < maxLen; i++ {
+		for i := range maxLen {
 			var beforeVal, afterVal any
 			indexPath := make([]string, len(path)+1)
 			copy(indexPath, path)

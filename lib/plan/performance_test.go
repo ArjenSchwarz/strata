@@ -20,8 +20,7 @@ func BenchmarkAnalysis_SmallPlan(b *testing.B) {
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		summary := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
@@ -37,8 +36,7 @@ func BenchmarkAnalysis_MediumPlan(b *testing.B) {
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		summary := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
@@ -54,8 +52,7 @@ func BenchmarkAnalysis_LargePlan(b *testing.B) {
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		summary := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
@@ -78,8 +75,7 @@ func BenchmarkFormatting_ProgressiveDisclosure(b *testing.B) {
 		b.Fatal("Failed to generate summary for benchmark")
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		doc, err := formatter.formatResourceChangesWithProgressiveDisclosure(summary)
 		if err != nil {
 			b.Fatalf("Formatting failed: %v", err)
@@ -109,8 +105,7 @@ func BenchmarkFormatting_GroupedSections(b *testing.B) {
 
 	groups := analyzer.groupByProvider(summary.ResourceChanges)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		doc, err := formatter.formatGroupedWithCollapsibleSections(summary, groups)
 		if err != nil {
 			b.Fatalf("Grouped formatting failed: %v", err)
@@ -143,7 +138,7 @@ func BenchmarkPropertyAnalysis(b *testing.B) {
 			analyzer := NewAnalyzer(nil, cfg)
 
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				summary := analyzer.GenerateSummary(planPath)
 				if summary == nil {
 					b.Fatal("Expected non-nil summary")
@@ -363,7 +358,7 @@ func createBenchmarkPlan(filename string, resourceCount int) string {
 	var resources []string
 	providers := []string{"aws", "azurerm", "google", "kubernetes"}
 
-	for i := 0; i < resourceCount; i++ {
+	for i := range resourceCount {
 		provider := providers[i%len(providers)]
 		resourceType := fmt.Sprintf("%s_instance", provider)
 		if provider == "kubernetes" {
@@ -445,7 +440,7 @@ func createPropertyBenchmarkPlan(filename string, propertyCount, propertySize in
 
 	// Create before and after objects with many properties
 	var beforeProps, afterProps []string
-	for i := 0; i < propertyCount; i++ {
+	for i := range propertyCount {
 		value := strings.Repeat("x", propertySize)
 		beforeProps = append(beforeProps, fmt.Sprintf(`"property_%d": "%s"`, i, value))
 		afterProps = append(afterProps, fmt.Sprintf(`"property_%d": "%s_updated"`, i, value))
