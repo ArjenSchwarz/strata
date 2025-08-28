@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Development Configuration**:
+  - Added Serena MCP integration for enhanced IDE assistant capabilities
+  - Added comprehensive project memories including code style conventions, codebase structure, project guidelines, and suggested commands
+  - Added Serena project configuration (`.serena/project.yml`) for Go language support
+  - Added additional auto-approvals to Claude settings for formatting and testing commands
+
 ## [1.2.7] - 2025-08-28
 
 ### Fixed
