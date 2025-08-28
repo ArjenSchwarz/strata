@@ -507,7 +507,7 @@ func generateLargePlanWithUnknownValues(numResources int, unknownRate float64) *
 		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
 	}
 
-	for i := 0; i < numResources; i++ {
+	for i := range numResources {
 		// Create before and after states
 		before := make(map[string]any)
 		after := make(map[string]any)
@@ -515,7 +515,7 @@ func generateLargePlanWithUnknownValues(numResources int, unknownRate float64) *
 
 		// Generate properties for this resource
 		numProps := 10 + (i % 15) // 10-24 properties per resource
-		for j := 0; j < numProps; j++ {
+		for j := range numProps {
 			propName := generatePropertyName(j)
 
 			// Determine if this property should be unknown

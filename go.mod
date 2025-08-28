@@ -1,6 +1,6 @@
 module github.com/ArjenSchwarz/strata
 
-go 1.24.5
+go 1.25.0
 
 require (
 	github.com/ArjenSchwarz/go-output/v2 v2.1.3

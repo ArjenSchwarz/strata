@@ -1196,7 +1196,7 @@ func TestProviderGroupingWithThresholds(t *testing.T) {
 				azureCount := tc.resourceCount - awsCount
 
 				// Add AWS resources
-				for i := 0; i < awsCount; i++ {
+				for i := range awsCount {
 					resourceChanges = append(resourceChanges, ResourceChange{
 						Address:       fmt.Sprintf("aws_instance.web-%d", i),
 						Type:          "aws_instance",
@@ -1209,7 +1209,7 @@ func TestProviderGroupingWithThresholds(t *testing.T) {
 				}
 
 				// Add Azure resources
-				for i := 0; i < azureCount; i++ {
+				for i := range azureCount {
 					resourceChanges = append(resourceChanges, ResourceChange{
 						Address:       fmt.Sprintf("azurerm_virtual_machine.vm-%d", i),
 						Type:          "azurerm_virtual_machine",

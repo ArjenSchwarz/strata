@@ -130,11 +130,11 @@ func TestCheckSensitiveProperties(t *testing.T) {
 	resourceChange := &tfjson.ResourceChange{
 		Type: "aws_ec2_instance",
 		Change: &tfjson.Change{
-			Before: map[string]interface{}{
+			Before: map[string]any{
 				"user_data":     "old-data",
 				"instance_type": "t2.micro",
 			},
-			After: map[string]interface{}{
+			After: map[string]any{
 				"user_data":     "new-data",
 				"instance_type": "t2.micro",
 			},
@@ -149,7 +149,7 @@ func TestCheckSensitiveProperties(t *testing.T) {
 	assert.Contains(t, result, "user_data")
 
 	// Test with unchanged sensitive property
-	resourceChange.Change.After.(map[string]interface{})["user_data"] = "old-data"
+	resourceChange.Change.After.(map[string]any)["user_data"] = "old-data"
 	result = analyzer.checkSensitiveProperties(resourceChange)
 
 	// Should find no sensitive property changes
@@ -196,7 +196,7 @@ func TestAnalyzeReplacementNecessity(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions:      tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-					ReplacePaths: []interface{}{},
+					ReplacePaths: []any{},
 				},
 			},
 			expected: ReplacementAlways,
@@ -206,8 +206,8 @@ func TestAnalyzeReplacementNecessity(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions:      tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-					ReplacePaths: []interface{}{[]interface{}{"definite_field"}},
-					After: map[string]interface{}{
+					ReplacePaths: []any{[]any{"definite_field"}},
+					After: map[string]any{
 						"definite_field": "definite_value",
 					},
 				},
@@ -555,7 +555,7 @@ func TestExtractPhysicalID(t *testing.T) {
 			name: "Existing resource with ID should return ID",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"id": "resource-123",
 					},
 				},
@@ -566,7 +566,7 @@ func TestExtractPhysicalID(t *testing.T) {
 			name: "Existing resource without ID should return dash",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"name": "resource-name",
 					},
 				},
@@ -577,7 +577,7 @@ func TestExtractPhysicalID(t *testing.T) {
 			name: "Existing resource with empty ID should return dash",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"id": "",
 					},
 				},
@@ -794,7 +794,7 @@ func TestExtractReplacementHints(t *testing.T) {
 			name: "Empty replacement paths should return empty",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					ReplacePaths: []interface{}{},
+					ReplacePaths: []any{},
 				},
 			},
 			expected: []string{},
@@ -803,7 +803,7 @@ func TestExtractReplacementHints(t *testing.T) {
 			name: "Simple string path should be formatted",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					ReplacePaths: []interface{}{"subnet_id"},
+					ReplacePaths: []any{"subnet_id"},
 				},
 			},
 			expected: []string{"subnet_id"},
@@ -812,8 +812,8 @@ func TestExtractReplacementHints(t *testing.T) {
 			name: "Nested array path should be formatted with dots and brackets",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					ReplacePaths: []interface{}{
-						[]interface{}{"network_interface", 0, "subnet_id"},
+					ReplacePaths: []any{
+						[]any{"network_interface", 0, "subnet_id"},
 					},
 				},
 			},
@@ -823,9 +823,9 @@ func TestExtractReplacementHints(t *testing.T) {
 			name: "Multiple replacement paths should all be included",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					ReplacePaths: []interface{}{
+					ReplacePaths: []any{
 						"subnet_id",
-						[]interface{}{"security_groups", 1},
+						[]any{"security_groups", 1},
 						"availability_zone",
 					},
 				},
@@ -840,8 +840,8 @@ func TestExtractReplacementHints(t *testing.T) {
 			name: "Float64 indices should be converted to int",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					ReplacePaths: []interface{}{
-						[]interface{}{"network_interface", 0.0, "subnet_id"},
+					ReplacePaths: []any{
+						[]any{"network_interface", 0.0, "subnet_id"},
 					},
 				},
 			},
@@ -869,7 +869,7 @@ func TestFormatReplacePath(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		path     interface{}
+		path     any
 		expected string
 	}{
 		{
@@ -879,27 +879,27 @@ func TestFormatReplacePath(t *testing.T) {
 		},
 		{
 			name:     "Array with string should format with dots",
-			path:     []interface{}{"network_interface", "subnet_id"},
+			path:     []any{"network_interface", "subnet_id"},
 			expected: "network_interface.subnet_id",
 		},
 		{
 			name:     "Array with int should format with brackets",
-			path:     []interface{}{"security_groups", 0},
+			path:     []any{"security_groups", 0},
 			expected: "security_groups.[0]",
 		},
 		{
 			name:     "Array with float64 should format with brackets",
-			path:     []interface{}{"security_groups", 1.0},
+			path:     []any{"security_groups", 1.0},
 			expected: "security_groups.[1]",
 		},
 		{
 			name:     "Complex nested path should format correctly",
-			path:     []interface{}{"block_device_mappings", 0, "ebs", "volume_size"},
+			path:     []any{"block_device_mappings", 0, "ebs", "volume_size"},
 			expected: "block_device_mappings.[0].ebs.volume_size",
 		},
 		{
 			name:     "Empty array should return empty string",
-			path:     []interface{}{},
+			path:     []any{},
 			expected: "",
 		},
 		{
@@ -941,11 +941,11 @@ func TestGetTopChangedProperties(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"instance_type": "t2.micro",
 						"ami":           "ami-123",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type": "t2.small",
 						"ami":           "ami-456",
 					},
@@ -960,7 +960,7 @@ func TestGetTopChangedProperties(t *testing.T) {
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionCreate},
 					Before:  nil,
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type": "t2.micro",
 					},
 				},
@@ -973,16 +973,16 @@ func TestGetTopChangedProperties(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"instance_type":      "t2.micro",
 						"ami":                "ami-123",
-						"security_group_ids": []interface{}{"sg-123"},
+						"security_group_ids": []any{"sg-123"},
 						"unchanged_property": "same",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type":      "t2.small",
 						"ami":                "ami-456",
-						"security_group_ids": []interface{}{"sg-456"},
+						"security_group_ids": []any{"sg-456"},
 						"unchanged_property": "same",
 					},
 				},
@@ -995,13 +995,13 @@ func TestGetTopChangedProperties(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"prop1": "old1",
 						"prop2": "old2",
 						"prop3": "old3",
 						"prop4": "old4",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"prop1": "new1",
 						"prop2": "new2",
 						"prop3": "new3",
@@ -1017,11 +1017,11 @@ func TestGetTopChangedProperties(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"existing_prop": "value",
 						"removed_prop":  "old_value",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"existing_prop": "value",
 					},
 				},
@@ -1034,11 +1034,11 @@ func TestGetTopChangedProperties(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"instance_type": "t2.micro",
 						"ami":           "ami-123",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type": "t2.micro",
 						"ami":           "ami-123",
 					},
@@ -1154,10 +1154,10 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_s3_bucket",
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"versioning": false,
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"versioning": true,
 					},
 				},
@@ -1171,10 +1171,10 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_ec2_instance",
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"user_data": "old-data",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"user_data": "new-data",
 					},
 				},
@@ -1197,10 +1197,10 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_ec2_instance",
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"user_data": "old-data",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"user_data": "new-data",
 					},
 				},
@@ -1371,11 +1371,11 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 			name: "Simple property change should be detected",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"instance_type": "t2.micro",
 						"ami":           "ami-123",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type": "t2.small",
 						"ami":           "ami-123",
 					},
@@ -1389,13 +1389,13 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 			name: "Multiple changes should respect limit",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"instance_type": "t2.micro",
 						"ami":           "ami-123",
 						"subnet_id":     "subnet-123",
 						"key_name":      "old-key",
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"instance_type": "t2.small",
 						"ami":           "ami-456",
 						"subnet_id":     "subnet-456",
@@ -1411,14 +1411,14 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 			name: "Nested property changes should be detected",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
-						"tags": map[string]interface{}{
+					Before: map[string]any{
+						"tags": map[string]any{
 							"Environment": "staging",
 							"Owner":       "team-a",
 						},
 					},
-					After: map[string]interface{}{
-						"tags": map[string]interface{}{
+					After: map[string]any{
+						"tags": map[string]any{
 							"Environment": "production",
 							"Owner":       "team-a",
 						},
@@ -1433,11 +1433,11 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 			name: "Array changes should be detected",
 			change: &tfjson.ResourceChange{
 				Change: &tfjson.Change{
-					Before: map[string]interface{}{
-						"security_groups": []interface{}{"sg-123"},
+					Before: map[string]any{
+						"security_groups": []any{"sg-123"},
 					},
-					After: map[string]interface{}{
-						"security_groups": []interface{}{"sg-456"},
+					After: map[string]any{
+						"security_groups": []any{"sg-456"},
 					},
 				},
 			},
@@ -1470,14 +1470,14 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	t.Run("Limit functionality", func(t *testing.T) {
 		change := &tfjson.ResourceChange{
 			Change: &tfjson.Change{
-				Before: map[string]interface{}{
+				Before: map[string]any{
 					"prop1": "old1",
 					"prop2": "old2",
 					"prop3": "old3",
 					"prop4": "old4",
 					"prop5": "old5",
 				},
-				After: map[string]interface{}{
+				After: map[string]any{
 					"prop1": "new1",
 					"prop2": "new2",
 					"prop3": "new3",
@@ -1618,10 +1618,10 @@ func TestAnalyzeResource(t *testing.T) {
 				Type: "aws_s3_bucket",
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionUpdate},
-					Before: map[string]interface{}{
+					Before: map[string]any{
 						"versioning": false,
 					},
-					After: map[string]interface{}{
+					After: map[string]any{
 						"versioning": true,
 					},
 				},
@@ -1636,7 +1636,7 @@ func TestAnalyzeResource(t *testing.T) {
 				Type: "aws_rds_instance",
 				Change: &tfjson.Change{
 					Actions:      tfjson.Actions{tfjson.ActionDelete, tfjson.ActionCreate},
-					ReplacePaths: []interface{}{"engine_version"},
+					ReplacePaths: []any{"engine_version"},
 				},
 			},
 			expectedError:   false,
@@ -1649,8 +1649,8 @@ func TestAnalyzeResource(t *testing.T) {
 				Type: "aws_ec2_instance",
 				Change: &tfjson.Change{
 					Actions: tfjson.Actions{tfjson.ActionCreate},
-					After: map[string]interface{}{
-						"depends_on": []interface{}{
+					After: map[string]any{
+						"depends_on": []any{
 							"aws_vpc.main",
 						},
 					},
@@ -1691,7 +1691,7 @@ func TestEstimateValueSize(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected int
 	}{
 		{
@@ -1721,7 +1721,7 @@ func TestEstimateValueSize(t *testing.T) {
 		},
 		{
 			name: "Map should sum key and value sizes",
-			value: map[string]interface{}{
+			value: map[string]any{
 				"key1": "value1", // 4 + 6 = 10
 				"key2": "value2", // 4 + 6 = 10
 			},
@@ -1729,7 +1729,7 @@ func TestEstimateValueSize(t *testing.T) {
 		},
 		{
 			name: "Array should sum element sizes",
-			value: []interface{}{
+			value: []any{
 				"hello", // 5
 				"world", // 5
 			},
@@ -1737,9 +1737,9 @@ func TestEstimateValueSize(t *testing.T) {
 		},
 		{
 			name: "Complex nested structure",
-			value: map[string]interface{}{
+			value: map[string]any{
 				"name": "test", // 4 + 4 = 8
-				"tags": map[string]interface{}{ // 4 + (3+4 + 5+4) = 20
+				"tags": map[string]any{ // 4 + (3+4 + 5+4) = 20
 					"env":   "prod",
 					"owner": "team",
 				},
@@ -1761,8 +1761,8 @@ func TestCompareValues(t *testing.T) {
 
 	testCases := []struct {
 		name            string
-		before          interface{}
-		after           interface{}
+		before          any
+		after           any
 		expectedChanges int
 	}{
 		{
@@ -1779,11 +1779,11 @@ func TestCompareValues(t *testing.T) {
 		},
 		{
 			name: "Map with one change should return one change",
-			before: map[string]interface{}{
+			before: map[string]any{
 				"key1": "value1",
 				"key2": "value2",
 			},
-			after: map[string]interface{}{
+			after: map[string]any{
 				"key1": "value1",
 				"key2": "new_value2",
 			},
@@ -1791,10 +1791,10 @@ func TestCompareValues(t *testing.T) {
 		},
 		{
 			name: "Map with new key should return one change",
-			before: map[string]interface{}{
+			before: map[string]any{
 				"key1": "value1",
 			},
-			after: map[string]interface{}{
+			after: map[string]any{
 				"key1": "value1",
 				"key2": "value2",
 			},
@@ -1802,19 +1802,19 @@ func TestCompareValues(t *testing.T) {
 		},
 		{
 			name: "Map with removed key should return one change",
-			before: map[string]interface{}{
+			before: map[string]any{
 				"key1": "value1",
 				"key2": "value2",
 			},
-			after: map[string]interface{}{
+			after: map[string]any{
 				"key1": "value1",
 			},
 			expectedChanges: 1,
 		},
 		{
 			name:            "Array changes should be detected",
-			before:          []interface{}{"a", "b"},
-			after:           []interface{}{"a", "c"},
+			before:          []any{"a", "b"},
+			after:           []any{"a", "c"},
 			expectedChanges: 1,
 		},
 	}
@@ -3283,7 +3283,7 @@ func TestAnalyzePropertyChangesWithLimits(t *testing.T) {
 					Before: func() map[string]any {
 						result := make(map[string]any)
 						// Create more properties than the limit
-						for i := 0; i < MaxPropertiesPerResource+10; i++ {
+						for i := range MaxPropertiesPerResource + 10 {
 							result[fmt.Sprintf("prop_%d", i)] = fmt.Sprintf("value_%d", i)
 						}
 						return result
@@ -3291,7 +3291,7 @@ func TestAnalyzePropertyChangesWithLimits(t *testing.T) {
 					After: func() map[string]any {
 						result := make(map[string]any)
 						// Create more properties than the limit
-						for i := 0; i < MaxPropertiesPerResource+10; i++ {
+						for i := range MaxPropertiesPerResource + 10 {
 							result[fmt.Sprintf("prop_%d", i)] = fmt.Sprintf("new_value_%d", i)
 						}
 						return result

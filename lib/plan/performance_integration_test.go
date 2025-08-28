@@ -271,12 +271,12 @@ func generateLargeSyntheticPlan(numResources, propertiesPerResource int) *tfjson
 		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
 	}
 
-	for i := 0; i < numResources; i++ {
+	for i := range numResources {
 		// Create before and after states with many properties
-		before := make(map[string]interface{})
-		after := make(map[string]interface{})
+		before := make(map[string]any)
+		after := make(map[string]any)
 
-		for j := 0; j < propertiesPerResource; j++ {
+		for j := range propertiesPerResource {
 			propName := generatePropertyName(j)
 			before[propName] = generatePropertyValue(j, "before")
 			after[propName] = generatePropertyValue(j, "after")
@@ -304,11 +304,11 @@ func generatePlanWithLargeProperties(numResources, propertiesPerResource, proper
 		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
 	}
 
-	for i := 0; i < numResources; i++ {
-		before := make(map[string]interface{})
-		after := make(map[string]interface{})
+	for i := range numResources {
+		before := make(map[string]any)
+		after := make(map[string]any)
 
-		for j := 0; j < propertiesPerResource; j++ {
+		for j := range propertiesPerResource {
 			propName := generatePropertyName(j)
 			// Generate large property values
 			before[propName] = "before_" + generateLargeString(propertySize-7) // Account for prefix length
@@ -344,28 +344,28 @@ func generateMixedActionPlan(numResources int) *tfjson.Plan {
 		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
 	}
 
-	for i := 0; i < numResources; i++ {
+	for i := range numResources {
 		action := actions[i%len(actions)]
 
-		var before, after interface{}
+		var before, after any
 		var changeActions []tfjson.Action
 
 		switch action {
 		case tfjson.ActionCreate:
 			before = nil
-			after = map[string]interface{}{"prop": "value"}
+			after = map[string]any{"prop": "value"}
 			changeActions = []tfjson.Action{tfjson.ActionCreate}
 		case tfjson.ActionDelete:
-			before = map[string]interface{}{"prop": "value"}
+			before = map[string]any{"prop": "value"}
 			after = nil
 			changeActions = []tfjson.Action{tfjson.ActionDelete}
 		case tfjson.ActionUpdate:
-			before = map[string]interface{}{"prop": "old_value"}
-			after = map[string]interface{}{"prop": "new_value"}
+			before = map[string]any{"prop": "old_value"}
+			after = map[string]any{"prop": "new_value"}
 			changeActions = []tfjson.Action{tfjson.ActionUpdate}
 		default: // Replace
-			before = map[string]interface{}{"prop": "old_value"}
-			after = map[string]interface{}{"prop": "new_value"}
+			before = map[string]any{"prop": "old_value"}
+			after = map[string]any{"prop": "new_value"}
 			changeActions = []tfjson.Action{tfjson.ActionDelete, tfjson.ActionCreate}
 		}
 
@@ -393,7 +393,7 @@ func generateMultiProviderPlan(numResources int) *tfjson.Plan {
 		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
 	}
 
-	for i := 0; i < numResources; i++ {
+	for i := range numResources {
 		provider := providers[i%len(providers)]
 		resourceType := provider + "_resource_" + generateResourceName(i)
 
@@ -403,8 +403,8 @@ func generateMultiProviderPlan(numResources int) *tfjson.Plan {
 			Name:    "instance_" + generateResourceName(i),
 			Change: &tfjson.Change{
 				Actions: []tfjson.Action{tfjson.ActionUpdate},
-				Before:  map[string]interface{}{"prop": "old"},
-				After:   map[string]interface{}{"prop": "new"},
+				Before:  map[string]any{"prop": "old"},
+				After:   map[string]any{"prop": "new"},
 			},
 		}
 	}
@@ -438,7 +438,7 @@ func generatePropertyName(index int) string {
 	}
 }
 
-func generatePropertyValue(index int, prefix string) interface{} {
+func generatePropertyValue(index int, prefix string) any {
 	switch index % 3 {
 	case 0:
 		return prefix + "_string_value_" + generateResourceName(index) + "_" + prefix // Make sure before/after differ
