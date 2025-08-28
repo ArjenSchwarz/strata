@@ -64,7 +64,7 @@ func (p *Parser) convertPlanToJSON() ([]byte, error) {
 	planDir := filepath.Dir(p.planFile)
 
 	// Execute terraform show -json
-	cmd := exec.Command("terraform", "show", "-json", p.planFile)
+	cmd := exec.Command("terraform", "show", "-json", filepath.Base(p.planFile))
 	cmd.Dir = planDir
 
 	output, err := cmd.Output()
