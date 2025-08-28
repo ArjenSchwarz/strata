@@ -67,7 +67,8 @@
       "mcp__ide__executeCode",
       "mcp__devtools__find_long_files",
       "mcp__serena__find_file",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Read(/Users/arjenschwarz/.claude/**)"
     ],
     "deny": []
   }

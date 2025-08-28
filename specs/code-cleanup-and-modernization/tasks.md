@@ -48,7 +48,7 @@ This document contains the implementation tasks for modernizing the Strata codeb
   - Use move_code_section.py script to organize test functions by functionality
   - References requirements 7.1, 7.2, 7.3
 
-- [ ] **6. Split lib/plan/formatter_test.go file**
+- [x] **6. Split lib/plan/formatter_test.go file**
   - Split formatter_test.go (2,860 lines) into logical groupings
   - Create formatter_basic_test.go for basic formatting tests
   - Create formatter_enhanced_test.go for enhanced features tests
@@ -56,7 +56,7 @@ This document contains the implementation tasks for modernizing the Strata codeb
   - Use move_code_section.py script for safe reorganization
   - References requirements 7.1, 7.2, 7.3
 
-- [ ] **7. Mark test helper functions with t.Helper()**
+- [x] **7. Mark test helper functions with t.Helper()**
   - Identify all test helper functions across the codebase using grep or AST analysis
   - Add t.Helper() as first statement to testFormatterSortingBackwardCompatibility function
   - Add t.Helper() as first statement to testPropertySortingBackwardCompatibility function

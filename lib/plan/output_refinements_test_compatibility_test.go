@@ -54,6 +54,7 @@ func TestOutputRefinements_ExistingTestCompatibility(t *testing.T) {
 // testFormatterSortingBackwardCompatibility verifies that the enhanced sorting
 // maintains backward compatibility with existing formatter behavior
 func testFormatterSortingBackwardCompatibility(t *testing.T) {
+	t.Helper()
 	// Create test resources similar to existing formatter tests
 	resources := []ResourceChange{
 		{
@@ -99,6 +100,7 @@ func testFormatterSortingBackwardCompatibility(t *testing.T) {
 
 // testPropertySortingBackwardCompatibility verifies property sorting doesn't break existing tests
 func testPropertySortingBackwardCompatibility(t *testing.T) {
+	t.Helper()
 	// Test that property sorting works with various property name formats
 	// that might appear in existing tests
 	changes := []PropertyChange{
@@ -134,6 +136,7 @@ func testPropertySortingBackwardCompatibility(t *testing.T) {
 // testNoOpFilteringDefaultBehavior verifies that no-op filtering is disabled by default
 // to maintain existing behavior
 func testNoOpFilteringDefaultBehavior(t *testing.T) {
+	t.Helper()
 	// Create test resources with no-ops
 	resources := []ResourceChange{
 		{
@@ -172,6 +175,7 @@ func testNoOpFilteringDefaultBehavior(t *testing.T) {
 // testStatisticsIncludeNoOps verifies that statistics calculations
 // continue to include no-op resources in the Unmodified count
 func testStatisticsIncludeNoOps(t *testing.T) {
+	t.Helper()
 	resources := []ResourceChange{
 		{ChangeType: ChangeTypeCreate, IsDangerous: false},
 		{ChangeType: ChangeTypeUpdate, IsDangerous: false},
@@ -203,6 +207,7 @@ func testStatisticsIncludeNoOps(t *testing.T) {
 // testActionSortTransformerCompatibility verifies the enhanced ActionSortTransformer
 // maintains compatibility with existing table sorting functionality
 func testActionSortTransformerCompatibility(t *testing.T) {
+	t.Helper()
 	transformer := &ActionSortTransformer{}
 
 	// Test with table content that doesn't have danger indicators (existing functionality)
