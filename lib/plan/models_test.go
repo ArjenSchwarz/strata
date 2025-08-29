@@ -45,7 +45,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Test marshaling
@@ -122,7 +122,7 @@ func TestFromTerraformAction(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := FromTerraformAction(tt.actions)
@@ -168,7 +168,7 @@ func TestChangeType_IsDestructive(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := tt.changeType.IsDestructive()
@@ -228,7 +228,7 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Test marshaling
@@ -292,7 +292,7 @@ func TestPropertyChange_SensitiveData(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if tt.change.Sensitive != tt.expected {

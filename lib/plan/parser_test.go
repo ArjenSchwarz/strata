@@ -25,7 +25,7 @@ func TestParser_extractWorkspaceInfo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			p := &Parser{}
@@ -56,7 +56,7 @@ func TestParser_extractBackendInfo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Capture loop variable for parallel subtest
+		// Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			p := &Parser{}
