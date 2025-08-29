@@ -20,7 +20,7 @@ type PlanBuilder struct {
 	terraformVersion string
 	resources        []tfjson.ResourceChange
 	outputs          map[string]OutputChange
-	variables        map[string]interface{}
+	variables        map[string]any
 }
 
 // NewPlanBuilder creates a new plan builder with sensible defaults
@@ -30,7 +30,7 @@ func NewPlanBuilder() *PlanBuilder {
 		terraformVersion: "1.8.5",
 		resources:        []tfjson.ResourceChange{},
 		outputs:          make(map[string]OutputChange),
-		variables:        make(map[string]interface{}),
+		variables:        make(map[string]any),
 	}
 }
 
@@ -76,7 +76,7 @@ func (b *PlanBuilder) AddSimpleResource(provider, resourceType, name, action str
 		ProviderName: fmt.Sprintf("registry.terraform.io/hashicorp/%s", provider),
 		Change: &tfjson.Change{
 			Actions: actions,
-			After: map[string]interface{}{
+			After: map[string]any{
 				"name": name,
 				"type": "test",
 			},
@@ -84,7 +84,7 @@ func (b *PlanBuilder) AddSimpleResource(provider, resourceType, name, action str
 	}
 
 	if action != "create" {
-		resource.Change.Before = map[string]interface{}{
+		resource.Change.Before = map[string]any{
 			"name": name,
 			"type": "old_test",
 		}
@@ -120,7 +120,7 @@ func (b *PlanBuilder) AddOutput(name string, change OutputChange) *PlanBuilder {
 }
 
 // AddVariable adds a variable to the plan
-func (b *PlanBuilder) AddVariable(name string, value interface{}) *PlanBuilder {
+func (b *PlanBuilder) AddVariable(name string, value any) *PlanBuilder {
 	b.variables[name] = value
 	return b
 }
@@ -241,8 +241,8 @@ func CreateEmptyPlan() *PlanBuilder {
 
 // AddPropertyHeavyResource adds a resource with many properties for performance testing
 func (b *PlanBuilder) AddPropertyHeavyResource(resourceType, name string, propertyCount, propertySize int) *PlanBuilder {
-	before := make(map[string]interface{})
-	after := make(map[string]interface{})
+	before := make(map[string]any)
+	after := make(map[string]any)
 
 	for i := range propertyCount {
 		value := strings.Repeat("x", propertySize)
