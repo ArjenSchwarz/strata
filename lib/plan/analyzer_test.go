@@ -48,8 +48,10 @@ func TestIsSensitiveResource(t *testing.T) {
 	// Run tests
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.IsSensitiveResource(tc.resourceType)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.IsSensitiveResource(tc.resourceType)
+			if got != tc.expected {
+				t.Errorf("IsSensitiveResource() = %v, want %v", got, tc.expected)
+			}
 		})
 	}
 }
@@ -104,8 +106,10 @@ func TestIsSensitiveProperty(t *testing.T) {
 	// Run tests
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.IsSensitiveProperty(tc.resourceType, tc.property)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.IsSensitiveProperty(tc.resourceType, tc.property)
+			if got != tc.expected {
+				t.Errorf("IsSensitiveProperty() = %v, want %v", got, tc.expected)
+			}
 		})
 	}
 }
@@ -215,8 +219,10 @@ func TestAnalyzeReplacementNecessity(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.analyzeReplacementNecessity(tc.change)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.analyzeReplacementNecessity(tc.change)
+			if got != tc.expected {
+				t.Errorf("analyzeReplacementNecessity() = %v, want %v", got, tc.expected)
+			}
 		})
 	}
 }
@@ -275,8 +281,10 @@ func TestExtractPhysicalID(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.extractPhysicalID(tc.change)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.extractPhysicalID(tc.change)
+			if got != tc.expected {
+				t.Errorf("extractPhysicalID() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -323,8 +331,10 @@ func TestExtractModulePath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.extractModulePath(tc.address)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.extractModulePath(tc.address)
+			if got != tc.expected {
+				t.Errorf("extractModulePath() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -391,8 +401,10 @@ func TestExtractProvider(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.extractProvider(tc.resourceType)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.extractProvider(tc.resourceType)
+			if got != tc.expected {
+				t.Errorf("extractProvider() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -405,16 +417,22 @@ func TestExtractProviderCaching(t *testing.T) {
 
 	// First call should compute and cache the result
 	result1 := analyzer.extractProvider(resourceType)
-	assert.Equal(t, "aws", result1)
+	if result1 != "aws" {
+		t.Errorf("extractProvider() first call = %q, want %q", result1, "aws")
+	}
 
 	// Second call should return cached result
 	result2 := analyzer.extractProvider(resourceType)
-	assert.Equal(t, "aws", result2)
+	if result2 != "aws" {
+		t.Errorf("extractProvider() second call = %q, want %q", result2, "aws")
+	}
 
 	// Verify cache contains the entry
 	cached, ok := analyzer.providerCache.Load(resourceType)
 	assert.True(t, ok, "Cache should contain the entry")
-	assert.Equal(t, "aws", cached.(string))
+	if cached.(string) != "aws" {
+		t.Errorf("cached provider = %q, want %q", cached.(string), "aws")
+	}
 }
 
 func TestExtractProviderEdgeCases(t *testing.T) {
@@ -454,8 +472,10 @@ func TestExtractProviderEdgeCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.extractProvider(tc.resourceType)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.extractProvider(tc.resourceType)
+			if got != tc.expected {
+				t.Errorf("extractProvider() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -545,8 +565,15 @@ func TestExtractReplacementHints(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.extractReplacementHints(tc.change)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.extractReplacementHints(tc.change)
+			if len(got) != len(tc.expected) {
+				t.Errorf("extractReplacementHints() length = %d, want %d", len(got), len(tc.expected))
+			}
+			for i, expected := range tc.expected {
+				if i >= len(got) || got[i] != expected {
+					t.Errorf("extractReplacementHints()[%d] = %q, want %q", i, got[i], expected)
+				}
+			}
 		})
 	}
 }
@@ -603,8 +630,10 @@ func TestFormatReplacePath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.formatReplacePath(tc.path)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.formatReplacePath(tc.path)
+			if got != tc.expected {
+				t.Errorf("formatReplacePath() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -775,7 +804,14 @@ func TestGetTopChangedProperties(t *testing.T) {
 					assert.Contains(t, result, expected, "Expected property should be present")
 				}
 			} else {
-				assert.Equal(t, tc.expected, result)
+				if len(tc.expected) != len(result) {
+					t.Errorf("getTopChangedProperties() length = %d, want %d", len(result), len(tc.expected))
+				}
+				for i, expected := range tc.expected {
+					if i >= len(result) || result[i] != expected {
+						t.Errorf("getTopChangedProperties()[%d] = %q, want %q", i, result[i], expected)
+					}
+				}
 			}
 		})
 	}
@@ -901,8 +937,12 @@ func TestEvaluateResourceDanger(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			dangerous, reason := analyzer.evaluateResourceDanger(tc.change, tc.changeType)
-			assert.Equal(t, tc.expectedDanger, dangerous, "Danger evaluation mismatch")
-			assert.Equal(t, tc.expectedReason, reason, "Danger reason mismatch")
+			if dangerous != tc.expectedDanger {
+				t.Errorf("evaluateResourceDanger() dangerous = %v, want %v", dangerous, tc.expectedDanger)
+			}
+			if reason != tc.expectedReason {
+				t.Errorf("evaluateResourceDanger() reason = %q, want %q", reason, tc.expectedReason)
+			}
 		})
 	}
 }
@@ -959,8 +999,10 @@ func TestGetSensitiveResourceReason(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.getSensitiveResourceReason(tc.resourceType)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.getSensitiveResourceReason(tc.resourceType)
+			if got != tc.expected {
+				t.Errorf("getSensitiveResourceReason() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }
@@ -1022,8 +1064,10 @@ func TestGetSensitivePropertyReason(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.getSensitivePropertyReason(tc.properties)
-			assert.Equal(t, tc.expected, result)
+			got := analyzer.getSensitivePropertyReason(tc.properties)
+			if got != tc.expected {
+				t.Errorf("getSensitivePropertyReason() = %q, want %q", got, tc.expected)
+			}
 		})
 	}
 }

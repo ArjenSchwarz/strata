@@ -52,6 +52,50 @@ test-coverage:
 benchmarks:
 	go test -bench=. ./...
 
+# Run benchmarks with memory profiling
+benchmarks-mem:
+	go test -bench=. -benchmem ./...
+
+# Run benchmarks multiple times for statistical analysis
+benchmarks-stats:
+	@echo "Running benchmarks 10 times for statistical analysis..."
+	go test -bench=. -benchmem -count=10 ./lib/plan/ > bench_results.txt
+	@echo "Results saved to bench_results.txt"
+	@echo "Use 'benchstat bench_results.txt' for statistical analysis"
+
+# Run only analysis benchmarks
+benchmarks-analysis:
+	go test -bench=BenchmarkAnalysis -benchmem ./lib/plan/
+
+# Run only formatting benchmarks
+benchmarks-formatting:
+	go test -bench=BenchmarkFormatting -benchmem ./lib/plan/
+
+# Run only property analysis benchmarks
+benchmarks-property:
+	go test -bench=BenchmarkPropertyAnalysis -benchmem ./lib/plan/
+
+# Run performance validation tests
+test-performance:
+	go test -run=TestPerformanceTargets ./lib/plan/
+
+# Run memory usage tests
+test-memory:
+	go test -run=TestMemoryUsage ./lib/plan/
+
+# Compare benchmark results (requires BASELINE and CURRENT files)
+benchmarks-compare:
+	@if [ -z "$(BASELINE)" ] || [ -z "$(CURRENT)" ]; then \
+		echo "Error: Both BASELINE and CURRENT parameters required."; \
+		echo "Usage: make benchmarks-compare BASELINE=bench_before.txt CURRENT=bench_after.txt"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(BASELINE)" ] || [ ! -f "$(CURRENT)" ]; then \
+		echo "Error: Benchmark files not found"; \
+		exit 1; \
+	fi
+	benchstat $(BASELINE) $(CURRENT)
+
 # Run a sample file with the plan summary command
 run-sample:
 	@if [ -z "$(SAMPLE)" ]; then \
@@ -165,10 +209,20 @@ help:
 	@echo "  test-integration-verbose - Run integration tests with verbose output"
 	@echo "  test-all              - Run both unit and integration tests"
 	@echo "  test-coverage         - Generate test coverage report (HTML)"
-	@echo "  benchmarks            - Run benchmark tests"
+	@echo "  test-performance      - Run performance validation tests"
+	@echo "  test-memory           - Run memory usage tests"
 	@echo "  test-action-unit      - Run GitHub Action unit tests"
 	@echo "  test-action-integration - Run GitHub Action integration tests"
 	@echo "  test-action           - Run all GitHub Action tests"
+	@echo ""
+	@echo "Benchmark targets:"
+	@echo "  benchmarks            - Run benchmark tests"
+	@echo "  benchmarks-mem        - Run benchmarks with memory profiling"
+	@echo "  benchmarks-stats      - Run benchmarks 10 times for statistical analysis"
+	@echo "  benchmarks-analysis   - Run only analysis benchmarks"
+	@echo "  benchmarks-formatting - Run only formatting benchmarks"
+	@echo "  benchmarks-property   - Run only property analysis benchmarks"
+	@echo "  benchmarks-compare    - Compare benchmark results (requires BASELINE and CURRENT files)"
 	@echo ""
 	@echo "Code quality targets:"
 	@echo "  fmt                   - Format Go code"
@@ -197,4 +251,4 @@ help:
 	@echo "  make build VERSION=1.2.3     - Build with specific version"
 	@echo "  make build-release VERSION=1.2.3 - Build release version"
 
-.PHONY: build build-release test test-verbose test-integration test-integration-verbose test-all test-coverage benchmarks test-action-unit test-action-integration test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help
+.PHONY: build build-release test test-verbose test-integration test-integration-verbose test-all test-coverage test-performance test-memory benchmarks benchmarks-mem benchmarks-stats benchmarks-analysis benchmarks-formatting benchmarks-property benchmarks-compare test-action-unit test-action-integration test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help

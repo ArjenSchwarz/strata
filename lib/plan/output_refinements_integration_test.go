@@ -94,7 +94,9 @@ func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
 			testDataPath := filepath.Join("..", "..", "testdata", tc.planFile)
 			parser := NewParser(testDataPath)
 			plan, err := parser.LoadPlan()
-			require.NoError(t, err, "Failed to load test plan")
+			if err != nil {
+				t.Fatalf("Failed to load test plan: %v", err)
+			}
 
 			cfg := &config.Config{
 				Plan: config.PlanConfig{
@@ -190,7 +192,9 @@ func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
 			}
 
 			err = formatter.OutputSummary(summary, outputConfig, true)
-			assert.NoError(t, err, "OutputSummary should not error")
+			if err != nil {
+				t.Errorf("OutputSummary should not error: %v", err)
+			}
 		})
 	}
 }
@@ -201,7 +205,9 @@ func TestOutputRefinements_ConfigurationPrecedence(t *testing.T) {
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Failed to load plan: %v", err)
+	}
 
 	testCases := []struct {
 		name                  string
@@ -315,7 +321,9 @@ func TestOutputRefinements_BackwardCompatibility(t *testing.T) {
 			}
 
 			err = formatter.OutputSummary(summary, outputConfig, true)
-			require.NoError(t, err, "Formatter should handle existing plan file")
+			if err != nil {
+				t.Fatalf("Formatter should handle existing plan file: %v", err)
+			}
 
 			// Verify basic structure is intact
 			assert.NotNil(t, summary.Statistics, "Statistics should be present")
@@ -341,7 +349,9 @@ func TestOutputRefinements_PropertySortingIntegration(t *testing.T) {
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Failed to load plan: %v", err)
+	}
 
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
@@ -391,7 +401,9 @@ func TestOutputRefinements_SensitiveMaskingIntegration(t *testing.T) {
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Failed to load plan: %v", err)
+	}
 
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
@@ -435,7 +447,9 @@ func TestOutputRefinements_SensitiveMaskingIntegration(t *testing.T) {
 	}
 
 	err = formatter.OutputSummary(summary, outputConfig, true)
-	require.NoError(t, err, "Formatter should handle sensitive masking without error")
+	if err != nil {
+		t.Fatalf("Formatter should handle sensitive masking without error: %v", err)
+	}
 }
 
 // Helper function to create bool pointer
