@@ -31,5 +31,5 @@ jobs:
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
         binary_name: "strata"
-        ldflags: "-X 'github.com/ArjenSchwarz/strata/cmd.Version=${{ env.APP_VERSION }}' -X 'github.com/ArjenSchwarz/strata/cmd.BuildTime=${{ env.BUILD_TIME }}' -X 'github.com/ArjenSchwarz/strata/cmd.GitCommit=${{ env.GIT_COMMIT }}'"
+        ldflags: "-w -s -X 'github.com/ArjenSchwarz/strata/cmd.Version=${{ env.APP_VERSION }}' -X 'github.com/ArjenSchwarz/strata/cmd.BuildTime=${{ env.BUILD_TIME }}' -X 'github.com/ArjenSchwarz/strata/cmd.GitCommit=${{ env.GIT_COMMIT }}'"
         extra_files: "LICENSE README.md"
