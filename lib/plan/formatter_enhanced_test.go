@@ -364,7 +364,7 @@ func TestProviderGroupingWithThresholds(t *testing.T) {
 				}
 			} else {
 				// Create resources from single provider (AWS)
-				for i := 0; i < tc.resourceCount; i++ {
+				for i := range tc.resourceCount {
 					resourceChanges = append(resourceChanges, ResourceChange{
 						Address:       fmt.Sprintf("aws_instance.web-%d", i),
 						Type:          "aws_instance",
