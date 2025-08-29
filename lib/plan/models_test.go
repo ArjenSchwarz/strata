@@ -8,6 +8,7 @@ import (
 )
 
 func TestResourceChange_SerializationWithNewFields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		resource ResourceChange
@@ -44,7 +45,9 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Test marshaling
 			jsonData, err := json.Marshal(tt.resource)
 			if err != nil {
@@ -80,6 +83,7 @@ func TestResourceChange_SerializationWithNewFields(t *testing.T) {
 }
 
 func TestFromTerraformAction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		actions  tfjson.Actions
@@ -118,7 +122,9 @@ func TestFromTerraformAction(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := FromTerraformAction(tt.actions)
 			if result != tt.expected {
 				t.Errorf("FromTerraformAction() = %v, expected %v", result, tt.expected)
@@ -128,6 +134,7 @@ func TestFromTerraformAction(t *testing.T) {
 }
 
 func TestChangeType_IsDestructive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		changeType ChangeType
@@ -161,7 +168,9 @@ func TestChangeType_IsDestructive(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.changeType.IsDestructive()
 			if result != tt.expected {
 				t.Errorf("IsDestructive() = %v, expected %v", result, tt.expected)
@@ -171,6 +180,7 @@ func TestChangeType_IsDestructive(t *testing.T) {
 }
 
 func TestResourceAnalysis_Serialization(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		analysis ResourceAnalysis
@@ -218,7 +228,9 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Test marshaling
 			jsonData, err := json.Marshal(tt.analysis)
 			if err != nil {
@@ -251,6 +263,7 @@ func TestResourceAnalysis_Serialization(t *testing.T) {
 }
 
 func TestPropertyChange_SensitiveData(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		change   PropertyChange
@@ -279,7 +292,9 @@ func TestPropertyChange_SensitiveData(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.change.Sensitive != tt.expected {
 				t.Errorf("Sensitive flag = %v, expected %v", tt.change.Sensitive, tt.expected)
 			}

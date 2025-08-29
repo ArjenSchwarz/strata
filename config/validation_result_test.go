@@ -6,7 +6,9 @@ import (
 )
 
 func TestValidationResult(t *testing.T) {
+	t.Parallel()
 	t.Run("new validation result", func(t *testing.T) {
+		t.Parallel()
 		result := &ValidationResult{Valid: true}
 
 		if result.HasErrors() {
@@ -19,6 +21,7 @@ func TestValidationResult(t *testing.T) {
 	})
 
 	t.Run("add error", func(t *testing.T) {
+		t.Parallel()
 		result := &ValidationResult{Valid: true}
 		testErr := &FileOutputError{
 			Type:    "validation",
@@ -43,6 +46,7 @@ func TestValidationResult(t *testing.T) {
 	})
 
 	t.Run("add warning and info", func(t *testing.T) {
+		t.Parallel()
 		result := &ValidationResult{Valid: true}
 
 		result.AddWarning("test warning")
@@ -67,7 +71,9 @@ func TestValidationResult(t *testing.T) {
 }
 
 func TestFileOutputError(t *testing.T) {
+	t.Parallel()
 	t.Run("error without cause", func(t *testing.T) {
+		t.Parallel()
 		err := &FileOutputError{
 			Type:    "validation",
 			Code:    "PATH_TRAVERSAL",
@@ -82,6 +88,7 @@ func TestFileOutputError(t *testing.T) {
 	})
 
 	t.Run("error with cause", func(t *testing.T) {
+		t.Parallel()
 		cause := os.ErrNotExist
 		err := &FileOutputError{
 			Type:    "permission",
@@ -98,6 +105,7 @@ func TestFileOutputError(t *testing.T) {
 	})
 
 	t.Run("error code access", func(t *testing.T) {
+		t.Parallel()
 		err := &FileOutputError{
 			Type:    "format",
 			Code:    "UNSUPPORTED_FORMAT",

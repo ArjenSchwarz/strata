@@ -1428,6 +1428,7 @@ func TestCompareObjectsWithUnknownValues(t *testing.T) {
 
 // TestAnalyzePropertyChangesWithUnknownValuesIntegration tests complete property analysis with unknown values
 func TestAnalyzePropertyChangesWithUnknownValuesIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	analyzer := &Analyzer{}
 
 	testCases := []struct {

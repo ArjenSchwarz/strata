@@ -31,6 +31,17 @@ test:
 test-verbose:
 	go test -v -cover ./...
 
+# Run only integration tests
+test-integration:
+	INTEGRATION=1 go test ./...
+
+# Run integration tests with verbose output
+test-integration-verbose:
+	INTEGRATION=1 go test -v ./...
+
+# Run both unit and integration tests
+test-all: test test-integration
+
 # Generate test coverage report
 test-coverage:
 	go test -coverprofile=coverage.out ./...
@@ -150,6 +161,9 @@ help:
 	@echo "Testing targets:"
 	@echo "  test                  - Run Go unit tests"
 	@echo "  test-verbose          - Run tests with verbose output and coverage"
+	@echo "  test-integration      - Run only integration tests"
+	@echo "  test-integration-verbose - Run integration tests with verbose output"
+	@echo "  test-all              - Run both unit and integration tests"
 	@echo "  test-coverage         - Generate test coverage report (HTML)"
 	@echo "  benchmarks            - Run benchmark tests"
 	@echo "  test-action-unit      - Run GitHub Action unit tests"
@@ -183,4 +197,4 @@ help:
 	@echo "  make build VERSION=1.2.3     - Build with specific version"
 	@echo "  make build-release VERSION=1.2.3 - Build release version"
 
-.PHONY: build build-release test test-verbose test-coverage benchmarks test-action-unit test-action-integration test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help
+.PHONY: build build-release test test-verbose test-integration test-integration-verbose test-all test-coverage benchmarks test-action-unit test-action-integration test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help

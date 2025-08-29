@@ -13,6 +13,7 @@ import (
 // TestOutputRefinements_ComprehensiveWorkflow tests the complete workflow with real Terraform plan files
 // containing sensitive values, no-ops, and mixed change types (Task 8.1.1)
 func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	testCases := []struct {
 		name                   string
 		planFile               string
@@ -196,6 +197,7 @@ func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
 
 // TestOutputRefinements_ConfigurationPrecedence tests CLI flags vs config file precedence (Task 8.1.3)
 func TestOutputRefinements_ConfigurationPrecedence(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()
@@ -270,6 +272,7 @@ func TestOutputRefinements_ConfigurationPrecedence(t *testing.T) {
 
 // TestOutputRefinements_BackwardCompatibility validates backward compatibility (Task 8.1.4)
 func TestOutputRefinements_BackwardCompatibility(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Test with existing plan files to ensure no breaking changes
 	existingPlanFiles := []string{
 		"simple_plan.json",
@@ -334,6 +337,7 @@ func TestOutputRefinements_BackwardCompatibility(t *testing.T) {
 
 // TestOutputRefinements_PropertySortingIntegration tests end-to-end property sorting (Task 8.1.1)
 func TestOutputRefinements_PropertySortingIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()
@@ -383,6 +387,7 @@ func TestOutputRefinements_PropertySortingIntegration(t *testing.T) {
 
 // TestOutputRefinements_SensitiveMaskingIntegration tests end-to-end sensitive masking (Task 8.1.1)
 func TestOutputRefinements_SensitiveMaskingIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	testDataPath := filepath.Join("..", "..", "testdata", "output_refinements_plan.json")
 	parser := NewParser(testDataPath)
 	plan, err := parser.LoadPlan()

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -347,81 +346,8 @@ func TestCollapsibleFormatterPerformance(t *testing.T) {
 
 // Helper function to create benchmark plans with specified number of resources
 func createBenchmarkPlan(filename string, resourceCount int) string {
-	// Create temp directory for test files
-	tempDir, err := os.MkdirTemp("", "strata-test-*")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create temp directory: %v", err))
-	}
-	planPath := filepath.Join(tempDir, filename)
-
-	// Create plan JSON with multiple providers for realistic testing
-	var resources []string
-	providers := []string{"aws", "azurerm", "google", "kubernetes"}
-
-	for i := range resourceCount {
-		provider := providers[i%len(providers)]
-		resourceType := fmt.Sprintf("%s_instance", provider)
-		if provider == "kubernetes" {
-			resourceType = "kubernetes_deployment"
-		}
-
-		resource := fmt.Sprintf(`{
-			"address": "%s.resource_%d",
-			"mode": "managed",
-			"type": "%s",
-			"name": "resource_%d",
-			"provider_name": "registry.terraform.io/hashicorp/%s",
-			"change": {
-				"actions": ["%s"],
-				"before": %s,
-				"after": {
-					"name": "resource_%d",
-					"type": "benchmark",
-					"tags": {"Environment": "test", "Resource": "%d"}
-				},
-				"after_unknown": {"id": true},
-				"before_sensitive": false,
-				"after_sensitive": {"tags": {}}
-			}
-		}`,
-			resourceType, i, resourceType, i, provider,
-			[]string{"create", "update", "delete"}[i%3],
-			func() string {
-				if i%3 == 0 {
-					return "null"
-				}
-				return fmt.Sprintf(`{"name": "old_resource_%d", "type": "benchmark"}`, i)
-			}(),
-			i, i)
-
-		resources = append(resources, resource)
-	}
-
-	planJSON := fmt.Sprintf(`{
-		"format_version": "1.2",
-		"terraform_version": "1.8.5",
-		"variables": {},
-		"planned_values": {
-			"root_module": {
-				"resources": []
-			}
-		},
-		"resource_changes": [%s],
-		"output_changes": {},
-		"prior_state": {
-			"format_version": "1.0",
-			"terraform_version": "1.8.5",
-			"values": {
-				"root_module": {}
-			}
-		},
-		"configuration": {
-			"provider_config": {},
-			"root_module": {}
-		}
-	}`, strings.Join(resources, ","))
-
-	err = os.WriteFile(planPath, []byte(planJSON), 0644)
+	builder := CreateMultiProviderPlan(resourceCount)
+	planPath, err := builder.SaveToTempFile(filename)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create benchmark plan: %v", err))
 	}
@@ -431,62 +357,8 @@ func createBenchmarkPlan(filename string, resourceCount int) string {
 
 // Helper function to create benchmark plans with many properties
 func createPropertyBenchmarkPlan(filename string, propertyCount, propertySize int) string {
-	// Create temp directory for test files
-	tempDir, err := os.MkdirTemp("", "strata-prop-test-*")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create temp directory: %v", err))
-	}
-	planPath := filepath.Join(tempDir, filename)
-
-	// Create before and after objects with many properties
-	var beforeProps, afterProps []string
-	for i := range propertyCount {
-		value := strings.Repeat("x", propertySize)
-		beforeProps = append(beforeProps, fmt.Sprintf(`"property_%d": "%s"`, i, value))
-		afterProps = append(afterProps, fmt.Sprintf(`"property_%d": "%s_updated"`, i, value))
-	}
-
-	planJSON := fmt.Sprintf(`{
-		"format_version": "1.2",
-		"terraform_version": "1.8.5",
-		"variables": {},
-		"planned_values": {
-			"root_module": {
-				"resources": []
-			}
-		},
-		"resource_changes": [
-			{
-				"address": "aws_instance.property_heavy",
-				"mode": "managed",
-				"type": "aws_instance",
-				"name": "property_heavy",
-				"provider_name": "registry.terraform.io/hashicorp/aws",
-				"change": {
-					"actions": ["update"],
-					"before": {%s},
-					"after": {%s},
-					"after_unknown": {},
-					"before_sensitive": {},
-					"after_sensitive": {}
-				}
-			}
-		],
-		"output_changes": {},
-		"prior_state": {
-			"format_version": "1.0",
-			"terraform_version": "1.8.5",
-			"values": {
-				"root_module": {}
-			}
-		},
-		"configuration": {
-			"provider_config": {},
-			"root_module": {}
-		}
-	}`, strings.Join(beforeProps, ","), strings.Join(afterProps, ","))
-
-	err = os.WriteFile(planPath, []byte(planJSON), 0644)
+	builder := CreatePropertyBenchmarkPlan(propertyCount, propertySize)
+	planPath, err := builder.SaveToTempFile(filename)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create property benchmark plan: %v", err))
 	}

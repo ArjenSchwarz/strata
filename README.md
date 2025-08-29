@@ -569,8 +569,14 @@ strata/
 # Build the project
 make build
 
-# Run tests
+# Run unit tests
 make test
+
+# Run all tests including integration tests
+INTEGRATION=1 make test
+
+# Run only integration tests
+INTEGRATION=1 go test ./... -run=".*Integration.*"
 
 # Run sample tests
 make run-sample
@@ -578,6 +584,15 @@ make run-sample
 # Run sample tests with detailed output
 make run-sample-details
 ```
+
+#### Test Categories
+
+Strata has two main categories of tests:
+
+- **Unit Tests**: Fast, isolated tests that run by default with `make test`
+- **Integration Tests**: End-to-end tests that require external resources and test complete workflows
+
+Integration tests are automatically skipped unless the `INTEGRATION` environment variable is set. This allows for faster development cycles while ensuring comprehensive testing when needed.
 
 ## What's New in v1.0
 

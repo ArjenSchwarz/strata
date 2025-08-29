@@ -11,6 +11,7 @@ import (
 )
 
 func TestParser_extractWorkspaceInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		plan *tfjson.Plan
@@ -24,7 +25,9 @@ func TestParser_extractWorkspaceInfo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			p := &Parser{}
 			got := p.extractWorkspaceInfo(tt.plan)
 			if got != tt.want {
@@ -35,6 +38,7 @@ func TestParser_extractWorkspaceInfo(t *testing.T) {
 }
 
 func TestParser_extractBackendInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		plan *tfjson.Plan
@@ -52,7 +56,9 @@ func TestParser_extractBackendInfo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture loop variable for parallel subtest
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			p := &Parser{}
 			got := p.extractBackendInfo(tt.plan)
 			if got.Type != tt.want.Type {
@@ -191,6 +197,7 @@ func TestParser_ValidateStructure(t *testing.T) {
 }
 
 func TestNewParser(t *testing.T) {
+	t.Parallel()
 	planFile := "test.tfplan"
 	p := NewParser(planFile)
 
