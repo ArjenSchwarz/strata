@@ -10,6 +10,7 @@ import (
 
 // TestPerformanceLimitsWithLargePlans tests the performance limits with artificially large plans
 func TestPerformanceLimitsWithLargePlans(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	tests := []struct {
 		name                  string
 		numResources          int
@@ -125,6 +126,7 @@ func TestPerformanceLimitsWithLargePlans(t *testing.T) {
 
 // TestFormatterPerformanceWithLargePlans tests formatter performance with large datasets
 func TestFormatterPerformanceWithLargePlans(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Generate a large plan
 	plan := generateLargeSyntheticPlan(500, 20) // 500 resources, 20 properties each
 
@@ -164,6 +166,7 @@ func TestFormatterPerformanceWithLargePlans(t *testing.T) {
 
 // TestActionSortTransformerWithLargePlans tests sorting performance with large datasets
 func TestActionSortTransformerWithLargePlans(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Generate a large plan with mixed action types
 	plan := generateMixedActionPlan(1000) // 1000 resources with various actions
 
@@ -208,6 +211,7 @@ func TestActionSortTransformerWithLargePlans(t *testing.T) {
 
 // TestProviderGroupingWithLargePlans tests provider grouping with large datasets
 func TestProviderGroupingWithLargePlans(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Generate plan with multiple providers
 	plan := generateMultiProviderPlan(200) // 200 resources across multiple providers
 

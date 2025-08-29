@@ -240,6 +240,7 @@ func TestValuesEqual(t *testing.T) {
 
 // TestFormatNestedObjectChange_Integration tests the complete nested formatting
 func TestFormatNestedObjectChange_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	cfg := &config.Config{}
 	formatter := &Formatter{config: cfg}
 

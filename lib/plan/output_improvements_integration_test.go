@@ -11,6 +11,7 @@ import (
 
 // TestPlanSummaryOutputImprovements_EndToEnd tests all improvements with real sample files
 func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	tests := []struct {
 		name                    string
 		planFile                string
@@ -247,6 +248,7 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 
 // TestPropertyChangesFormatterTerraformIntegration tests the Terraform diff format specifically
 func TestPropertyChangesFormatterTerraformIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Load a plan with actual property changes
 	parser := NewParser("../../samples/web-sample.json")
 	plan, err := parser.LoadPlan()

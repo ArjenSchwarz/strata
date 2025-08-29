@@ -90,21 +90,21 @@ This document contains the implementation tasks for modernizing the Strata codeb
 
 ### Phase 4: Test Performance Optimization
 
-- [ ] **11. Implement parallel test execution**
+- [x] **11. Implement parallel test execution**
   - Identify unit tests without shared resources or dependencies
   - Add t.Parallel() as first statement in identified tests
   - Capture loop variables properly in parallel subtests
   - Document tests that cannot be parallelized and reasons
   - References requirements 6.1, 6.2, 6.3, 6.6
 
-- [ ] **12. Organize test fixtures and data**
+- [x] **12. Organize test fixtures and data**
   - Ensure all test data files are in testdata directories
   - Implement golden file testing pattern for complex output validation where needed
   - Create functional builder patterns for test data creation where appropriate
   - Verify testdata directories are properly ignored by Go toolchain
   - References requirements 10.1, 10.2, 10.3, 10.4
 
-- [ ] **13. Separate integration tests from unit tests**
+- [x] **13. Separate integration tests from unit tests**
   - Identify tests that are actually integration tests
   - Add INTEGRATION environment variable checks to integration tests
   - Implement t.Skip() when INTEGRATION env var is not set

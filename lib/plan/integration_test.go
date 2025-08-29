@@ -10,6 +10,7 @@ import (
 
 // TestEnhancedSummaryVisualization_EndToEnd tests the complete flow from plan parsing to formatted output
 func TestEnhancedSummaryVisualization_EndToEnd(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	tests := []struct {
 		name             string
 		planFile         string
@@ -167,6 +168,7 @@ func TestEnhancedSummaryVisualization_EndToEnd(t *testing.T) {
 
 // TestProviderGrouping_Integration tests provider grouping functionality end-to-end
 func TestProviderGrouping_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Use multi-provider plan
 	planPath := filepath.Join("../../testdata", "multi_provider_plan.json")
 
@@ -223,6 +225,7 @@ func TestProviderGrouping_Integration(t *testing.T) {
 
 // TestCollapsibleFormatters_Integration tests collapsible formatters with real data
 func TestCollapsibleFormatters_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Use plan with property changes and dependencies
 	planPath := filepath.Join("../../testdata", "dependencies_plan.json")
 
@@ -260,6 +263,7 @@ func TestCollapsibleFormatters_Integration(t *testing.T) {
 
 // TestRiskAssessment_Integration tests risk assessment with high-risk scenarios
 func TestRiskAssessment_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Use high-risk plan
 	planPath := filepath.Join("../../testdata", "high_risk_plan.json")
 
@@ -311,6 +315,7 @@ func TestRiskAssessment_Integration(t *testing.T) {
 
 // TestRiskBasedSorting_Integration tests that ActionSortTransformer correctly sorts resources by risk and action type
 func TestRiskBasedSorting_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Use high-risk plan with mixed action types
 	planPath := filepath.Join("../../testdata", "high_risk_plan.json")
 
@@ -463,6 +468,7 @@ func TestActionSortTransformer_FormatSupport(t *testing.T) {
 
 // TestErrorHandling_Integration tests graceful error handling
 func TestErrorHandling_Integration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	cfg := getTestConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 

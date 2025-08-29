@@ -68,7 +68,11 @@
       "mcp__devtools__find_long_files",
       "mcp__serena__find_file",
       "Bash(make:*)",
-      "Read(/Users/arjenschwarz/.claude/**)"
+      "Read(/Users/arjenschwarz/.claude/**)",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__insert_after_symbol",
+      "Bash(INTEGRATION=1 go test ./lib/plan -run=\"TestEnhancedSummaryVisualization_EndToEnd\" -v -timeout=30s)",
+      "Bash(INTEGRATION=1 go test ./lib/plan -run=\".*Integration.*\" -v)"
     ],
     "deny": []
   }

@@ -323,6 +323,7 @@ func TestVersionHelperFunctions(t *testing.T) {
 	})
 }
 func TestVersionCommandIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	// Save original values
 	originalVersion := Version
 	originalBuildTime := BuildTime

@@ -485,5 +485,23 @@ func TestProviderGroupingWithThresholds(t *testing.T) {
 	})
 }
 
+func TestComplexOutputGoldenFile(t *testing.T) {
+	t.Skip("Golden file testing implementation - requires setup with test data")
+	// This test demonstrates the golden file testing pattern
+	// Implementation would be:
+	// 1. Create test plan using the new builder
+	// 2. Generate output using formatter
+	// 3. Compare with golden file using golden helper
+}
+
+func TestTableOutputGoldenFile(t *testing.T) {
+	t.Skip("Golden file testing implementation - requires setup with test data")
+	// This test demonstrates the golden file testing pattern for table output
+	// Implementation would be:
+	// 1. Create test plan using the new builder
+	// 2. Generate table output using formatter
+	// 3. Compare with golden file using golden helper
+}
+
 // TestEdgeCases tests edge cases for empty plans, nil data, and special character handling
 // to ensure graceful error handling without crashes

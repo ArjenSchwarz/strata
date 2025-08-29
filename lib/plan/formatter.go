@@ -740,14 +740,15 @@ func (f *Formatter) formatPropertyChange(change PropertyChange) string {
 		}
 	case "update":
 		// Check if this is a nested object change that should use nested formatting
-		if f.shouldUseNestedFormat(change.Before, change.After) {
+		switch {
+		case f.shouldUseNestedFormat(change.Before, change.After):
 			line = f.formatNestedObjectChange(change)
-		} else if isComplexValue(change.Before) || isComplexValue(change.After) {
+		case isComplexValue(change.Before) || isComplexValue(change.After):
 			beforeValue := f.formatValueWithContext(change.Before, change.Sensitive, true, nestedIndent)
 			afterValue := f.formatValueWithContext(change.After, change.Sensitive, true, nestedIndent)
 			line = fmt.Sprintf("%s~ %s = %s -> %s",
 				indent, change.Name, beforeValue, afterValue)
-		} else {
+		default:
 			line = fmt.Sprintf("%s~ %s = %s -> %s",
 				indent, change.Name,
 				f.formatValue(change.Before, change.Sensitive),
@@ -932,15 +933,16 @@ func (f *Formatter) formatNestedObjectChange(change PropertyChange) string {
 		beforeValue, hasBeforeValue := beforeMap[key]
 		afterValue, hasAfterValue := afterMap[key]
 
-		if !hasBeforeValue && hasAfterValue {
+		switch {
+		case !hasBeforeValue && hasAfterValue:
 			// Added property - use Unicode En spaces for indentation
 			formattedValue := f.formatValue(afterValue, change.Sensitive)
 			lines = append(lines, fmt.Sprintf("%s+ %s = %s", nestedIndent, key, formattedValue))
-		} else if hasBeforeValue && !hasAfterValue {
+		case hasBeforeValue && !hasAfterValue:
 			// Removed property - use Unicode En spaces for indentation
 			formattedValue := f.formatValue(beforeValue, change.Sensitive)
 			lines = append(lines, fmt.Sprintf("%s- %s = %s", nestedIndent, key, formattedValue))
-		} else if hasBeforeValue && hasAfterValue {
+		case hasBeforeValue && hasAfterValue:
 			// Check if the value actually changed
 			if !f.valuesEqual(beforeValue, afterValue) {
 				// Modified property - use Unicode En spaces for indentation

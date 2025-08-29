@@ -840,6 +840,7 @@ func TestOutputsProcessingEndToEnd(t *testing.T) {
 
 // TestOutputsIntegrationWithResourceChanges tests outputs section integration with resource changes (Task 7.2)
 func TestOutputsIntegrationWithResourceChanges(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	cfg := &config.Config{}
 	analyzer := &Analyzer{config: cfg}
 
@@ -1084,6 +1085,7 @@ func TestOutputsDisplayConsistencyAcrossFormats(t *testing.T) {
 // TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration tests the complete workflow
 // with real Terraform plan containing unknown values and outputs (Task 9.1)
 func TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
 			ShowDetails:      true,
