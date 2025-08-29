@@ -9,7 +9,6 @@ import (
 
 	"github.com/ArjenSchwarz/strata/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestUnknownValueFormatting tests that unknown values display correctly in output
@@ -133,7 +132,9 @@ func TestUnknownValueFormatting(t *testing.T) {
 
 			// Run formatter
 			err := formatter.OutputSummary(summary, outputConfig, true)
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatalf("OutputSummary failed: %v", err)
+			}
 
 			// Restore stdout
 			w.Close()

@@ -113,7 +113,7 @@ This document contains the implementation tasks for modernizing the Strata codeb
 
 ### Phase 5: Optional Improvements and Testify Reduction
 
-- [ ] **14. Reduce testify dependency usage**
+- [x] **14. Reduce testify dependency usage**
   - Find simple assert.Equal calls that can use standard library
   - Replace with standard if statements and t.Error/t.Fatal
   - Find simple require.NoError calls
@@ -122,7 +122,7 @@ This document contains the implementation tasks for modernizing the Strata codeb
   - Document cases where testify is retained
   - References requirements 8.1, 8.2, 8.3, 8.6
 
-- [ ] **15. Update benchmarks to modern patterns**
+- [x] **15. Update benchmarks to modern patterns**
   - Identify benchmarks using old for loop patterns
   - Consider migrating to B.Loop() pattern if available in Go 1.25
   - Ensure all benchmark runs include -benchmem flag
