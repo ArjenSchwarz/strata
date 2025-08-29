@@ -134,7 +134,7 @@ func (b *PlanBuilder) Build() *tfjson.Plan {
 	}
 
 	// Create variables map with proper type
-	variables := make(map[string]*tfjson.PlanVariable)
+	variables := make(map[string]*tfjson.PlanVariable, len(b.variables))
 	for name, value := range b.variables {
 		variables[name] = &tfjson.PlanVariable{
 			Value: value,
