@@ -500,3 +500,102 @@ func TestCompareValues(t *testing.T) {
 		})
 	}
 }
+
+func TestAnalyzePropertyChanges_EmptyValues(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			PerformanceLimits: config.PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 100,
+			},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	testCases := []struct {
+		name          string
+		change        *tfjson.ResourceChange
+		expectedCount int
+		description   string
+	}{
+		{
+			name: "Addition with empty string should be hidden",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: nil,
+					After: map[string]any{
+						"content":   "", // This should be hidden
+						"filename":  "test.txt",
+						"directory": "test",
+					},
+				},
+			},
+			expectedCount: 2, // Only filename and directory should be shown
+			description:   "Empty string additions should be filtered out",
+		},
+		{
+			name: "Deletion with empty string should be hidden",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]any{
+						"content":   "", // This should be hidden
+						"filename":  "test.txt",
+						"directory": "test",
+					},
+					After: nil,
+				},
+			},
+			expectedCount: 2, // Only filename and directory should be shown
+			description:   "Empty string deletions should be filtered out",
+		},
+		{
+			name: "Update with empty string values should still be shown",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: map[string]any{
+						"content":  "",
+						"filename": "old.txt",
+					},
+					After: map[string]any{
+						"content":  "new content",
+						"filename": "new.txt",
+					},
+				},
+			},
+			expectedCount: 2, // Both properties should be shown for updates
+			description:   "Updates should always be shown, even with empty strings",
+		},
+		{
+			name: "Addition with non-empty string should be shown",
+			change: &tfjson.ResourceChange{
+				Change: &tfjson.Change{
+					Before: nil,
+					After: map[string]any{
+						"content":  "some content",
+						"filename": "test.txt",
+					},
+				},
+			},
+			expectedCount: 2, // Both should be shown
+			description:   "Non-empty additions should be shown",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.analyzePropertyChanges(tc.change)
+
+			// Debug output for failing tests
+			if result.Count != tc.expectedCount {
+				t.Logf("Test: %s", tc.description)
+				t.Logf("Expected %d changes, got %d changes:", tc.expectedCount, result.Count)
+				for i, c := range result.Changes {
+					t.Logf("  %d. Name: '%s', Action: %s, Before: %v, After: %v",
+						i+1, c.Name, c.Action, c.Before, c.After)
+				}
+			}
+
+			assert.Equal(t, tc.expectedCount, result.Count, tc.description)
+			assert.Len(t, result.Changes, result.Count, "Changes slice length should match count")
+		})
+	}
+}
