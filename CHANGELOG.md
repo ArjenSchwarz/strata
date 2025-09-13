@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Plan Summary Output Filtering**:
+  - Fixed plan summary output to hide empty string property values for addition and deletion actions to reduce noise and improve readability
+  - Added intelligent filtering logic that skips properties with empty string values in `After` for additions and `Before` for deletions
+  - Preserved existing behavior for update actions to maintain visibility of meaningful changes from/to empty values
+  - Enhanced property analysis with `shouldSkipEmptyValue` helper function in analyzer.go
+
 ## [1.3.0] - 2025-08-29
 
 ### Changed

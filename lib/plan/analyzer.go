@@ -168,6 +168,24 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		return actionUpdate
 	}
 
+	// Helper function to check if a property should be skipped due to empty string values
+	shouldSkipEmptyValue := func(action string, before, after any) bool {
+		switch action {
+		case actionAdd:
+			// For additions, skip if the new value is an empty string
+			if str, ok := after.(string); ok && str == "" {
+				return true
+			}
+		case "remove":
+			// For deletions, skip if the existing value is an empty string
+			if str, ok := before.(string); ok && str == "" {
+				return true
+			}
+			// For updates, keep existing behavior (only show if values differ)
+		}
+		return false
+	}
+
 	// Handle nested objects first - check if this should be treated as a single nested property change
 	_, beforeIsMap := processedBefore.(map[string]any)
 	_, afterIsMap := processedAfter.(map[string]any)
@@ -178,6 +196,11 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			propertyPath := a.parsePath(path)
 			triggersReplacement := false
 			action := determineAction(processedBefore, processedAfter)
+
+			// Skip empty string values for additions and deletions
+			if shouldSkipEmptyValue(action, before, after) {
+				return
+			}
 
 			// Check replacement paths if provided
 			if len(replacePathStrings) > 0 {
@@ -212,6 +235,12 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	action := determineAction(processedBefore, processedAfter)
 	// Create a property change if there's an actual change, or if the property is unknown (compare originals to detect changes)
 	shouldCreateChange := (before == nil || after == nil || !reflect.DeepEqual(before, after) || isUnknown) && !isComplexType(processedBefore) && !isComplexType(processedAfter)
+
+	// Skip empty string values for additions and deletions
+	if shouldCreateChange && shouldSkipEmptyValue(action, before, after) {
+		shouldCreateChange = false
+	}
+
 	if shouldCreateChange {
 		propertyPath := a.parsePath(path)
 		triggersReplacement := false
