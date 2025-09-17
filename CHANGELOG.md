@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documented future ideas for potential enhancements beyond the current scope
   - Added implementation tasks breakdown with clear phases and validation steps
 
+### Added
+- **Data Pipeline Sorting Implementation**:
+  - Implemented core data-level sorting functions to replace ActionSortTransformer
+  - Added `sortResourceTableData` function with danger-first, action priority, then alphabetical sorting
+  - Added `getActionPriority` function with proper action priority mapping (Remove=0, Replace=1, Modify=2, Add=3)
+  - Added `applyDecorations` function for emoji decoration and field cleanup
+  - Created comprehensive unit test suite with 279 lines covering all sorting scenarios, edge cases, and error conditions
+  - Tests cover danger sorting, action priority sorting, alphabetical sorting, combined logic, and edge cases (empty data, missing fields, null values)
+
 ### Fixed
 - **Plan Summary Output Filtering**:
   - Fixed plan summary output to hide empty string property values for addition and deletion actions to reduce noise and improve readability

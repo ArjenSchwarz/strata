@@ -7,7 +7,7 @@ references:
 ---
 # Data Pipeline Integration Tasks
 
-- [ ] 1. Create unit tests for sorting functionality
+- [x] 1. Create unit tests for sorting functionality
   - Write unit test for sortResourceTableData function testing danger sorting
   - Write unit test for getActionPriority function with all action types
   - Write unit test for applyDecorations function verifying emoji application and field cleanup

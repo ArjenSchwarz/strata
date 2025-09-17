@@ -1653,3 +1653,69 @@ func (f *Formatter) sortResourcesByPriority(resources []ResourceChange) []Resour
 
 	return sorted
 }
+
+// sortResourceTableData sorts table data by danger, action priority, then alphabetically
+// This implements the data-level sorting described in the design document
+func sortResourceTableData(tableData []map[string]any) {
+	sort.SliceStable(tableData, func(i, j int) bool {
+		a, b := tableData[i], tableData[j]
+
+		// 1. Compare danger status (using IsDangerous flag)
+		dangerA, _ := a["IsDangerous"].(bool)
+		dangerB, _ := b["IsDangerous"].(bool)
+		if dangerA != dangerB {
+			return dangerA // dangerous items first
+		}
+
+		// 2. Compare raw action priority (before decoration)
+		actionA, _ := a["ActionType"].(string)
+		actionB, _ := b["ActionType"].(string)
+		priorityA := getActionPriority(actionA)
+		priorityB := getActionPriority(actionB)
+		if priorityA != priorityB {
+			return priorityA < priorityB
+		}
+
+		// 3. Alphabetical by resource address
+		resourceA, _ := a["Resource"].(string)
+		resourceB, _ := b["Resource"].(string)
+		return resourceA < resourceB
+	})
+}
+
+// getActionPriority returns priority for sorting (lower = higher priority)
+// This implements the action priority logic described in the design document
+func getActionPriority(action string) int {
+	switch action {
+	case "Remove":
+		return 0
+	case "Replace":
+		return 1
+	case "Modify":
+		return 2
+	case "Add":
+		return 3
+	default:
+		return 4
+	}
+}
+
+// applyDecorations adds emoji and styling to sorted data
+// This implements the decoration logic described in the design document
+func applyDecorations(tableData []map[string]any) {
+	for _, row := range tableData {
+		actionType, _ := row["ActionType"].(string)
+		isDangerous, _ := row["IsDangerous"].(bool)
+
+		// Apply emoji decoration based on danger flag
+		if isDangerous {
+			row["Action"] = "⚠️ " + actionType
+		} else {
+			row["Action"] = actionType
+		}
+
+		// Remove internal fields used for sorting
+		delete(row, "ActionType")
+		delete(row, "IsDangerous")
+	}
+}
