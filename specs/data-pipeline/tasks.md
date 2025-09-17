@@ -27,14 +27,14 @@ references:
   - Ensure collapsible content and provider grouping continue to work
   - References: Requirements 2.1, 2.4, 2.5
 
-- [ ] 4. Create integration tests for output verification
+- [x] 4. Create integration tests for output verification
   - Write test comparing sorted output with current output for sample plans
   - Test sorting within provider groups when grouping is enabled
   - Verify all output formats produce identical results to current implementation
   - Run tests with all sample plan files in samples/ directory
   - References: Requirements 1.4, 2.3, 4.1, 4.3
 
-- [ ] 5. Remove ActionSortTransformer and clean up code
+- [x] 5. Remove ActionSortTransformer and clean up code
   - Delete ActionSortTransformer struct and all its methods from the codebase
   - Remove registration of ActionSortTransformer in the output pipeline initialization
   - Delete cached regex pattern variables used for string parsing

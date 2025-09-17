@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -32,245 +31,9 @@ const (
 	knownAfterApply = "(known after apply)"
 )
 
-// Cached regex patterns for ActionSortTransformer performance optimization
-var (
-	// Matches action words at the beginning of table cells
-	actionStartRegex = regexp.MustCompile(`^\s*\|\s*(Add|Remove|Replace|Modify)\s*\|`)
-	// Matches actions with emoji prefix (like "⚠️ Remove")
-	actionEmojiRegex = regexp.MustCompile(`^\s*\|\s*[^|]*\s*(Add|Remove|Replace|Modify)\s*\|`)
-	// Matches non-empty DANGER column (anything after the last | that's not just whitespace)
-	dangerColumnRegex = regexp.MustCompile(`\|\s*[^|\s]+\s*$`)
-)
-
 // Formatter handles different output formats for plan summaries
 type Formatter struct {
 	config *config.Config
-}
-
-// ActionSortTransformer sorts table data based on Terraform action priority
-type ActionSortTransformer struct{}
-
-// Name implements the output.Transformer interface
-func (t *ActionSortTransformer) Name() string {
-	return "ActionSort"
-}
-
-// Priority implements the output.Transformer interface
-func (t *ActionSortTransformer) Priority() int {
-	return 100
-}
-
-// CanTransform implements the output.Transformer interface
-func (t *ActionSortTransformer) CanTransform(format string) bool {
-	return format == output.Table.Name || format == output.Markdown.Name || format == output.HTML.Name || format == output.CSV.Name
-}
-
-// Transform implements the output.Transformer interface
-func (t *ActionSortTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
-	content := string(input)
-
-	// Check if this is a Resource Changes table by looking for the table headers
-	if !strings.Contains(content, "Resource Changes") && !strings.Contains(content, "Sensitive Resource Changes") {
-		return input, nil
-	}
-
-	// Find table rows using regex to match ACTION column patterns
-	lines := strings.Split(content, "\n")
-	var tableStart = -1
-	var dataRows []string
-	var dataRowIndices []int
-	headerFound := false
-	inResourceTable := false
-
-	for i, line := range lines {
-		// Look for Resource Changes header
-		if strings.Contains(line, "Resource Changes") {
-			tableStart = i
-			inResourceTable = true
-			continue
-		}
-
-		// Look for table header with ACTION column
-		if inResourceTable && !headerFound && strings.Contains(line, "| action") && strings.Contains(line, "| resource") {
-			headerFound = true
-			continue
-		}
-
-		// Skip separator line (| --- | --- | ...)
-		if inResourceTable && headerFound && strings.Contains(line, "| ---") {
-			continue
-		}
-
-		// Look for data rows in the Resource Changes table
-		if inResourceTable && headerFound && strings.HasPrefix(strings.TrimSpace(line), "|") &&
-			(strings.Contains(line, "Add") || strings.Contains(line, "Remove") ||
-				strings.Contains(line, "Replace") || strings.Contains(line, "Modify")) {
-			dataRows = append(dataRows, line)
-			dataRowIndices = append(dataRowIndices, i)
-		}
-
-		// Check for end of table (empty line or new section header)
-		if inResourceTable && headerFound && len(dataRows) > 0 {
-			if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "###") {
-				break
-			}
-		}
-	}
-
-	if len(dataRows) == 0 || tableStart == -1 {
-		return input, nil
-	}
-
-	// Sort the data rows by danger status first, then action priority
-	sortedIndices := make([]int, len(dataRows))
-	for i := range sortedIndices {
-		sortedIndices[i] = i
-	}
-
-	// Enhanced sorting for Task 6.2 from Output Refinements feature
-	// Sort by: 1) danger indicators, 2) action priority, 3) alphabetically
-	sort.Slice(sortedIndices, func(i, j int) bool {
-		rowI := dataRows[sortedIndices[i]]
-		rowJ := dataRows[sortedIndices[j]]
-
-		// First: Check for danger indicators using enhanced method
-		dangerI := hasDangerIndicator(rowI)
-		dangerJ := hasDangerIndicator(rowJ)
-
-		// If one is dangerous and the other isn't, dangerous comes first
-		if dangerI != dangerJ {
-			return dangerI
-		}
-
-		// Second: Sort by action priority (delete > replace > update > create)
-		actionI := t.extractAction(rowI)
-		actionJ := t.extractAction(rowJ)
-
-		priorityI := t.getActionPriority(actionI)
-		priorityJ := t.getActionPriority(actionJ)
-
-		if priorityI != priorityJ {
-			return priorityI < priorityJ
-		}
-
-		// Third: Alphabetical sort by resource address
-		// Extract resource address from the row (typically second column)
-		addressI := t.extractResourceAddress(rowI)
-		addressJ := t.extractResourceAddress(rowJ)
-
-		return addressI < addressJ
-	})
-
-	// Create a new lines array with sorted data rows
-	newLines := make([]string, len(lines))
-	copy(newLines, lines)
-
-	// Replace the data rows with sorted versions
-	for i, sortedIdx := range sortedIndices {
-		newLines[dataRowIndices[i]] = dataRows[sortedIdx]
-	}
-
-	return []byte(strings.Join(newLines, "\n")), nil
-}
-
-// hasDangerIndicator checks if a table row contains danger indicators
-// Enhanced for Task 6.1 from Output Refinements feature
-// Refactored from ActionSortTransformer method to package function for Task 11.2
-func hasDangerIndicator(row string) bool {
-	// First check for explicit danger indicators in content
-	// Be careful not to match "Add" in words like "address"
-	if strings.Contains(row, "⚠️") ||
-		strings.Contains(row, "Sensitive") ||
-		strings.Contains(row, "Dangerous") ||
-		strings.Contains(row, "High Risk") ||
-		strings.Contains(row, "Critical") {
-		return true
-	}
-
-	// Check for non-empty DANGER column (last column)
-	// A table row must have at least 4 columns to have a danger column:
-	// | action | resource | properties | danger |
-	// When split, this becomes: ["", "action", "resource", "properties", "danger", ""]
-	// So we need at least 5 parts for a danger column to exist
-	parts := strings.Split(row, "|")
-
-	// Only check for danger column if there are enough columns
-	// Minimum table is: | action | resource | so 4 parts when split
-	// With danger column: | action | resource | props | danger | so 6 parts
-	if len(parts) >= 5 {
-		// Get the last non-empty column index
-		lastColIndex := len(parts) - 1
-		if strings.TrimSpace(parts[lastColIndex]) == "" && lastColIndex > 0 {
-			lastColIndex--
-		}
-
-		// The danger column would be at index 4 or higher (after action, resource, props)
-		// Only check if we have enough columns for a danger column
-		if lastColIndex >= 3 {
-			lastCol := strings.TrimSpace(parts[lastColIndex])
-			// Column is dangerous if it has content other than "-" or empty
-			if lastCol != "" && lastCol != "-" {
-				return true
-			}
-		}
-	}
-
-	// Don't use regex fallback if there are too few columns
-	// This prevents false positives on short rows
-	return false
-}
-
-// extractAction extracts the action from a table row
-// Enhanced for Task 6.2 from Output Refinements feature
-func (t *ActionSortTransformer) extractAction(row string) string {
-	// Use cached regex to find action words at the beginning of table cells
-	matches := actionStartRegex.FindStringSubmatch(row)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	// Also check for actions with emoji prefix (like "⚠️ Remove")
-	matches2 := actionEmojiRegex.FindStringSubmatch(row)
-	if len(matches2) > 1 {
-		return matches2[1]
-	}
-	// Fallback: look for action words anywhere in the row
-	actions := []string{"Remove", "Replace", "Modify", "Add"}
-	for _, action := range actions {
-		if strings.Contains(row, action) {
-			return action
-		}
-	}
-	return "Unknown"
-}
-
-// getActionPriority returns priority for sorting (lower = higher priority)
-// Enhanced for Task 6.2 from Output Refinements feature
-func (t *ActionSortTransformer) getActionPriority(action string) int {
-	// Map action priority: delete=0, replace=1, update=2, create=3, noop=4
-	switch action {
-	case tableActionRemove, "Delete":
-		return 0 // Highest priority
-	case tableActionReplace:
-		return 1
-	case tableActionModify, "Update":
-		return 2
-	case tableActionAdd, "Create":
-		return 3
-	default:
-		return 4 // Lowest priority (including no-op)
-	}
-}
-
-// extractResourceAddress extracts the resource address from a table row
-// Typically the second column in the table
-func (t *ActionSortTransformer) extractResourceAddress(row string) string {
-	// Split by | and get the second column (resource address)
-	parts := strings.Split(row, "|")
-	if len(parts) >= 3 {
-		// Index 0 is empty (before first |), index 1 is action, index 2 is resource
-		return strings.TrimSpace(parts[2])
-	}
-	return ""
 }
 
 // NewFormatter creates a new formatter instance
@@ -411,11 +174,6 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	if outputConfig.UseColors {
 		stdoutOptions = append(stdoutOptions, output.WithTransformer(output.NewColorTransformer()))
 	}
-	// Add action sorting transformer for supported formats
-	actionSortTransformer := &ActionSortTransformer{}
-	if actionSortTransformer.CanTransform(stdoutFormat.Name) {
-		stdoutOptions = append(stdoutOptions, output.WithTransformer(actionSortTransformer))
-	}
 
 	stdoutOut := output.NewOutput(stdoutOptions...)
 	if err := stdoutOut.Render(ctx, doc); err != nil {
@@ -444,11 +202,6 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		}
 		if outputConfig.UseColors {
 			fileOptions = append(fileOptions, output.WithTransformer(output.NewColorTransformer()))
-		}
-		// Add action sorting transformer for supported formats
-		actionSortTransformer := &ActionSortTransformer{}
-		if actionSortTransformer.CanTransform(fileFormat.Name) {
-			fileOptions = append(fileOptions, output.WithTransformer(actionSortTransformer))
 		}
 
 		fileOut := output.NewOutput(fileOptions...)

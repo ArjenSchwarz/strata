@@ -210,21 +210,6 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 				})
 			}
 
-			// Test 5: ActionSortTransformer integration
-			actionSortTransformer := &ActionSortTransformer{}
-			supportedFormats := []string{"table", "markdown", "html", "csv"}
-
-			for _, format := range supportedFormats {
-				if !actionSortTransformer.CanTransform(format) {
-					t.Errorf("ActionSortTransformer should support format: %s", format)
-				}
-			}
-
-			// JSON should not be supported by ActionSortTransformer
-			if actionSortTransformer.CanTransform("json") {
-				t.Error("ActionSortTransformer should not support JSON format")
-			}
-
 			// Test 6: Provider grouping logic
 			if cfg.Plan.Grouping.Enabled {
 				changedCount := countChangedResources(summary.ResourceChanges)
@@ -397,22 +382,6 @@ func TestRiskBasedSortingBehavior(t *testing.T) {
 		t.Log("Note: No dangerous changes identified in test data")
 	}
 
-	// Test ActionSortTransformer format support
-	transformer := &ActionSortTransformer{}
-
-	supportedFormats := []string{"table", "markdown", "html", "csv"}
-	for _, format := range supportedFormats {
-		if !transformer.CanTransform(format) {
-			t.Errorf("ActionSortTransformer should support %s format", format)
-		}
-	}
-
-	unsupportedFormats := []string{"json", "yaml", "xml"}
-	for _, format := range unsupportedFormats {
-		if transformer.CanTransform(format) {
-			t.Errorf("ActionSortTransformer should not support %s format", format)
-		}
-	}
 }
 
 // TestBackwardCompatibility tests that output structure remains consistent
