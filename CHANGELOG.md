@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Test File Cleanup**:
+  - Removed backup test file `formatter_basic_test.go.backup`
+
+### Changed
+- **Data Pipeline Tasks**:
+  - Marked test update task as complete in data pipeline feature specification
+
 ### Added
 - **Data Pipeline Performance Benchmarks**:
   - Added comprehensive benchmark test suite for data pipeline sorting functions

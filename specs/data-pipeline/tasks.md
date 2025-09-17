@@ -48,7 +48,7 @@ references:
   - Document performance improvements in code comments
   - References: Requirements 4.4
 
-- [ ] 7. Update tests for new implementation
+- [x] 7. Update tests for new implementation
   - Update any existing unit tests that depend on ActionSortTransformer
   - Verify all existing tests pass with the new implementation
   - Ensure test coverage remains high for the formatter module
