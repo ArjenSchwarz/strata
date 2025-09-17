@@ -14,13 +14,13 @@ references:
   - Test edge cases: empty data, missing fields, null values
   - References: Requirements 1.3, 4.1, 4.2
 
-- [ ] 2. Implement sorting helper functions
+- [x] 2. Implement sorting helper functions
   - Create getActionPriority function in lib/plan/formatter.go that maps action types to numeric priorities
   - Create sortResourceTableData function that sorts by danger status, action priority, then alphabetically
   - Create applyDecorations function that adds emoji indicators and removes internal sorting fields
   - References: Requirements 1.2, 1.3
 
-- [ ] 3. Integrate sorting into data preparation flow
+- [x] 3. Integrate sorting into data preparation flow
   - Modify prepareResourceTableData to store raw ActionType and IsDangerous fields in row data
   - Call sortResourceTableData after building tableData
   - Call applyDecorations after sorting to add emoji and clean up internal fields

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Data Pipeline Sorting Implementation**:
+  - Refactored action constants in analyzer.go to use consistent constant references (`actionRemove` instead of hardcoded strings)
+  - Enhanced sorting logic in formatter.go with constant-based action type mapping for improved maintainability
+  - Separated data decoration from sorting logic with new `applyDecorations` function for cleaner architecture
+  - Updated table data preparation to store raw action types before decoration for accurate sorting
+
 ### Added
 - **Data Pipeline Feature Specification**:
   - Added comprehensive feature specification for replacing ActionSortTransformer with data-level pipeline sorting

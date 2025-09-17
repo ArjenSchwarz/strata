@@ -599,13 +599,13 @@ func (f *Formatter) createSensitiveResourceChangesDataV2(summary *PlanSummary) (
 func getActionDisplay(changeType ChangeType) string {
 	switch changeType {
 	case ChangeTypeCreate:
-		return "Add"
+		return tableActionAdd
 	case ChangeTypeUpdate:
-		return "Modify"
+		return tableActionModify
 	case ChangeTypeDelete:
-		return "Remove"
+		return tableActionRemove
 	case ChangeTypeReplace:
-		return "Replace"
+		return tableActionReplace
 	default:
 		return "No-op"
 	}
@@ -991,11 +991,8 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 			}
 		}
 
-		// Determine action display
-		actionDisplay := getActionDisplay(change.ChangeType)
-		if change.IsDangerous {
-			actionDisplay = "⚠️ " + actionDisplay
-		}
+		// Store raw action type for sorting (before decoration)
+		rawActionType := getActionDisplay(change.ChangeType)
 
 		// Store change type alongside property changes for context-aware formatting
 		propertyChangesData := map[string]any{
@@ -1005,7 +1002,8 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 		}
 
 		row := map[string]any{
-			"Action":           actionDisplay,
+			"ActionType":       rawActionType,      // Raw action without emoji
+			"IsDangerous":      change.IsDangerous, // Flag for sorting
 			"Resource":         change.Address,
 			"Type":             change.Type,
 			"ID":               f.getDisplayID(change),
@@ -1023,6 +1021,12 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 
 		tableData = append(tableData, row)
 	}
+
+	// Step 1: Sort the raw data
+	sortResourceTableData(tableData)
+
+	// Step 2: Apply decorations after sorting
+	applyDecorations(tableData)
 
 	return tableData
 }
@@ -1687,13 +1691,13 @@ func sortResourceTableData(tableData []map[string]any) {
 // This implements the action priority logic described in the design document
 func getActionPriority(action string) int {
 	switch action {
-	case "Remove":
+	case tableActionRemove:
 		return 0
-	case "Replace":
+	case tableActionReplace:
 		return 1
-	case "Modify":
+	case tableActionModify:
 		return 2
-	case "Add":
+	case tableActionAdd:
 		return 3
 	default:
 		return 4
