@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Data Pipeline Feature Specification**:
+  - Added comprehensive feature specification for replacing ActionSortTransformer with data-level pipeline sorting
+  - Created detailed requirements document focusing on fixing the hacky string-based sorting implementation
+  - Developed design document with clear migration path from regex-based table parsing to data-level operations
+  - Added decision log documenting scope narrowing to focus solely on replacing ActionSortTransformer
+  - Documented future ideas for potential enhancements beyond the current scope
+  - Added implementation tasks breakdown with clear phases and validation steps
+
 ### Fixed
 - **Plan Summary Output Filtering**:
   - Fixed plan summary output to hide empty string property values for addition and deletion actions to reduce noise and improve readability
