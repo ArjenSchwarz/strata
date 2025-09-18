@@ -19,7 +19,8 @@ set -euo pipefail
 
 readonly GITHUB_API_URL="${GITHUB_API_URL:-https://api.github.com}"
 
-# Create temporary directory for all operations
+# Create temporary directory for all operations using mktemp
+# This ensures unique, secure temp directory creation with 700 permissions
 readonly TEMP_DIR
 TEMP_DIR=$(mktemp -d)
 
@@ -27,7 +28,7 @@ TEMP_DIR=$(mktemp -d)
 # Error Handling and Cleanup
 # ============================================================================
 
-# Cleanup function for exit trap
+# Cleanup function for exit trap - uses simple, fast operations
 cleanup() {
   local exit_code=$?
 
@@ -43,7 +44,7 @@ cleanup() {
     } >> "$GITHUB_OUTPUT"
   fi
 
-  # Remove temporary directory
+  # Remove temporary directory using standard rm command (no secure overwrite)
   [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
 
   # Exit with the original exit code
@@ -219,7 +220,7 @@ download_strata() {
         actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
 
         if [[ "$expected" == "$actual" ]]; then
-          # Extract verified binary
+          # Extract verified binary using standard Unix tools
           tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
           chmod +x "$TEMP_DIR/strata"
           log_success "Download and verification successful"

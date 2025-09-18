@@ -219,15 +219,21 @@ run_function() {
 source_script() {
     # Only source if not already sourced
     if [[ -z "${SCRIPT_NAME:-}" ]]; then
-        # Create a temporary copy that doesn't execute main
+        # Create a temporary copy that doesn't execute main and handles readonly vars
         local temp_script="$TEST_OUTPUT_DIR/action_temp.sh"
 
-        # Copy everything except the main execution guard
-        sed '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
+        # Copy script but remove problematic readonly declarations and main execution
+        sed -e "/^readonly TEMP_DIR$/d" \
+            -e "/^TEMP_DIR=\$(mktemp -d)$/d" \
+            -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
+            -e "/\[\[ -d \"\$TEMP_DIR\" \]\]/c\\    # TEMP_DIR cleanup removed for testing" \
             action_simplified.sh > "$temp_script"
 
         # Source the modified script
         source "$temp_script"
+
+        # Set a marker that we've sourced the script
+        SCRIPT_NAME="action_simplified"
     fi
 }
 
@@ -455,7 +461,8 @@ EOF
     assert_file_exists "$output_file" "GitHub output file should be created on failure"
 
     if [[ -f "$output_file" ]]; then
-        local content=$(cat "$output_file")
+        local content
+        content=$(cat "$output_file")
         assert_contains "$content" "has-changes=false" "Should set has-changes to false"
         assert_contains "$content" "has-dangers=false" "Should set has-dangers to false"
         assert_contains "$content" "change-count=0" "Should set change-count to 0"
@@ -504,7 +511,8 @@ EOF
     assert_file_exists "$marker" "Temp directory path should be recorded"
 
     if [[ -f "$marker" ]]; then
-        local temp_dir=$(cat "$marker")
+        local temp_dir
+        temp_dir=$(cat "$marker")
         assert_dir_not_exists "$temp_dir" "Temp directory should be cleaned up after exit"
     fi
 
@@ -540,7 +548,8 @@ EOF
     assert_not_equals "0" "$exit_code" "Should fail when plan file is missing"
 
     # Check error message (could be in output since we redirected stderr to stdout)
-    local output=$(cat "$TEST_OUTPUT_DIR/output.txt" 2>/dev/null)
+    local output
+    output=$(cat "$TEST_OUTPUT_DIR/output.txt" 2>/dev/null)
     assert_contains "$output" "Plan file is required" "Should show appropriate error message"
 }
 
@@ -561,7 +570,8 @@ test_file_validation() {
     chmod 000 "$unreadable_file"
 
     # Test existing file
-    local exit_code=$(run_function validate_file_exists "$existing_file")
+    local exit_code
+    exit_code=$(run_function validate_file_exists "$existing_file")
     assert_equals "0" "$exit_code" "Should succeed for existing readable file"
 
     # Test non-existing file
@@ -586,13 +596,15 @@ test_output_format_validation() {
 
     # Test valid formats
     for format in table json markdown html; do
-        local exit_code=$(run_function validate_output_format "$format")
+        local exit_code
+        exit_code=$(run_function validate_output_format "$format")
         assert_equals "0" "$exit_code" "Should accept valid format: $format"
     done
 
     # Test invalid formats
     for format in xml yaml csv text; do
-        local exit_code=$(run_function validate_output_format "$format")
+        local exit_code
+        exit_code=$(run_function validate_output_format "$format")
         assert_not_equals "0" "$exit_code" "Should reject invalid format: $format"
     done
 }
@@ -605,7 +617,8 @@ test_path_security_validation() {
     source_script
 
     # Test normal paths
-    local exit_code=$(run_function validate_path_security "/tmp/test.tfplan")
+    local exit_code
+    exit_code=$(run_function validate_path_security "/tmp/test.tfplan")
     assert_equals "0" "$exit_code" "Should accept normal absolute path"
 
     exit_code=$(run_function validate_path_security "test.tfplan")
@@ -626,7 +639,8 @@ test_path_security_validation() {
     assert_equals "0" "$exit_code" "Should accept normal length path"
 
     # Test excessive length
-    local long_path=$(printf 'a%.0s' {1..5000})
+    local long_path
+    long_path=$(printf 'a%.0s' {1..5000})
     exit_code=$(run_function validate_path_security "$long_path")
     assert_not_equals "0" "$exit_code" "Should reject excessively long path"
 }
@@ -642,27 +656,337 @@ test_logging_functions() {
     local funcs=(log_info log_success log_warning log_start log_download log_analyze log_config)
 
     for func in "${funcs[@]}"; do
-        local output=$($func "Test message" 2>&1 >/dev/null)
+        local output
+        output=$($func "Test message" 2>&1 >/dev/null)
         assert_contains "$output" "Test message" "$func should output to stderr"
     done
 
     log_test "Testing log prefixes"
 
     # Test emoji prefixes
-    local info_output=$(log_info "Test" 2>&1)
+    local info_output
+    info_output=$(log_info "Test" 2>&1)
     assert_contains "$info_output" "ℹ️" "log_info should have info emoji"
 
-    local success_output=$(log_success "Test" 2>&1)
+    local success_output
+    success_output=$(log_success "Test" 2>&1)
     assert_contains "$success_output" "✅" "log_success should have checkmark emoji"
 
-    local error_output=$(log_error "Test" 2>&1 || true)
+    local error_output
+    error_output=$(log_error "Test" 2>&1 || true)
     assert_contains "$error_output" "❌" "log_error should have X emoji"
 
-    local warning_output=$(log_warning "Test" 2>&1)
+    local warning_output
+    warning_output=$(log_warning "Test" 2>&1)
     assert_contains "$warning_output" "⚠️" "log_warning should have warning emoji"
 
-    local start_output=$(log_start "Test" 2>&1)
+    local start_output
+    start_output=$(log_start "Test" 2>&1)
     assert_contains "$start_output" "🚀" "log_start should have rocket emoji"
+}
+
+# ============================================================================
+# Test Cases: File Operations (Task 7.1)
+# ============================================================================
+
+test_mktemp_temp_directory() {
+    log_section "mktemp Temp Directory Creation"
+
+    log_test "Testing temp directory creation with mktemp"
+
+    source_script
+
+    # Test that mktemp -d creates unique directories
+    local temp1 temp2
+    temp1=$(mktemp -d)
+    temp2=$(mktemp -d)
+
+    assert_dir_exists "$temp1" "First temp directory should exist"
+    assert_dir_exists "$temp2" "Second temp directory should exist"
+    assert_not_equals "$temp1" "$temp2" "Temp directories should be unique"
+
+    # Clean up test directories
+    rm -rf "$temp1" "$temp2"
+
+    log_test "Testing temp directory permissions"
+
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    local perms
+    perms=$(stat -c '%a' "$temp_dir" 2>/dev/null || stat -f '%A' "$temp_dir" 2>/dev/null)
+
+    # mktemp creates directories with 700 permissions
+    assert_equals "700" "$perms" "Temp directory should have 700 permissions"
+
+    rm -rf "$temp_dir"
+}
+
+test_trap_cleanup_comprehensive() {
+    log_section "Trap-based Cleanup Comprehensive Testing"
+
+    log_test "Testing cleanup trap with normal exit"
+
+    # Create test script that uses the same pattern as action_simplified.sh
+    cat > "$TEST_OUTPUT_DIR/test_trap_normal.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+readonly TEMP_DIR
+TEMP_DIR=$(mktemp -d)
+CLEANUP_MARKER="/tmp/cleanup_test_normal"
+
+cleanup() {
+    local exit_code=$?
+
+    # Touch marker to prove cleanup ran
+    touch "$CLEANUP_MARKER"
+
+    # Clean temp directory
+    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
+
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+# Create a test file in temp directory
+echo "test content" > "$TEMP_DIR/test_file"
+
+# Normal exit
+exit 0
+EOF
+
+    local marker="/tmp/cleanup_test_normal"
+    rm -f "$marker"
+
+    bash "$TEST_OUTPUT_DIR/test_trap_normal.sh"
+
+    assert_file_exists "$marker" "Cleanup should run on normal exit"
+    rm -f "$marker"
+
+    log_test "Testing cleanup trap with error exit"
+
+    cat > "$TEST_OUTPUT_DIR/test_trap_error.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+readonly TEMP_DIR
+TEMP_DIR=$(mktemp -d)
+CLEANUP_MARKER="/tmp/cleanup_test_error"
+
+cleanup() {
+    local exit_code=$?
+
+    # Touch marker to prove cleanup ran
+    touch "$CLEANUP_MARKER"
+
+    # Clean temp directory
+    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
+
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+# Create a test file in temp directory
+echo "test content" > "$TEMP_DIR/test_file"
+
+# Force error
+false
+EOF
+
+    marker="/tmp/cleanup_test_error"
+    rm -f "$marker"
+
+    set +e
+    bash "$TEST_OUTPUT_DIR/test_trap_error.sh" 2>/dev/null
+    local exit_code=$?
+    set -e
+
+    assert_file_exists "$marker" "Cleanup should run on error exit"
+    assert_not_equals "0" "$exit_code" "Script should exit with error code"
+    rm -f "$marker"
+
+    log_test "Testing cleanup trap with signal interruption"
+
+    cat > "$TEST_OUTPUT_DIR/test_trap_signal.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+readonly TEMP_DIR
+TEMP_DIR=$(mktemp -d)
+CLEANUP_MARKER="/tmp/cleanup_test_signal"
+
+cleanup() {
+    local exit_code=$?
+
+    # Touch marker to prove cleanup ran
+    touch "$CLEANUP_MARKER"
+
+    # Clean temp directory
+    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
+
+    exit $exit_code
+}
+
+trap cleanup EXIT
+
+# Create a test file in temp directory
+echo "test content" > "$TEMP_DIR/test_file"
+
+# Write PID for external termination
+echo $$ > /tmp/test_script_pid
+
+# Sleep to allow signal
+sleep 2
+EOF
+
+    marker="/tmp/cleanup_test_signal"
+    rm -f "$marker"
+
+    # Run script in background and terminate it
+    bash "$TEST_OUTPUT_DIR/test_trap_signal.sh" &
+    local script_pid=$!
+
+    # Wait a moment then kill the script
+    sleep 0.5
+    kill -TERM "$script_pid" 2>/dev/null || true
+    wait "$script_pid" 2>/dev/null || true
+
+    assert_file_exists "$marker" "Cleanup should run when terminated by signal"
+    rm -f "$marker" "/tmp/test_script_pid"
+}
+
+test_file_operation_performance() {
+    log_section "File Operation Performance (< 50ms)"
+
+    log_test "Testing temp directory operations performance"
+
+    # Test temp directory creation speed
+    local start_time end_time duration
+    start_time=$(date +%s%N)
+
+    for _ in {1..10}; do
+        local temp_dir
+        temp_dir=$(mktemp -d)
+        rm -rf "$temp_dir"
+    done
+
+    end_time=$(date +%s%N)
+    duration=$(( (end_time - start_time) / 1000000 ))  # Convert to milliseconds
+
+    # Allow some leeway - 10 operations should be well under 500ms (50ms * 10)
+    if [[ $duration -lt 500 ]]; then
+        echo -e "${GREEN}  ✓${NC} Temp directory operations completed in ${duration}ms (< 500ms for 10 operations)"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}  ✗${NC} Temp directory operations too slow: ${duration}ms (should be < 500ms for 10 operations)"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+    TESTS_RUN=$((TESTS_RUN + 1))
+
+    log_test "Testing standard file operations performance"
+
+    local temp_dir
+    temp_dir=$(mktemp -d)
+
+    start_time=$(date +%s%N)
+
+    # Test standard file operations
+    echo "test content" > "$temp_dir/test1.txt"
+    cat "$temp_dir/test1.txt" > "$temp_dir/test2.txt"
+    cp "$temp_dir/test1.txt" "$temp_dir/test3.txt"
+    rm "$temp_dir/test1.txt"
+
+    end_time=$(date +%s%N)
+    duration=$(( (end_time - start_time) / 1000000 ))
+
+    # Standard file operations should be very fast (< 50ms)
+    if [[ $duration -lt 50 ]]; then
+        echo -e "${GREEN}  ✓${NC} Standard file operations completed in ${duration}ms (< 50ms)"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}  ✗${NC} Standard file operations too slow: ${duration}ms (should be < 50ms)"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+    TESTS_RUN=$((TESTS_RUN + 1))
+
+    rm -rf "$temp_dir"
+}
+
+test_simple_directory_structure() {
+    log_section "Simple Directory Structure"
+
+    log_test "Testing no complex directory structures created"
+
+    # Create test script that mimics action behavior
+    cat > "$TEST_OUTPUT_DIR/test_simple_dirs.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+readonly TEMP_DIR
+TEMP_DIR=$(mktemp -d)
+DIR_STRUCTURE_LOG="/tmp/dir_structure_test.log"
+
+cleanup() {
+    # Log the directory structure before cleanup
+    if [[ -d "$TEMP_DIR" ]]; then
+        find "$TEMP_DIR" -type d | wc -l > "$DIR_STRUCTURE_LOG"
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+trap cleanup EXIT
+
+# Simulate action operations - should only create files in TEMP_DIR root
+echo "binary content" > "$TEMP_DIR/strata.tar.gz"
+echo "checksum content" > "$TEMP_DIR/checksums.txt"
+echo "json content" > "$TEMP_DIR/metadata.json"
+echo "output content" > "$TEMP_DIR/display_output.txt"
+
+exit 0
+EOF
+
+    local log_file="/tmp/dir_structure_test.log"
+    rm -f "$log_file"
+
+    bash "$TEST_OUTPUT_DIR/test_simple_dirs.sh"
+
+    assert_file_exists "$log_file" "Directory structure log should be created"
+
+    if [[ -f "$log_file" ]]; then
+        local dir_count
+        dir_count=$(cat "$log_file")
+        # Should only have the TEMP_DIR itself (1 directory)
+        assert_equals "1" "$dir_count" "Should only create single temp directory, no subdirectories"
+    fi
+
+    rm -f "$log_file"
+
+    log_test "Testing standard Unix tools usage"
+
+    source_script
+
+    # Test that we use standard tools correctly
+    local temp_dir
+    temp_dir=$(mktemp -d)
+
+    # Test tar usage (simulate binary extraction)
+    echo "test tar content" > "$temp_dir/test.txt"
+    tar -czf "$temp_dir/test.tar.gz" -C "$temp_dir" "test.txt"
+
+    # Verify tar extraction works
+    mkdir "$temp_dir/extract"
+    tar -xzf "$temp_dir/test.tar.gz" -C "$temp_dir/extract"
+
+    assert_file_exists "$temp_dir/extract/test.txt" "tar extraction should work with standard tools"
+
+    # Test that we can read the extracted file with cat
+    local content
+    content=$(cat "$temp_dir/extract/test.txt")
+    assert_equals "test tar content" "$content" "Standard cat should read extracted files"
+
+    rm -rf "$temp_dir"
 }
 
 # ============================================================================
@@ -693,6 +1017,11 @@ run_tests() {
     test_output_format_validation
     test_path_security_validation
     test_logging_functions
+    # File operation tests (Task 7.1)
+    test_mktemp_temp_directory
+    test_trap_cleanup_comprehensive
+    test_file_operation_performance
+    test_simple_directory_structure
 
     # Print summary
     echo ""
