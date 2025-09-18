@@ -164,51 +164,6 @@ func TestFormatterPerformanceWithLargePlans(t *testing.T) {
 	}
 }
 
-// TestActionSortTransformerWithLargePlans tests sorting performance with large datasets
-func TestActionSortTransformerWithLargePlans(t *testing.T) {
-	skipIfIntegrationTestsDisabled(t)
-	// Generate a large plan with mixed action types
-	plan := generateMixedActionPlan(1000) // 1000 resources with various actions
-
-	cfg := getTestConfig()
-	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
-
-	if summary == nil {
-		t.Fatal("Expected summary to be generated")
-	}
-
-	formatter := NewFormatter(cfg)
-	transformer := &ActionSortTransformer{}
-
-	// Test with supported formats (CSV not supported by OutputSummary)
-	supportedFormats := []string{"table", "markdown", "html"}
-
-	for _, format := range supportedFormats {
-		t.Run(format+"_sorting", func(t *testing.T) {
-			if !transformer.CanTransform(format) {
-				t.Errorf("Expected transformer to support %s format", format)
-				return
-			}
-
-			outputConfig := &config.OutputConfiguration{
-				Format:     format,
-				UseEmoji:   false,
-				UseColors:  false,
-				TableStyle: "",
-			}
-
-			// Test that sorting completes without errors
-			err := formatter.OutputSummary(summary, outputConfig, true)
-			if err != nil {
-				t.Errorf("Failed to sort and format large plan with %s: %v", format, err)
-			}
-
-			t.Logf("Successfully sorted and formatted %d resources in %s format", len(summary.ResourceChanges), format)
-		})
-	}
-}
-
 // TestProviderGroupingWithLargePlans tests provider grouping with large datasets
 func TestProviderGroupingWithLargePlans(t *testing.T) {
 	skipIfIntegrationTestsDisabled(t)

@@ -1,8 +1,6 @@
 package plan
 
 import (
-	"context"
-	"strings"
 	"testing"
 
 	"github.com/ArjenSchwarz/strata/config"
@@ -36,11 +34,6 @@ func TestOutputRefinements_ExistingTestCompatibility(t *testing.T) {
 			name:        "Statistics calculations include unmodified resources",
 			description: "Verify statistics still count no-ops in Unmodified field",
 			testFunc:    testStatisticsIncludeNoOps,
-		},
-		{
-			name:        "ActionSortTransformer enhanced without breaking existing functionality",
-			description: "Verify table sorting works with both enhanced and basic functionality",
-			testFunc:    testActionSortTransformerCompatibility,
 		},
 	}
 
@@ -202,62 +195,4 @@ func testStatisticsIncludeNoOps(t *testing.T) {
 	assert.Equal(t, 2, stats.Unmodified, "Should count no-ops in Unmodified")
 	assert.Equal(t, 4, stats.Total, "Total should exclude no-ops (only counts actionable resources)")
 	assert.Equal(t, 2, stats.OutputChanges, "Should exclude no-op outputs from OutputChanges count")
-}
-
-// testActionSortTransformerCompatibility verifies the enhanced ActionSortTransformer
-// maintains compatibility with existing table sorting functionality
-func testActionSortTransformerCompatibility(t *testing.T) {
-	t.Helper()
-	transformer := &ActionSortTransformer{}
-
-	// Test with table content that doesn't have danger indicators (existing functionality)
-	basicTableContent := `| Resource Changes |
-|-----------|---------------------------|--------|
-| ACTION    | RESOURCE                  | TYPE   |
-|-----------|---------------------------|--------|
-| Add       | aws_instance.web          | aws_instance |
-| Remove    | aws_instance.old          | aws_instance |
-| Modify    | aws_instance.app          | aws_instance |`
-
-	result, err := transformer.Transform(context.TODO(), []byte(basicTableContent), "table")
-	assert.NoError(t, err, "Should handle basic table without error")
-
-	// The ActionSortTransformer should process the table without breaking it
-	resultStr := string(result)
-	assert.Contains(t, resultStr, "Resource Changes", "Should contain table header")
-	assert.Contains(t, resultStr, "aws_instance.web", "Should contain web instance")
-	assert.Contains(t, resultStr, "aws_instance.old", "Should contain old instance")
-	assert.Contains(t, resultStr, "aws_instance.app", "Should contain app instance")
-
-	// The table structure should be preserved
-	assert.Contains(t, resultStr, "|", "Should preserve table structure")
-	lines := strings.Split(resultStr, "\n")
-	assert.GreaterOrEqual(t, len(lines), 5, "Should have header and data rows")
-
-	// Test with enhanced table content that has danger indicators (new functionality)
-	enhancedTableContent := `| Resource Changes |
-|-----------|---------------------------|--------|---------|
-| ACTION    | RESOURCE                  | TYPE   | DANGER  |
-|-----------|---------------------------|--------|---------|
-| Add       | aws_instance.web          | aws_instance | - |
-| Remove    | aws_instance.old          | aws_instance | ⚠️ Sensitive |
-| Modify    | aws_instance.app          | aws_instance | - |`
-
-	enhancedResult, err := transformer.Transform(context.TODO(), []byte(enhancedTableContent), "table")
-	assert.NoError(t, err, "Should handle enhanced table without error")
-
-	// The enhanced transformer should process the table with danger indicators
-	enhancedStr := string(enhancedResult)
-
-	// Verify all content is preserved
-	assert.Contains(t, enhancedStr, "Resource Changes", "Should contain table header")
-	assert.Contains(t, enhancedStr, "aws_instance.web", "Should contain web instance")
-	assert.Contains(t, enhancedStr, "aws_instance.old", "Should contain old instance")
-	assert.Contains(t, enhancedStr, "aws_instance.app", "Should contain app instance")
-	assert.Contains(t, enhancedStr, "⚠️ Sensitive", "Should preserve danger indicators")
-
-	// The table structure should be preserved
-	assert.Contains(t, enhancedStr, "|", "Should preserve enhanced table structure")
-	enhancedLines := strings.Split(enhancedStr, "\n")
-	assert.GreaterOrEqual(t, len(enhancedLines), 5, "Should have enhanced header and data rows")
 }

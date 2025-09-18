@@ -19,6 +19,7 @@ const (
 	// Action constants for property change analysis
 	actionAdd    = "add"
 	actionUpdate = "update"
+	actionRemove = "remove"
 
 	// Unknown value constants
 	unknownAfter = "after"
@@ -163,7 +164,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			return actionAdd
 		}
 		if processedAfter == nil {
-			return "remove"
+			return actionRemove
 		}
 		return actionUpdate
 	}
@@ -176,7 +177,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			if str, ok := after.(string); ok && str == "" {
 				return true
 			}
-		case "remove":
+		case actionRemove:
 			// For deletions, skip if the existing value is an empty string
 			if str, ok := before.(string); ok && str == "" {
 				return true
@@ -469,9 +470,9 @@ func (a *Analyzer) sortPropertiesAlphabetically(analysis *PropertyChangeAnalysis
 
 		// Final tiebreaker: by action type for consistent ordering
 		actionOrder := map[string]int{
-			"remove": 0,
-			"update": 1,
-			"add":    2,
+			actionRemove: 0,
+			actionUpdate: 1,
+			actionAdd:    2,
 		}
 
 		order1, exists1 := actionOrder[prop1.Action]

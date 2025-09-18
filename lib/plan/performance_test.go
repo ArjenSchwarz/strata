@@ -366,6 +366,196 @@ func createPropertyBenchmarkPlan(filename string, propertyCount, propertySize in
 	return planPath
 }
 
+// BenchmarkSortResourceTableData benchmarks the data pipeline sorting function with various data sizes
+// This directly tests the performance improvement from replacing ActionSortTransformer
+func BenchmarkSortResourceTableData(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"Small_10", 10},
+		{"Medium_100", 100},
+		{"Large_1000", 1000},
+		{"ExtraLarge_5000", 5000},
+		{"Huge_10000", 10000},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			// Create test data with mixed priorities and danger levels
+			tableData := createBenchmarkTableData(tt.size)
+
+			b.ResetTimer()
+			b.ReportAllocs() // Track memory allocations
+
+			for b.Loop() {
+				// Make a copy for each iteration to avoid sorting already sorted data
+				testData := make([]map[string]any, len(tableData))
+				copy(testData, tableData)
+
+				sortResourceTableData(testData)
+			}
+		})
+	}
+}
+
+// BenchmarkApplyDecorations benchmarks the decoration function with various data sizes
+func BenchmarkApplyDecorations(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"Small_10", 10},
+		{"Medium_100", 100},
+		{"Large_1000", 1000},
+		{"ExtraLarge_5000", 5000},
+		{"Huge_10000", 10000},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			// Create test data for decoration
+			tableData := createBenchmarkTableData(tt.size)
+
+			b.ResetTimer()
+			b.ReportAllocs() // Track memory allocations
+
+			for b.Loop() {
+				// Make a copy for each iteration
+				testData := make([]map[string]any, len(tableData))
+				for i, row := range tableData {
+					testData[i] = make(map[string]any)
+					for k, v := range row {
+						testData[i][k] = v
+					}
+				}
+
+				applyDecorations(testData)
+			}
+		})
+	}
+}
+
+// BenchmarkDataPipelineSortingComplete benchmarks the complete data pipeline sorting process
+// This combines sorting and decoration to measure the full data-level transformation performance
+func BenchmarkDataPipelineSortingComplete(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"Complete_Small_10", 10},
+		{"Complete_Medium_100", 100},
+		{"Complete_Large_1000", 1000},
+		{"Complete_ExtraLarge_5000", 5000},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			// Create test data
+			originalData := createBenchmarkTableData(tt.size)
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for b.Loop() {
+				// Make a deep copy for each iteration
+				testData := make([]map[string]any, len(originalData))
+				for i, row := range originalData {
+					testData[i] = make(map[string]any)
+					for k, v := range row {
+						testData[i][k] = v
+					}
+				}
+
+				// Step 1: Sort the raw data
+				sortResourceTableData(testData)
+
+				// Step 2: Apply decorations after sorting
+				applyDecorations(testData)
+			}
+		})
+	}
+}
+
+// BenchmarkDataPipelineSortingWorstCase benchmarks sorting with worst-case data distribution
+// This tests performance when data is reverse sorted and all items have different priorities
+func BenchmarkDataPipelineSortingWorstCase(b *testing.B) {
+	sizes := []int{100, 1000, 5000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("WorstCase_%d", size), func(b *testing.B) {
+			// Create worst-case data: reverse sorted with maximum variation
+			tableData := createWorstCaseTableData(size)
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for b.Loop() {
+				// Make a copy for each iteration
+				testData := make([]map[string]any, len(tableData))
+				copy(testData, tableData)
+
+				sortResourceTableData(testData)
+			}
+		})
+	}
+}
+
+// createBenchmarkTableData creates test data with realistic distribution of priorities and danger levels
+// Matches typical Terraform plan patterns with mixed resource types and changes
+func createBenchmarkTableData(size int) []map[string]any {
+	actions := []string{"Remove", "Replace", "Modify", "Add"}
+
+	data := make([]map[string]any, size)
+
+	for i := 0; i < size; i++ {
+		isDangerous := (i%5 == 0) // Every 5th resource is dangerous (20%)
+		actionIndex := i % len(actions)
+
+		data[i] = map[string]any{
+			"ActionType":  actions[actionIndex],
+			"IsDangerous": isDangerous,
+			"Resource":    fmt.Sprintf("aws_instance.resource_%04d", i),
+			"Type":        "aws_instance",
+			"ID":          fmt.Sprintf("i-%08d", i),
+			"Replacement": "N/A",
+			"Module":      "root",
+			"Danger":      "",
+		}
+	}
+
+	return data
+}
+
+// createWorstCaseTableData creates data in reverse-sorted order to test worst-case performance
+// This simulates data that would require maximum sorting effort
+func createWorstCaseTableData(size int) []map[string]any {
+	actions := []string{"Add", "Modify", "Replace", "Remove"} // Reverse priority order
+
+	data := make([]map[string]any, size)
+
+	for i := 0; i < size; i++ {
+		// Create reverse alphabetical order for resources
+		resourceNum := size - i - 1
+
+		// Alternate danger status to create maximum sorting complexity
+		isDangerous := (i%2 == 1)
+
+		data[i] = map[string]any{
+			"ActionType":  actions[i%len(actions)],
+			"IsDangerous": isDangerous,
+			"Resource":    fmt.Sprintf("zzz_resource_%04d", resourceNum),
+			"Type":        "aws_instance",
+			"ID":          fmt.Sprintf("i-%08d", resourceNum),
+			"Replacement": "N/A",
+			"Module":      "root",
+			"Danger":      "",
+		}
+	}
+
+	return data
+}
+
 // Helper function to create benchmark configuration for performance tests
 func getBenchmarkConfig() *config.Config {
 	return &config.Config{
