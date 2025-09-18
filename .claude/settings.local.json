@@ -78,7 +78,8 @@
       "Bash(rune complete:*)",
       "Bash(git tag:*)",
       "Bash(rune:*)",
-      "Bash(rune batch:*)"
+      "Bash(rune batch:*)",
+      "Bash(./test/test_strata_execution.sh:*)"
     ],
     "deny": []
   }
