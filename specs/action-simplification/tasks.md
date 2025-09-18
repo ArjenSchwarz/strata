@@ -1,0 +1,210 @@
+---
+references:
+    - specs/action-simplification/requirements.md
+    - specs/action-simplification/design.md
+    - specs/action-simplification/decision_log.md
+---
+# GitHub Action Simplification Tasks
+
+- [ ] 1. Set up simplified action foundation
+  - Create new single-file action.sh with proper bash configuration
+  - Set up error handling framework with trap and exit codes
+  - Define all constants and environment variables
+  - Implement cleanup function for temporary files
+  - [ ] 1.1. Write unit tests for core foundation
+    - Create test framework for bash script testing
+    - Write tests for error handling and cleanup
+    - Test exit codes for different failure scenarios
+    - Verify trap execution on success and failure
+    - References: Requirements 7.1, 7.2, 7.6
+  - [ ] 1.2. Implement core foundation components
+    - Create main function structure with clear execution flow
+    - Implement bash error handling with set -euo pipefail
+    - Add cleanup trap for temporary directory
+    - Define exit codes for different failure types (1-5)
+    - References: Requirements 1.1, 1.3, 7.1, 7.2
+
+- [ ] 2. Implement input processing and validation
+  - Process GitHub Action inputs from environment variables
+  - Validate required and optional parameters
+  - Implement essential security checks only
+  - Create clear error messages for validation failures
+  - [ ] 2.1. Write tests for input validation
+    - Test required plan file validation
+    - Test output format validation (markdown/json/table/html)
+    - Test path traversal protection
+    - Test input length limits (4096 characters)
+    - Test optional parameter defaults
+    - References: Requirements 4.1, 4.2, 4.5, 4.6
+  - [ ] 2.2. Implement input validation logic
+    - Add plan file existence and readability checks
+    - Validate output format against allowed values
+    - Implement path traversal detection for plan file
+    - Add input length validation (4096 char limit)
+    - Process all optional inputs with defaults
+    - References: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 10.1
+
+- [ ] 3. Create binary download system
+  - Implement platform detection for OS and architecture
+  - Build direct GitHub release URLs
+  - Add checksum verification
+  - Implement retry mechanism with 3 attempts
+  - [ ] 3.1. Write tests for binary download
+    - Test platform detection for linux/darwin and amd64/arm64
+    - Test direct URL construction for latest and specific versions
+    - Test checksum verification success and failure
+    - Test retry logic with simulated failures
+    - Test version fallback to latest on failure
+    - References: Requirements 2.1, 2.2, 2.5, 11.1-11.8
+  - [ ] 3.2. Implement download_strata function
+    - Create detect_platform function for OS and architecture
+    - Build URLs using direct GitHub release patterns
+    - Download binary and checksums.txt files
+    - Verify SHA256 checksum matches
+    - Extract tar.gz archive to temp directory
+    - Add retry loop with 3 attempts and 2-second delays
+    - References: Requirements 2.1, 2.2, 2.3, 2.5, 2.6
+  - [ ] 3.3. Add version parameter support
+    - Process strata-version input parameter
+    - Construct version-specific download URLs
+    - Log exact version being downloaded
+    - Implement fallback to latest if specified version fails
+    - Cache different versions with separate keys
+    - References: Requirements 11.1, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8
+
+- [ ] 4. Build Strata execution component
+  - Execute Strata with dual output capability
+  - Parse JSON output for GitHub Action outputs
+  - Handle all output formats properly
+  - Generate clear execution logs
+  - [ ] 4.1. Write tests for Strata execution
+    - Test command construction with all parameters
+    - Test dual output (display to stdout, JSON to file)
+    - Test JSON parsing for statistics extraction
+    - Test output generation for all formats
+    - Test error handling when analysis fails
+    - References: Requirements 5.3, 5.4, 5.8
+  - [ ] 4.2. Implement run_analysis function
+    - Build Strata command with --output and --file flags
+    - Add conditional flags for show-details and expand-all
+    - Execute command and capture stdout for display
+    - Store display output in variable for later use
+    - Return appropriate exit code on failure
+    - References: Requirements 5.1, 5.3, 5.6, 3.5
+  - [ ] 4.3. Create extract_outputs function
+    - Parse JSON file using jq for statistics
+    - Extract total_changes and dangerous_changes counts
+    - Set has-changes boolean based on total > 0
+    - Set has-dangers boolean based on dangers > 0
+    - Write all outputs to GITHUB_OUTPUT file
+    - Include full JSON as json-summary output
+    - References: Requirements 5.4, 5.8, 5.9, 10.2
+
+- [ ] 5. Implement GitHub integration features
+  - Write Step Summary with display output
+  - Create PR comment functionality
+  - Handle comment updates vs new comments
+  - Implement environment-specific comment markers
+  - [ ] 5.1. Write tests for GitHub features
+    - Test Step Summary writing to GITHUB_STEP_SUMMARY
+    - Test PR context detection via GITHUB_EVENT_NAME
+    - Test comment marker generation with workflow/job
+    - Test API calls for comment creation and updates
+    - Test graceful skip when not in PR context
+    - References: Requirements 8.1, 8.7, 8.8, 8.10
+  - [ ] 5.2. Implement Step Summary generation
+    - Write display output directly to GITHUB_STEP_SUMMARY
+    - Use simple echo command without wrappers
+    - Handle multi-line content properly
+    - References: Requirements 8.1, 5.6
+  - [ ] 5.3. Create update_pr_comment function
+    - Check if in PR context using GITHUB_EVENT_NAME
+    - Extract PR number from GITHUB_EVENT_PATH
+    - Generate unique marker with workflow and job names
+    - Search for existing comment with marker using GET API
+    - Update existing comment with PATCH or create new with POST
+    - Implement single retry on failure
+    - References: Requirements 8.2, 8.3, 8.4, 8.5, 8.6, 8.10, 8.11
+
+- [ ] 6. Add logging and observability
+  - Implement clear emoji-prefixed log messages
+  - Remove GitHub Actions group markers
+  - Add command transparency by showing actual execution
+  - Create concise error messages with context
+  - [ ] 6.1. Write tests for logging output
+    - Test emoji prefixes for different operations
+    - Verify no group markers in standard operations
+    - Test command display for transparency
+    - Verify error messages include context (URLs, paths)
+    - References: Requirements 3.1, 3.2, 3.3, 3.5
+  - [ ] 6.2. Implement logging throughout script
+    - Add emoji prefixes (🚀 start, ✅ success, ❌ error, ⬇️ download, 🔍 analysis)
+    - Show actual commands being executed
+    - Keep each operation on single visible line
+    - Include relevant context in error messages
+    - References: Requirements 3.2, 3.3, 3.4, 3.5, 3.6, 7.5
+
+- [ ] 7. Optimize file operations
+  - Use mktemp for temp directory creation
+  - Implement simple trap-based cleanup
+  - Handle all file operations with standard tools
+  - Ensure operations complete quickly
+  - [ ] 7.1. Write tests for file operations
+    - Test temp directory creation with mktemp
+    - Test cleanup trap execution on exit
+    - Test file operation performance (<50ms)
+    - Verify no complex directory structures created
+    - References: Requirements 6.1, 6.2, 6.6
+  - [ ] 7.2. Implement file operation functions
+    - Create temp directory using mktemp -d
+    - Set up trap for cleanup on EXIT signal
+    - Use standard unix tools (tar, rm, cat)
+    - Avoid complex directory hierarchies
+    - References: Requirements 6.1, 6.2, 6.3, 6.4, 6.5
+
+- [ ] 8. Create integration test suite
+  - Test with all sample plan files
+  - Verify backwards compatibility
+  - Test performance metrics
+  - Validate all output formats
+  - [ ] 8.1. Write end-to-end integration tests
+    - Create test harness for full action execution
+    - Test with each sample plan file in samples/
+    - Test all output formats (markdown, json, table, html)
+    - Test dangerous changes detection and reporting
+    - Measure total execution time (<30 seconds)
+    - References: Requirements 9.1, 10.6
+  - [ ] 8.2. Create backwards compatibility tests
+    - Test minimal inputs (just plan-file)
+    - Test all current input parameters work correctly
+    - Verify all outputs are generated with same names
+    - Test existing workflows continue without changes
+    - Validate action.yml interface unchanged (except strata-version)
+    - References: Requirements 10.1, 10.2, 10.3, 10.5
+  - [ ] 8.3. Add performance benchmarks
+    - Measure binary download time (<10 seconds)
+    - Measure analysis startup time (<5 seconds)
+    - Measure total execution time (<30 seconds)
+    - Compare against current implementation baseline
+    - Document performance improvements
+    - References: Requirements 9.1, 9.2, 9.6
+
+- [ ] 9. Finalize and release
+  - Remove old implementation files
+  - Update documentation
+  - Create release process
+  - Set up monitoring
+  - [ ] 9.1. Clean up old implementation
+    - Remove lib/action/ directory with 6 shell modules
+    - Update action.yml to add strata-version input
+    - Ensure action.sh is the only shell script
+    - Verify total lines reduced to ~350-400
+    - References: Requirements 1.1, 1.2
+  - [ ] 9.2. Update documentation and release
+    - Update README with new architecture description
+    - Document strata-version parameter usage
+    - Create v1.5.0-beta.1 pre-release for testing
+    - Test with early adopters using strata-version
+    - Create v1.5.0 stable release
+    - Update v1 tag to point to v1.5.0
+    - References: Requirements 10.4, 11.1
