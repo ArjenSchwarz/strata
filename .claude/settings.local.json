@@ -75,7 +75,8 @@
       "Bash(INTEGRATION=1 go test ./lib/plan -run=\".*Integration.*\" -v)",
       "Bash(./.claude/scripts/copilot-pr-comments.sh:*)",
       "Bash(rune next:*)",
-      "Bash(rune complete:*)"
+      "Bash(rune complete:*)",
+      "Bash(git tag:*)"
     ],
     "deny": []
   }

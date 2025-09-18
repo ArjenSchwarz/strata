@@ -7,62 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Removed
-- **Test File Cleanup**:
-  - Removed backup test file `formatter_basic_test.go.backup`
-
-### Changed
-- **Data Pipeline Tasks**:
-  - Marked test update task as complete in data pipeline feature specification
+## [1.4.0] - 2025-09-18
 
 ### Added
-- **Data Pipeline Performance Benchmarks**:
-  - Added comprehensive benchmark test suite for data pipeline sorting functions
-  - Implemented `BenchmarkSortResourceTableData` with various data sizes (10 to 10,000 resources)
-  - Added `BenchmarkApplyDecorations` for decoration function performance measurement
-  - Created `BenchmarkDataPipelineSortingComplete` for end-to-end pipeline performance
-  - Added worst-case scenario benchmarks with reverse-sorted data distribution
-  - Benchmark tests demonstrate 5-10x performance improvement over ActionSortTransformer approach
-  - Memory allocation tracking with `b.ReportAllocs()` for resource usage analysis
+- **Data Pipeline Sorting System**: Replaced the legacy ActionSortTransformer with a modern data-level sorting pipeline that provides 5-10x performance improvement. Features danger-first sorting, proper action priority ordering (Remove → Replace → Modify → Add), and comprehensive test coverage with 279 lines of unit tests covering all sorting scenarios and edge cases.
+- **Performance Benchmarking Infrastructure**: Added comprehensive benchmark test suite supporting data sizes from 10 to 10,000 resources with memory allocation tracking. Benchmarks demonstrate significant performance improvements over the previous regex-based approach.
 
 ### Changed
-- **Data Pipeline Architecture Documentation**:
-  - Enhanced code comments in `prepareResourceTableData` with architectural overview
-  - Added detailed performance documentation explaining O(n log n) vs O(n*m) complexity improvement
-  - Documented elimination of ~200 lines of regex-based string parsing code
-  - Added comprehensive code comments explaining data-level sorting benefits
-
-### Changed
-- **Data Pipeline Sorting Implementation**:
-  - Refactored action constants in analyzer.go to use consistent constant references (`actionRemove` instead of hardcoded strings)
-  - Enhanced sorting logic in formatter.go with constant-based action type mapping for improved maintainability
-  - Separated data decoration from sorting logic with new `applyDecorations` function for cleaner architecture
-  - Updated table data preparation to store raw action types before decoration for accurate sorting
-
-### Added
-- **Data Pipeline Feature Specification**:
-  - Added comprehensive feature specification for replacing ActionSortTransformer with data-level pipeline sorting
-  - Created detailed requirements document focusing on fixing the hacky string-based sorting implementation
-  - Developed design document with clear migration path from regex-based table parsing to data-level operations
-  - Added decision log documenting scope narrowing to focus solely on replacing ActionSortTransformer
-  - Documented future ideas for potential enhancements beyond the current scope
-  - Added implementation tasks breakdown with clear phases and validation steps
-
-### Added
-- **Data Pipeline Sorting Implementation**:
-  - Implemented core data-level sorting functions to replace ActionSortTransformer
-  - Added `sortResourceTableData` function with danger-first, action priority, then alphabetical sorting
-  - Added `getActionPriority` function with proper action priority mapping (Remove=0, Replace=1, Modify=2, Add=3)
-  - Added `applyDecorations` function for emoji decoration and field cleanup
-  - Created comprehensive unit test suite with 279 lines covering all sorting scenarios, edge cases, and error conditions
-  - Tests cover danger sorting, action priority sorting, alphabetical sorting, combined logic, and edge cases (empty data, missing fields, null values)
+- **Architecture Modernization**: Refactored sorting logic from string-based table parsing to data-level operations, eliminating ~200 lines of regex-based code. Enhanced code maintainability with consistent constant references and cleaner separation between data decoration and sorting logic.
 
 ### Fixed
-- **Plan Summary Output Filtering**:
-  - Fixed plan summary output to hide empty string property values for addition and deletion actions to reduce noise and improve readability
-  - Added intelligent filtering logic that skips properties with empty string values in `After` for additions and `Before` for deletions
-  - Preserved existing behavior for update actions to maintain visibility of meaningful changes from/to empty values
-  - Enhanced property analysis with `shouldSkipEmptyValue` helper function in analyzer.go
+- **Output Filtering**: Enhanced plan summary output to intelligently hide empty string property values for addition and deletion actions, reducing noise while preserving meaningful change information for update actions.
 
 ## [1.3.0] - 2025-08-29
 
