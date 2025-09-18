@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **GitHub Action Simplification Specifications**: Added comprehensive requirements and decision log for simplifying the GitHub Action implementation. Features a major refactoring plan to reduce complexity by 60%, streamline binary downloads, improve error messages, and enhance user experience while maintaining 100% backwards compatibility for release as v1.5.0.
+
 ## [1.4.0] - 2025-09-18
 
 ### Added
