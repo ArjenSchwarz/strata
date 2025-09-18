@@ -389,6 +389,7 @@ source_script() {
             action_simplified.sh > "$temp_script"
 
         # Source the modified script
+        # shellcheck source=/dev/null
         source "$temp_script"
         SCRIPT_SOURCED=1
     fi
