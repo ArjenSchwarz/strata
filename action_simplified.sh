@@ -17,11 +17,11 @@ set -euo pipefail
 # Constants and Environment Setup
 # ============================================================================
 
-readonly SCRIPT_NAME="strata-action"
 readonly GITHUB_API_URL="${GITHUB_API_URL:-https://api.github.com}"
 
 # Create temporary directory for all operations
-readonly TEMP_DIR=$(mktemp -d)
+readonly TEMP_DIR
+TEMP_DIR=$(mktemp -d)
 
 # ============================================================================
 # Error Handling and Cleanup
@@ -183,8 +183,10 @@ detect_arch() {
 # Download Strata binary with retry and checksum verification
 download_strata() {
   local version="${1:-latest}"
-  local os=$(detect_os)
-  local arch=$(detect_arch)
+  local os
+  local arch
+  os=$(detect_os)
+  arch=$(detect_arch)
 
   # Construct download URLs
   local base_url="https://github.com/ArjenSchwarz/strata/releases"
@@ -211,8 +213,10 @@ download_strata() {
       # Download checksums
       if curl -fsSL "$checksum_url" -o "$TEMP_DIR/checksums.txt" 2>/dev/null; then
         # Verify checksum
-        local expected=$(grep "strata-${os}-${arch}.tar.gz" "$TEMP_DIR/checksums.txt" | cut -d' ' -f1)
-        local actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        local expected
+        local actual
+        expected=$(grep "strata-${os}-${arch}.tar.gz" "$TEMP_DIR/checksums.txt" | cut -d' ' -f1)
+        actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
 
         if [[ "$expected" == "$actual" ]]; then
           # Extract verified binary
@@ -236,6 +240,13 @@ download_strata() {
     # Wait before retry (except on last attempt)
     [[ $attempt -lt 3 ]] && sleep 2
   done
+
+  # If specific version failed and we're not already using latest, try fallback
+  if [[ "$version" != "latest" ]]; then
+    log_warning "Version $version not found, falling back to latest"
+    download_strata "latest"
+    return $?
+  fi
 
   log_error "Failed to download Strata from: $binary_url" 3
 }
@@ -296,11 +307,14 @@ extract_outputs() {
     return 1
   fi
 
-  local json=$(cat "$json_file")
+  local json
+  json=$(cat "$json_file")
 
   # Extract statistics using jq (pre-installed on GitHub runners)
-  local total=$(echo "$json" | jq -r '.statistics.total_changes // 0')
-  local dangers=$(echo "$json" | jq -r '.statistics.dangerous_changes // 0')
+  local total
+  local dangers
+  total=$(echo "$json" | jq -r '.statistics.total_changes // 0')
+  dangers=$(echo "$json" | jq -r '.statistics.dangerous_changes // 0')
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
@@ -342,7 +356,8 @@ update_pr_comment() {
   fi
 
   # Get PR number
-  local pr_number=$(jq -r .pull_request.number "${GITHUB_EVENT_PATH:-}")
+  local pr_number
+  pr_number=$(jq -r .pull_request.number "${GITHUB_EVENT_PATH:-}")
   if [[ -z "$pr_number" ]] || [[ "$pr_number" == "null" ]]; then
     log_warning "Unable to determine PR number"
     return 0
@@ -359,16 +374,19 @@ ${content}"
     # Try to find and update existing comment
     log_info "Looking for existing comment to update"
 
-    local comments=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+    local comments
+    comments=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
       "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments")
 
-    local comment_id=$(echo "$comments" | \
+    local comment_id
+    comment_id=$(echo "$comments" | \
       jq -r ".[] | select(.body | contains(\"$marker\")) | .id" | head -1)
 
     if [[ -n "$comment_id" ]] && [[ "$comment_id" != "null" ]]; then
       log_info "Updating existing comment #$comment_id"
 
-      local response=$(curl -s -w "\n%{http_code}" -X PATCH \
+      local response
+      response=$(curl -s -w "\n%{http_code}" -X PATCH \
         -H "Authorization: token ${GITHUB_TOKEN}" \
         -H "Content-Type: application/json" \
         -d "{\"body\": $(echo "$body" | jq -R -s .)}" \
@@ -388,7 +406,8 @@ ${content}"
   # Create new comment
   log_info "Creating new PR comment"
 
-  local response=$(curl -s -w "\n%{http_code}" -X POST \
+  local response
+  response=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{\"body\": $(echo "$body" | jq -R -s .)}" \
@@ -417,7 +436,6 @@ main() {
   local expand_all="${INPUT_EXPAND_ALL:-false}"
   local config_file="${INPUT_CONFIG_FILE:-}"
   local strata_version="${INPUT_STRATA_VERSION:-latest}"
-  local comment_on_pr="${INPUT_COMMENT_ON_PR:-true}"
   local update_comment="${INPUT_UPDATE_COMMENT:-true}"
   local comment_header="${INPUT_COMMENT_HEADER:-🏗️ Terraform Plan Summary}"
 
@@ -449,7 +467,8 @@ main() {
 
   # Update PR comment if applicable
   if [[ -f "$TEMP_DIR/display_output.txt" ]]; then
-    local display_output=$(cat "$TEMP_DIR/display_output.txt")
+    local display_output
+    display_output=$(cat "$TEMP_DIR/display_output.txt")
     update_pr_comment "$display_output" "$comment_header" "$update_comment"
   fi
 

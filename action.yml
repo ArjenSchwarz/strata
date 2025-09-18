@@ -40,6 +40,10 @@ inputs:
     description: 'Custom header for PR comments'
     required: false
     default: '🏗️ Terraform Plan Summary'
+  strata-version:
+    description: 'Specific Strata version to use (default: latest)'
+    required: false
+    default: 'latest'
 
 outputs:
   summary:
@@ -69,8 +73,9 @@ runs:
       id: strata-cache
       with:
         path: ~/.cache/strata
-        key: strata-binary-${{ runner.os }}-${{ runner.arch }}
+        key: strata-binary-${{ runner.os }}-${{ runner.arch }}-${{ inputs.strata-version }}
         restore-keys: |
+          strata-binary-${{ runner.os }}-${{ runner.arch }}-
           strata-binary-${{ runner.os }}-
     
     - name: Run Strata Analysis
@@ -87,4 +92,5 @@ runs:
         INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
         INPUT_UPDATE_COMMENT: ${{ inputs.update-comment }}
         INPUT_COMMENT_HEADER: ${{ inputs.comment-header }}
+        INPUT_STRATA_VERSION: ${{ inputs.strata-version }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
