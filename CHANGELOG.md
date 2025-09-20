@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **GitHub Action Architecture Simplification**: Completely redesigned GitHub Action with single-file implementation reducing code from ~1970 lines across 7 files to ~400 lines in one script. Removed all shell modules (`lib/action/` directory) and consolidated functionality into simplified `action.sh` with improved reliability, faster execution, and clearer logging.
+- **GitHub Action Documentation**: Updated README.md with comprehensive documentation for the new simplified architecture, including new `strata-version` parameter for version control, improved features list highlighting reliability improvements, and enhanced usage examples with version pinning capabilities.
+
+### Removed
+- **Shell Module Dependencies**: Removed 6 shell modules (`binary.sh`, `files.sh`, `github.sh`, `security.sh`, `strata.sh`, `utils.sh`) from `lib/action/` directory as part of architecture simplification, consolidating all functionality into the main action script.
+
 ### Added
 - **Comprehensive Integration Test Suite**: Implemented complete integration test infrastructure for GitHub Action with four main components: Master Test Runner (`run_integration_test_suite.sh`) orchestrating all tests, End-to-End Integration Tests (`test_comprehensive_integration.sh`) validating full action execution with all sample plan files, Backwards Compatibility Tests (`test_backwards_compatibility.sh`) ensuring existing workflows continue working, and Performance Benchmarks (`test_performance_benchmarks.sh`) measuring binary download, analysis startup, and total execution time against thresholds (<10s, <5s, <30s respectively). Includes comprehensive test reports, requirements traceability, and integration with existing Makefile structure.
 

@@ -400,6 +400,31 @@ Strata is available as a GitHub Action that can be easily integrated into your C
     comment-on-pr: true
     update-comment: true
     comment-header: "🏗️ Infrastructure Changes"
+    strata-version: latest         # Specify Strata version (default: latest)
+```
+
+### Version Control
+
+The action now supports specifying which version of Strata to use, making it easier to test pre-release versions or pin to specific versions for reproducibility:
+
+```yaml
+# Use latest stable release (default)
+- uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+    strata-version: latest
+
+# Use specific stable version
+- uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+    strata-version: v1.4.0
+
+# Test with pre-release version
+- uses: ArjenSchwarz/strata@v1
+  with:
+    plan-file: terraform.tfplan
+    strata-version: v1.5.0-beta.1
 ```
 
 ### Required Permissions
@@ -458,6 +483,7 @@ jobs:
 | `highlight-dangers` | Highlight potentially dangerous changes | No | `true` |
 | `show-details` | Show detailed change information | No | `false` |
 | `expand-all` | Expand all collapsible sections | No | `false` |
+| `strata-version` | Specific Strata version to use (e.g., `v1.4.0`, `v1.5.0-beta.1`, `latest`) | No | `latest` |
 | `github-token` | GitHub token for PR comments | No | `${{ github.token }}` |
 | `comment-on-pr` | Whether to comment on PR | No | `true` |
 | `update-comment` | Whether to update existing comment | No | `true` |
@@ -476,6 +502,8 @@ jobs:
 
 ### Features
 
+- **Clear Logging**: Scannable output with emoji prefixes, no hidden log groups
+- **Version Control**: Support for testing specific Strata versions including pre-releases
 - **Step Summary Integration**: Automatically adds rich Markdown summaries to GitHub step summaries
 - **Pull Request Comments**: Posts or updates comments on pull requests with plan analysis
 - **Progressive Disclosure**: Uses collapsible sections in PR comments for clean, expandable output
@@ -484,8 +512,8 @@ jobs:
 - **Expand-All Control**: Global flag to expand all collapsible sections for complete visibility
 - **Danger Detection**: Highlights potentially risky changes with sensitive resource and property detection
 - **Auto-Expansion**: High-risk changes automatically expand in PR comments for immediate visibility
-- **Caching**: Automatically caches Strata binaries for faster execution
-- **Error Handling**: Graceful error handling with clear messaging
+- **Caching**: Automatically caches Strata binaries for faster execution with version-specific cache keys
+- **Enhanced Error Handling**: Clear, actionable error messages with context and fast failure
 
 ### GitHub Token Requirements
 
