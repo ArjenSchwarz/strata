@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **GitHub Action Output Formatting**: Fixed GitHub Action output formatting by using heredoc format (`<<EOF`) for multiline outputs instead of simple assignment, added proper line endings for JSON output, and ensured consistent output formatting across all GitHub Action output variables (`summary`, `json-summary`) to prevent potential parsing issues in GitHub workflows.
 - **GitHub Action Security**: Enhanced cleanup process to remove analysis JSON file from workspace for improved security by preventing potential information disclosure
 - **Output File Configuration**: Fixed output file path handling to preserve case sensitivity by using `GetString` instead of `GetLCString` for the `output-file` configuration parameter, ensuring file paths maintain their original casing.
 

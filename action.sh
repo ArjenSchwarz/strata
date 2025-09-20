@@ -22,8 +22,12 @@ cleanup() {
       echo "has-dangers=false"
       echo "change-count=0"
       echo "danger-count=0"
-      echo "summary=Analysis failed"
-      echo "json-summary={}"
+      echo "summary<<EOF"
+      echo "Analysis failed"
+      echo "EOF"
+      echo "json-summary<<EOF"
+      echo "{}"
+      echo "EOF"
     } >> "$GITHUB_OUTPUT"
   fi
 
@@ -266,8 +270,12 @@ run_analysis() {
       echo "has-dangers=false"
       echo "change-count=0"
       echo "danger-count=0"
-      echo "summary=Analysis failed: $display_output"
-      echo "json-summary={\"error\": \"Analysis failed\"}"
+      echo "summary<<EOF"
+      echo "Analysis failed: $display_output"
+      echo "EOF"
+      echo "json-summary<<EOF"
+      echo "{\"error\": \"Analysis failed\"}"
+      echo "EOF"
     } >> "$GITHUB_OUTPUT"
 
     exit 4
@@ -307,6 +315,7 @@ extract_outputs() {
     echo "EOF"
     echo "json-summary<<EOF"
     cat "$json_file"
+    echo ""
     echo "EOF"
   } >> "$GITHUB_OUTPUT"
 }
@@ -321,7 +330,9 @@ set_default_outputs() {
     echo "summary<<EOF"
     echo "${DISPLAY_OUTPUT:-No output available}"
     echo "EOF"
-    echo "json-summary={}"
+    echo "json-summary<<EOF"
+    echo "{}"
+    echo "EOF"
   } >> "$GITHUB_OUTPUT"
 }
 
