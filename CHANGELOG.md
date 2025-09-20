@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Test Infrastructure Refactoring**: Renamed action simplified test to foundation test and reorganized test files from root to test directory. Removed obsolete comprehensive unit and error handling tests while adding new foundation and comprehensive test targets to Makefile for cleaner test organization.
+
+### Changed
 - **GitHub Action Architecture Simplification**: Completely redesigned GitHub Action with single-file implementation reducing code from ~1970 lines across 7 files to ~400 lines in one script. Removed all shell modules (`lib/action/` directory) and consolidated functionality into simplified `action.sh` with improved reliability, faster execution, and clearer logging.
 - **GitHub Action Documentation**: Updated README.md with comprehensive documentation for the new simplified architecture, including new `strata-version` parameter for version control, improved features list highlighting reliability improvements, and enhanced usage examples with version pinning capabilities.
 

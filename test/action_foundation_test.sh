@@ -227,13 +227,13 @@ source_script() {
             -e "/^TEMP_DIR=\$(mktemp -d)$/d" \
             -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
             -e "/\[\[ -d \"\$TEMP_DIR\" \]\]/c\\    # TEMP_DIR cleanup removed for testing" \
-            action_simplified.sh > "$temp_script"
+            action.sh > "$temp_script"
 
         # Source the modified script
         source "$temp_script"
 
         # Set a marker that we've sourced the script
-        SCRIPT_NAME="action_simplified"
+        SCRIPT_NAME="action"
     fi
 }
 
@@ -249,7 +249,7 @@ test_error_handling_framework() {
     # Create a test script with error handling
     cat > "$TEST_OUTPUT_DIR/test_error.sh" <<'EOF'
 #!/bin/bash
-source action_simplified.sh 2>/dev/null || true
+source action.sh 2>/dev/null || true
 
 # Test undefined variable handling
 test_undefined() {
@@ -349,7 +349,7 @@ test_exit_codes() {
     # Test that functions use correct exit codes
     cat > "$TEST_OUTPUT_DIR/test_exit_codes.sh" <<'EOF'
 #!/bin/bash
-source action_simplified.sh 2>/dev/null || true
+source action.sh 2>/dev/null || true
 
 # Override log_error to capture exit codes
 log_error() {
@@ -531,7 +531,7 @@ test_required_input_validation() {
     # Create a test script to properly test the function
     cat > "$TEST_OUTPUT_DIR/test_validation.sh" <<'EOF'
 #!/bin/bash
-source action_simplified.sh 2>/dev/null || true
+source action.sh 2>/dev/null || true
 
 # Test with INPUT_PLAN_FILE unset
 unset INPUT_PLAN_FILE
@@ -726,7 +726,7 @@ test_trap_cleanup_comprehensive() {
 
     log_test "Testing cleanup trap with normal exit"
 
-    # Create test script that uses the same pattern as action_simplified.sh
+    # Create test script that uses the same pattern as action.sh
     cat > "$TEST_OUTPUT_DIR/test_trap_normal.sh" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -999,9 +999,9 @@ run_tests() {
     echo "Strata GitHub Action Foundation Tests"
     echo "================================================"
 
-    # Check if action_simplified.sh exists
-    if [[ ! -f "action_simplified.sh" ]]; then
-        echo -e "${RED}Error: action_simplified.sh not found${NC}"
+    # Check if action.sh exists
+    if [[ ! -f "action.sh" ]]; then
+        echo -e "${RED}Error: action.sh not found${NC}"
         echo "Please run this test from the project root directory"
         exit 1
     fi

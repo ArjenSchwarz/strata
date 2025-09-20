@@ -137,12 +137,20 @@ run-all-samples:
 test-action-unit:
 	./test/action_test.sh
 
+# Run foundation tests for GitHub Action
+test-action-foundation:
+	./test/action_foundation_test.sh
+
 # Run integration tests for GitHub Action
 test-action-integration:
 	./test/integration_test.sh
 
+# Run comprehensive integration test suite
+test-action-comprehensive:
+	./test/run_integration_test_suite.sh
+
 # Run all action tests
-test-action: test-action-unit test-action-integration
+test-action: test-action-unit test-action-foundation test-action-integration
 
 # Format Go code
 fmt:
@@ -212,8 +220,10 @@ help:
 	@echo "  test-performance      - Run performance validation tests"
 	@echo "  test-memory           - Run memory usage tests"
 	@echo "  test-action-unit      - Run GitHub Action unit tests"
+	@echo "  test-action-foundation - Run GitHub Action foundation tests"
 	@echo "  test-action-integration - Run GitHub Action integration tests"
-	@echo "  test-action           - Run all GitHub Action tests"
+	@echo "  test-action-comprehensive - Run comprehensive GitHub Action test suite"
+	@echo "  test-action           - Run all core GitHub Action tests"
 	@echo ""
 	@echo "Benchmark targets:"
 	@echo "  benchmarks            - Run benchmark tests"
@@ -251,4 +261,4 @@ help:
 	@echo "  make build VERSION=1.2.3     - Build with specific version"
 	@echo "  make build-release VERSION=1.2.3 - Build release version"
 
-.PHONY: build build-release test test-verbose test-integration test-integration-verbose test-all test-coverage test-performance test-memory benchmarks benchmarks-mem benchmarks-stats benchmarks-analysis benchmarks-formatting benchmarks-property benchmarks-compare test-action-unit test-action-integration test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help
+.PHONY: build build-release test test-verbose test-integration test-integration-verbose test-all test-coverage test-performance test-memory benchmarks benchmarks-mem benchmarks-stats benchmarks-analysis benchmarks-formatting benchmarks-property benchmarks-compare test-action-unit test-action-foundation test-action-integration test-action-comprehensive test-action run-sample run-sample-details list-samples run-all-samples fmt vet lint check clean install deps-tidy deps-update security-scan go-functions update-v1-tag help
