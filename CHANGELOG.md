@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Output File Configuration**: Fixed output file path handling to preserve case sensitivity by using `GetString` instead of `GetLCString` for the `output-file` configuration parameter, ensuring file paths maintain their original casing.
+
 ### Changed
 - **GitHub Action Binary Download Enhancement**: Improved binary download system with enhanced version tag resolution, MD5 checksum verification replacing SHA256, platform-specific checksum handling with fallback mechanisms, better error reporting with expected vs actual checksum logging, and graceful degradation when checksum verification fails. Enhanced retry logic with fallback to latest version when specific versions are not found.
 - **GitHub Action CLI Flag Standardization**: Updated CLI flag from `--show-details` to `--details` for consistency with main application interface and improved user experience.
