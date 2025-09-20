@@ -398,11 +398,18 @@ update_comment() {
   local comment_id="$1"
   local body="$2"
 
-  local response http_code
+  local response http_code json_body
+
+  # Safely create JSON body
+  if ! json_body=$(echo "$body" | jq -R -s '{"body": .}' 2>/dev/null); then
+    echo "⚠️ Failed to create JSON body for comment update"
+    return 1
+  fi
+
   response=$(curl -s -w "\n%{http_code}" -X PATCH \
     -H "Authorization: token ${GITHUB_TOKEN:-}" \
     -H "Content-Type: application/json" \
-    -d "$(echo "$body" | jq -R -s '{"body": .}')" \
+    -d "$json_body" \
     "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" 2>/dev/null)
 
   http_code="${response##*$'\n'}"
@@ -423,11 +430,18 @@ create_comment() {
 
   echo "📝 Creating new PR comment"
 
-  local response http_code
+  local response http_code json_body
+
+  # Safely create JSON body
+  if ! json_body=$(echo "$body" | jq -R -s '{"body": .}' 2>/dev/null); then
+    echo "⚠️ Failed to create JSON body for comment creation"
+    return 1
+  fi
+
   response=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Authorization: token ${GITHUB_TOKEN:-}" \
     -H "Content-Type: application/json" \
-    -d "$(echo "$body" | jq -R -s '{"body": .}')" \
+    -d "$json_body" \
     "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/$pr_number/comments" 2>/dev/null)
 
   http_code="${response##*$'\n'}"
