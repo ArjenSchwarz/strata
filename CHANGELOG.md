@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **GitHub Action Security**: Enhanced cleanup process to remove analysis JSON file from workspace for improved security by preventing potential information disclosure
 - **Output File Configuration**: Fixed output file path handling to preserve case sensitivity by using `GetString` instead of `GetLCString` for the `output-file` configuration parameter, ensuring file paths maintain their original casing.
 
 ### Changed
