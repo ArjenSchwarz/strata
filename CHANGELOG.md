@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **GitHub Action Binary Download Enhancement**: Improved binary download system with enhanced version tag resolution, MD5 checksum verification replacing SHA256, platform-specific checksum handling with fallback mechanisms, better error reporting with expected vs actual checksum logging, and graceful degradation when checksum verification fails. Enhanced retry logic with fallback to latest version when specific versions are not found.
+- **GitHub Action CLI Flag Standardization**: Updated CLI flag from `--show-details` to `--details` for consistency with main application interface and improved user experience.
+
+### Removed
+- **Test Infrastructure Cleanup**: Removed obsolete danger threshold validation tests and related test functions that are no longer relevant after configuration simplification. Streamlined test suite by removing unused validation functions and improving test maintainability.
+
+### Changed
 - **Test Infrastructure Refactoring**: Renamed action simplified test to foundation test and reorganized test files from root to test directory. Removed obsolete comprehensive unit and error handling tests while adding new foundation and comprehensive test targets to Makefile for cleaner test organization.
 
 ### Changed

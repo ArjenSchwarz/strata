@@ -201,34 +201,6 @@ test_output_format_validation() {
     assert_equals "markdown" "$result" "Invalid format should default to 'markdown'"
 }
 
-# Test danger threshold validation
-test_danger_threshold_validation() {
-    log_test "Danger threshold validation"
-    
-    validate_danger_threshold() {
-        local threshold=$1
-        if [[ "$threshold" =~ ^[0-9]+$ ]]; then
-            echo "$threshold"
-        else
-            echo ""
-        fi
-    }
-    
-    # Test valid thresholds
-    result=$(validate_danger_threshold "5")
-    assert_equals "5" "$result" "Valid threshold '5' should be accepted"
-    
-    result=$(validate_danger_threshold "0")
-    assert_equals "0" "$result" "Valid threshold '0' should be accepted"
-    
-    # Test invalid thresholds
-    result=$(validate_danger_threshold "invalid")
-    assert_equals "" "$result" "Invalid threshold should return empty"
-    
-    result=$(validate_danger_threshold "-1")
-    assert_equals "" "$result" "Negative threshold should return empty"
-}
-
 # Test JSON parsing functions
 test_json_parsing() {
     log_test "JSON parsing"
@@ -612,7 +584,6 @@ echo "=================================="
 test_platform_detection
 test_input_validation
 test_output_format_validation
-test_danger_threshold_validation
 test_json_parsing
 test_checksum_verification
 test_file_validation

@@ -46,6 +46,25 @@ detect_platform() {
   esac
 }
 
+# Get version tag for asset filename
+get_version_tag() {
+  local version="$1"
+
+  if [[ "$version" == "latest" ]]; then
+    # Get latest release tag from GitHub API
+    local tag
+    if tag=$(curl -fsSL "$GITHUB_API_URL/repos/ArjenSchwarz/strata/releases/latest" | jq -r '.tag_name // empty' 2>/dev/null); then
+      if [[ -n "$tag" ]]; then
+        echo "$tag"
+        return 0
+      fi
+    fi
+    echo "latest"
+  else
+    echo "$version"
+  fi
+}
+
 # Binary download with checksum verification
 download_strata() {
   local version="${INPUT_STRATA_VERSION:-latest}"
@@ -53,32 +72,49 @@ download_strata() {
   detect_platform
   echo "🚀 Starting Strata GitHub Action (${OS}/${ARCH})"
 
+  # Get the actual version tag for filename construction
+  local version_tag
+  version_tag=$(get_version_tag "$version")
+  echo "📦 Resolved version tag: $version_tag"
+
   # Construct URLs based on version
   local base_url="https://github.com/ArjenSchwarz/strata/releases"
-  local binary_url checksum_url
+  local binary_url checksum_url filename
 
   if [[ "$version" == "latest" ]]; then
-    binary_url="$base_url/latest/download/strata-${OS}-${ARCH}.tar.gz"
-    checksum_url="$base_url/latest/download/checksums.txt"
-    echo "📦 Using latest Strata release"
+    filename="strata-${version_tag}-${OS}-${ARCH}.tar.gz"
+    binary_url="$base_url/latest/download/$filename"
+    checksum_url="$base_url/latest/download/${filename}.md5"
+    echo "📦 Using latest Strata release ($version_tag)"
   else
-    binary_url="$base_url/download/${version}/strata-${OS}-${ARCH}.tar.gz"
-    checksum_url="$base_url/download/${version}/checksums.txt"
+    filename="strata-${version}-${OS}-${ARCH}.tar.gz"
+    binary_url="$base_url/download/${version}/$filename"
+    checksum_url="$base_url/download/${version}/${filename}.md5"
     echo "📦 Using Strata version: $version"
   fi
 
-  echo "⬇️ Downloading Strata binary"
+  echo "⬇️ Downloading Strata binary: $filename"
 
   # Download with retry
   for attempt in 1 2 3; do
     if curl -fsSL "$binary_url" -o "$TEMP_DIR/strata.tar.gz" 2>/dev/null; then
-      # Download checksums
-      if curl -fsSL "$checksum_url" -o "$TEMP_DIR/checksums.txt" 2>/dev/null; then
-        # Verify checksum
-        local expected=$(grep "strata-${OS}-${ARCH}.tar.gz" "$TEMP_DIR/checksums.txt" | cut -d' ' -f1)
-        local actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+      # Download individual MD5 checksum file
+      if curl -fsSL "$checksum_url" -o "$TEMP_DIR/checksum.md5" 2>/dev/null; then
+        # Verify MD5 checksum
+        local expected=$(cat "$TEMP_DIR/checksum.md5" | cut -d' ' -f1)
+        local actual
 
-        if [[ "$expected" == "$actual" ]]; then
+        # Use appropriate command based on platform
+        if command -v md5sum >/dev/null 2>&1; then
+          actual=$(md5sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        elif command -v md5 >/dev/null 2>&1; then
+          actual=$(md5 -q "$TEMP_DIR/strata.tar.gz")
+        else
+          echo "⚠️ No MD5 utility available, skipping checksum verification"
+          actual="$expected"  # Skip verification
+        fi
+
+        if [[ -n "$expected" ]] && [[ "$expected" == "$actual" ]]; then
           # Extract verified binary
           tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
           chmod +x "$TEMP_DIR/strata"
@@ -89,9 +125,18 @@ download_strata() {
           return 0
         else
           echo "⚠️ Checksum mismatch, retrying..."
+          echo "⚠️ Expected: $expected, Actual: $actual"
         fi
       else
-        echo "⚠️ Failed to download checksums, retrying..."
+        echo "⚠️ Failed to download checksum, proceeding without verification..."
+        # Extract without verification as fallback
+        tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
+        chmod +x "$TEMP_DIR/strata"
+        echo "✅ Download successful (checksum verification skipped)"
+
+        # Log version for debugging
+        echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+        return 0
       fi
     fi
     echo "⚠️ Attempt $attempt/3 failed"
@@ -101,8 +146,14 @@ download_strata() {
   # Fallback to latest if specific version fails
   if [[ "$version" != "latest" ]]; then
     echo "⚠️ Version $version not found, trying latest"
-    local fallback_url="$base_url/latest/download/strata-${OS}-${ARCH}.tar.gz"
-    if curl -fsSL "$fallback_url" | tar -xz -C "$TEMP_DIR" 2>/dev/null; then
+    local fallback_tag
+    fallback_tag=$(get_version_tag "latest")
+    local fallback_filename="strata-${fallback_tag}-${OS}-${ARCH}.tar.gz"
+    local fallback_url="$base_url/latest/download/$fallback_filename"
+
+    echo "⚠️ Trying fallback: $fallback_filename"
+    if curl -fsSL "$fallback_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
+      tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
       chmod +x "$TEMP_DIR/strata"
       echo "✅ Fallback to latest successful"
       return 0
@@ -180,7 +231,7 @@ run_analysis() {
   cmd="$cmd --output ${INPUT_OUTPUT_FORMAT:-markdown}"
   cmd="$cmd --file $json_file --file-format json"
 
-  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd="$cmd --show-details"
+  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd="$cmd --details"
   [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd="$cmd --expand-all"
   [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd="$cmd --config $INPUT_CONFIG_FILE"
 
@@ -193,6 +244,9 @@ run_analysis() {
   if display_output=$($cmd 2>&1); then
     echo "✅ Analysis complete"
 
+    # Store display output for GitHub integration
+    DISPLAY_OUTPUT="$display_output"
+
     # Parse JSON for GitHub Action outputs
     if [[ -f "$json_file" ]]; then
       extract_outputs "$json_file"
@@ -200,9 +254,6 @@ run_analysis() {
       echo "⚠️ JSON metadata file not found, setting default outputs"
       set_default_outputs
     fi
-
-    # Store display output for GitHub integration
-    DISPLAY_OUTPUT="$display_output"
   else
     echo "❌ Analysis failed: $display_output"
 

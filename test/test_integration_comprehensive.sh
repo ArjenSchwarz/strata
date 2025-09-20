@@ -281,7 +281,7 @@ case "$*" in
         echo "  --file-format FORMAT Format for file output"
         echo "  --details           Show detailed information"
         echo "  --config FILE       Configuration file"
-        echo "  --danger-threshold N Danger threshold"
+        echo "  --highlight-dangers     Highlight potentially destructive changes"
         ;;
     *"--version"*)
         echo "strata version 1.0.0-mock"
