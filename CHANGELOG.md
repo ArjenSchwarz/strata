@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **GitHub Action PR Comment Formatting**: Enhanced PR comment formatting with H2 header for title and added footer with links to Strata repository and workflow run for improved traceability and professional appearance
+
 ### Fixed
 - **GitHub Action JSON Body Creation**: Enhanced error handling in PR comment creation and update functions by safely creating JSON bodies with proper error checking and validation before making GitHub API calls, preventing potential failures during comment operations
 - **GitHub Action Output Formatting**: Fixed GitHub Action output formatting by using heredoc format (`<<EOF`) for multiline outputs instead of simple assignment, added proper line endings for JSON output, and ensured consistent output formatting across all GitHub Action output variables (`summary`, `json-summary`) to prevent potential parsing issues in GitHub workflows.
