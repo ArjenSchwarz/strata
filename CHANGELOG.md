@@ -7,59 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **GitHub Action PR Comment Formatting**: Enhanced PR comment formatting with H2 header for title and added footer with links to Strata repository and workflow run for improved traceability and professional appearance
-
-### Fixed
-- **GitHub Action JSON Body Creation**: Enhanced error handling in PR comment creation and update functions by safely creating JSON bodies with proper error checking and validation before making GitHub API calls, preventing potential failures during comment operations
-- **GitHub Action Output Formatting**: Fixed GitHub Action output formatting by using heredoc format (`<<EOF`) for multiline outputs instead of simple assignment, added proper line endings for JSON output, and ensured consistent output formatting across all GitHub Action output variables (`summary`, `json-summary`) to prevent potential parsing issues in GitHub workflows.
-- **GitHub Action Security**: Enhanced cleanup process to remove analysis JSON file from workspace for improved security by preventing potential information disclosure
-- **Output File Configuration**: Fixed output file path handling to preserve case sensitivity by using `GetString` instead of `GetLCString` for the `output-file` configuration parameter, ensuring file paths maintain their original casing.
+## [1.5.0] - 2025-01-21
 
 ### Changed
-- **GitHub Action Binary Download Enhancement**: Improved binary download system with enhanced version tag resolution, MD5 checksum verification replacing SHA256, platform-specific checksum handling with fallback mechanisms, better error reporting with expected vs actual checksum logging, and graceful degradation when checksum verification fails. Enhanced retry logic with fallback to latest version when specific versions are not found.
-- **GitHub Action CLI Flag Standardization**: Updated CLI flag from `--show-details` to `--details` for consistency with main application interface and improved user experience.
-
-### Removed
-- **Test Infrastructure Cleanup**: Removed obsolete danger threshold validation tests and related test functions that are no longer relevant after configuration simplification. Streamlined test suite by removing unused validation functions and improving test maintainability.
-
-### Changed
-- **Test Infrastructure Refactoring**: Renamed action simplified test to foundation test and reorganized test files from root to test directory. Removed obsolete comprehensive unit and error handling tests while adding new foundation and comprehensive test targets to Makefile for cleaner test organization.
-
-### Changed
-- **GitHub Action Architecture Simplification**: Completely redesigned GitHub Action with single-file implementation reducing code from ~1970 lines across 7 files to ~400 lines in one script. Removed all shell modules (`lib/action/` directory) and consolidated functionality into simplified `action.sh` with improved reliability, faster execution, and clearer logging.
-- **GitHub Action Documentation**: Updated README.md with comprehensive documentation for the new simplified architecture, including new `strata-version` parameter for version control, improved features list highlighting reliability improvements, and enhanced usage examples with version pinning capabilities.
-
-### Removed
-- **Shell Module Dependencies**: Removed 6 shell modules (`binary.sh`, `files.sh`, `github.sh`, `security.sh`, `strata.sh`, `utils.sh`) from `lib/action/` directory as part of architecture simplification, consolidating all functionality into the main action script.
+- **GitHub Action Simplification**: Redesigned GitHub Action with a single-file architecture, reducing code complexity by 80% (from ~1970 lines across 7 files to ~400 lines). Features improved reliability, faster execution, enhanced error handling with retry mechanisms, and streamlined binary downloads with checksum verification.
+- **GitHub Action Parameter Improvements**: Added `strata-version` parameter for version pinning, standardized CLI flags for consistency with main application (`--show-details` → `--details`), and enhanced PR comment formatting with improved headers and workflow links.
 
 ### Added
-- **Comprehensive Integration Test Suite**: Implemented complete integration test infrastructure for GitHub Action with four main components: Master Test Runner (`run_integration_test_suite.sh`) orchestrating all tests, End-to-End Integration Tests (`test_comprehensive_integration.sh`) validating full action execution with all sample plan files, Backwards Compatibility Tests (`test_backwards_compatibility.sh`) ensuring existing workflows continue working, and Performance Benchmarks (`test_performance_benchmarks.sh`) measuring binary download, analysis startup, and total execution time against thresholds (<10s, <5s, <30s respectively). Includes comprehensive test reports, requirements traceability, and integration with existing Makefile structure.
-
-### Changed
-- **GitHub Action Simplification Tasks**: Updated task completion status in `specs/action-simplification/tasks.md` to mark task 8 and all subtasks (8.1-8.3) as completed, reflecting the successful implementation of the comprehensive integration test suite covering end-to-end functionality, backwards compatibility validation, and performance benchmarking.
-
-### Added
-- **GitHub Features Test Suite**: Implemented comprehensive test suite (`test/test_github_features.sh`) with 882 lines of tests covering all GitHub integration features including Step Summary generation, PR context detection, comment marker generation, comment creation and updates, and error handling scenarios. Tests validate GitHub Action requirements 8.1-8.11 with mock API responses, environment variable handling, and graceful fallbacks for non-PR contexts.
-- **Strata Execution Component Testing**: Added comprehensive test suite for Strata execution component (`test/test_strata_execution.sh`) with 915 lines of tests covering command construction with all parameters, dual output system (display to stdout + JSON to file), JSON parsing for statistics extraction, output generation for all formats (markdown/json/table/html), and error handling scenarios. Includes mock Strata binary creation for testing different scenarios (success, failure, dangerous changes) and validation of GitHub Action output generation.
+- **Comprehensive Test Suite**: Implemented complete test infrastructure including unit tests, integration tests, backwards compatibility validation, and performance benchmarks. Covers GitHub features (PR comments, Step Summaries), Strata execution, and ensures < 30s total execution time.
 
 ### Fixed
-- **GitHub Action Code Quality**: Fixed all shellcheck warnings in action_simplified.sh by removing unused variables (SCRIPT_NAME, comment_on_pr) and separating variable declarations from assignments to avoid masking return values
-- **Test Code Quality**: Fixed all shellcheck warnings in `test/action_simplified_test.sh` by separating variable declarations from assignments to avoid masking return values and using underscore for unused loop variable
+- **GitHub Action Reliability**: Fixed output formatting issues with proper heredoc usage, enhanced JSON body creation with error validation, improved security with workspace cleanup, and resolved case sensitivity issues in file path handling.
 
-### Changed
-- **Task Management**: Updated GitHub Action simplification tasks document to reflect completion of task group 5 (GitHub integration features) including all three subtasks: test implementation for GitHub features, Step Summary generation, and PR comment functionality with API integration.
-- **Code Documentation**: Enhanced code comments in `action_simplified.sh` for better documentation of temporary directory creation and cleanup operations
-
-### Technical Notes
-- **GitHub Integration Test Coverage**: The new test suite covers Step Summary writing to GITHUB_STEP_SUMMARY, PR context detection via GITHUB_EVENT_NAME, comment marker generation with workflow/job names, API calls for comment creation/updates, and graceful handling of non-PR contexts. Includes mock curl functions for testing GitHub API interactions without external dependencies.
-- **Test Infrastructure**: The test suite validates the existing `run_analysis` and `extract_outputs` functions in `action_simplified.sh` which implement the dual output capability using Strata's native `--file` and `--file-format` flags to output display format to stdout while writing JSON metadata to file for GitHub Action outputs.
-- **GitHub Action Integration**: Tests confirm proper extraction of statistics from JSON metadata files including total_changes, dangerous_changes, and proper setting of GitHub Action outputs (has-changes, has-dangers, change-count, danger-count, summary, json-summary).
-
-### Previous Unreleased Changes
-- **GitHub Action Simplification Specifications**: Added comprehensive requirements and decision log for simplifying the GitHub Action implementation. Features a major refactoring plan to reduce complexity by 60%, streamline binary downloads, improve error messages, and enhance user experience while maintaining 100% backwards compatibility for release as v1.5.0.
-- **Implementation Tasks Document**: Created detailed task breakdown for GitHub Action simplification with 9 major categories and 32 subtasks, including test-first development approach, unit and integration testing requirements, and performance benchmarks.
-- **Simplified GitHub Action Implementation**: Created single-file GitHub Action implementation (`action_simplified.sh`) that reduces code complexity by 60% while maintaining full backwards compatibility. Features modular error handling, comprehensive logging, retry mechanisms for downloads, and unified security validation. Includes complete test infrastructure with unit tests for core foundation, error handling, cleanup mechanisms, and validation functions.
+### Removed
+- **Legacy Shell Modules**: Removed 6 shell module dependencies (`binary.sh`, `files.sh`, `github.sh`, `security.sh`, `strata.sh`, `utils.sh`) from `lib/action/` directory as part of architecture simplification.
 
 ## [1.4.0] - 2025-09-18
 
