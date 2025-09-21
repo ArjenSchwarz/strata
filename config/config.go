@@ -104,7 +104,7 @@ type OutputConfiguration struct {
 // NewOutputConfiguration creates a new output configuration from the global config
 func (config *Config) NewOutputConfiguration() *OutputConfiguration {
 	format := config.GetLCString("output")
-	outputFile := config.GetLCString("output-file")
+	outputFile := config.GetString("output-file")
 	outputFileFormat := config.GetLCString("output-file-format")
 
 	// Apply placeholder resolution to file path if specified

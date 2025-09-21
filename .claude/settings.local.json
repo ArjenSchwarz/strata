@@ -76,7 +76,11 @@
       "Bash(./.claude/scripts/copilot-pr-comments.sh:*)",
       "Bash(rune next:*)",
       "Bash(rune complete:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(rune:*)",
+      "Bash(rune batch:*)",
+      "Bash(./test/test_strata_execution.sh:*)",
+      "Bash(./test/test_github_features.sh:*)"
     ],
     "deny": []
   }
