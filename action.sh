@@ -15,6 +15,9 @@ trap cleanup EXIT
 cleanup() {
   local exit_code=$?
 
+  # Disable strict error handling for cleanup
+  set +e
+
   # Set default outputs on failure
   if [[ $exit_code -ne 0 ]] && [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     {
@@ -36,6 +39,9 @@ cleanup() {
 
   # Clean workspace JSON file (for security)
   [[ -f "./strata-analysis.json" ]] && rm -f "./strata-analysis.json"
+
+  # Preserve original exit code
+  exit $exit_code
 }
 
 # Platform detection
@@ -265,18 +271,20 @@ run_analysis() {
     echo "❌ Analysis failed: $display_output"
 
     # Set failure outputs
-    {
-      echo "has-changes=false"
-      echo "has-dangers=false"
-      echo "change-count=0"
-      echo "danger-count=0"
-      echo "summary<<EOF"
-      echo "Analysis failed: $display_output"
-      echo "EOF"
-      echo "json-summary<<EOF"
-      echo "{\"error\": \"Analysis failed\"}"
-      echo "EOF"
-    } >> "$GITHUB_OUTPUT"
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+      {
+        echo "has-changes=false"
+        echo "has-dangers=false"
+        echo "change-count=0"
+        echo "danger-count=0"
+        echo "summary<<EOF"
+        echo "Analysis failed: $display_output"
+        echo "EOF"
+        echo "json-summary<<EOF"
+        echo "{\"error\": \"Analysis failed\"}"
+        echo "EOF"
+      } >> "$GITHUB_OUTPUT"
+    fi
 
     exit 4
   fi
@@ -305,35 +313,39 @@ extract_outputs() {
   danger_changes=$(echo "$json" | jq -r '.statistics.dangerous_changes // 0' 2>/dev/null || echo "0")
 
   # Set GitHub Action outputs
-  {
-    echo "has-changes=$([[ $total_changes -gt 0 ]] && echo true || echo false)"
-    echo "has-dangers=$([[ $danger_changes -gt 0 ]] && echo true || echo false)"
-    echo "change-count=$total_changes"
-    echo "danger-count=$danger_changes"
-    echo "summary<<EOF"
-    echo "$DISPLAY_OUTPUT"
-    echo "EOF"
-    echo "json-summary<<EOF"
-    cat "$json_file"
-    echo ""
-    echo "EOF"
-  } >> "$GITHUB_OUTPUT"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "has-changes=$([[ $total_changes -gt 0 ]] && echo true || echo false)"
+      echo "has-dangers=$([[ $danger_changes -gt 0 ]] && echo true || echo false)"
+      echo "change-count=$total_changes"
+      echo "danger-count=$danger_changes"
+      echo "summary<<EOF"
+      echo "$DISPLAY_OUTPUT"
+      echo "EOF"
+      echo "json-summary<<EOF"
+      cat "$json_file" 2>/dev/null || echo "{}"
+      echo ""
+      echo "EOF"
+    } >> "$GITHUB_OUTPUT"
+  fi
 }
 
 # Set default outputs when JSON parsing fails
 set_default_outputs() {
-  {
-    echo "has-changes=false"
-    echo "has-dangers=false"
-    echo "change-count=0"
-    echo "danger-count=0"
-    echo "summary<<EOF"
-    echo "${DISPLAY_OUTPUT:-No output available}"
-    echo "EOF"
-    echo "json-summary<<EOF"
-    echo "{}"
-    echo "EOF"
-  } >> "$GITHUB_OUTPUT"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "has-changes=false"
+      echo "has-dangers=false"
+      echo "change-count=0"
+      echo "danger-count=0"
+      echo "summary<<EOF"
+      echo "${DISPLAY_OUTPUT:-No output available}"
+      echo "EOF"
+      echo "json-summary<<EOF"
+      echo "{}"
+      echo "EOF"
+    } >> "$GITHUB_OUTPUT"
+  fi
 }
 
 # GitHub Step Summary
