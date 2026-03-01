@@ -500,8 +500,8 @@ func TestAnalyzeOutputChange(t *testing.T) {
 				Before:     "old-reference",
 				After:      "new-reference",
 				IsUnknown:  false,
-				Action:     "No-op",
-				Indicator:  "",
+				Action:     "Replace",
+				Indicator:  "~",
 			},
 			expectedError: false,
 			description:   "Replace actions should be handled (though uncommon for outputs)",
@@ -574,11 +574,11 @@ func TestGetOutputActionAndIndicator(t *testing.T) {
 			description:       "No-op changes should show 'No-op' with empty indicator",
 		},
 		{
-			name:              "replace should return No-op with empty indicator",
+			name:              "replace should return Replace with ~",
 			changeType:        ChangeTypeReplace,
-			expectedAction:    "No-op",
-			expectedIndicator: "",
-			description:       "Replace changes should show 'No-op' with empty indicator (uncommon for outputs)",
+			expectedAction:    "Replace",
+			expectedIndicator: "~",
+			description:       "Replace changes should show 'Replace' with '~' indicator",
 		},
 	}
 

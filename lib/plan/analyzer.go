@@ -928,6 +928,8 @@ func (a *Analyzer) getOutputActionAndIndicator(changeType ChangeType) (string, s
 		return "Modify", "~"
 	case ChangeTypeDelete:
 		return "Remove", "-"
+	case ChangeTypeReplace:
+		return "Replace", "~"
 	default:
 		return "No-op", ""
 	}
