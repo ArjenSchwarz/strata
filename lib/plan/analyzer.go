@@ -214,6 +214,10 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
 				unknownType = unknownAfter
+				
+				// When a nested object is unknown, collect all nested property paths
+				// and add them as individual unknown properties for tracking
+				a.collectNestedUnknownProperties(path, processedAfter, analysis)
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
@@ -330,6 +334,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			if afterUnknown != nil {
 				if afterUnknownMap, ok := afterUnknown.(map[string]any); ok {
 					afterUnknownChild = afterUnknownMap[key]
+				} else if parentUnknown, ok := afterUnknown.(bool); ok && parentUnknown {
+					// If parent is entirely unknown (boolean true), propagate to all children
+					afterUnknownChild = true
 				}
 			}
 
@@ -388,6 +395,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				if afterUnknown != nil {
 					if afterUnknownSlice, ok := afterUnknown.([]any); ok && i < len(afterUnknownSlice) {
 						afterUnknownItem = afterUnknownSlice[i]
+					} else if parentUnknown, ok := afterUnknown.(bool); ok && parentUnknown {
+						// If parent array is entirely unknown (boolean true), propagate to all elements
+						afterUnknownItem = true
 					}
 				}
 
@@ -422,6 +432,9 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				if afterUnknown != nil {
 					if afterUnknownMap, ok := afterUnknown.(map[string]any); ok {
 						afterUnknownChild = afterUnknownMap[key]
+					} else if parentUnknown, ok := afterUnknown.(bool); ok && parentUnknown {
+						// If parent is entirely unknown (boolean true), propagate to all children
+						afterUnknownChild = true
 					}
 				}
 
@@ -436,11 +449,62 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				if afterUnknown != nil {
 					if afterUnknownSlice, ok := afterUnknown.([]any); ok && i < len(afterUnknownSlice) {
 						afterUnknownItem = afterUnknownSlice[i]
+					} else if parentUnknown, ok := afterUnknown.(bool); ok && parentUnknown {
+						// If parent array is entirely unknown (boolean true), propagate to all elements
+						afterUnknownItem = true
 					}
 				}
 
 				a.compareObjects(newPath, nil, item, nil, a.extractSensitiveIndex(afterSensitive, i), afterUnknownItem, replacePathStrings, analysis)
 			}
+		}
+	}
+}
+
+// collectNestedUnknownProperties recursively collects all nested property paths
+// when a parent object is marked as unknown, adding them as individual unknown properties
+func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, analysis *PropertyChangeAnalysis) {
+	switch val := value.(type) {
+	case map[string]any:
+		for key, childValue := range val {
+			var childPath string
+			if basePath != "" {
+				childPath = fmt.Sprintf("%s.%s", basePath, key)
+			} else {
+				childPath = key
+			}
+			
+			// Add this nested property as unknown
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:        key,
+				Path:        a.parsePath(childPath),
+				Before:      nil, // We don't have the before value in this context
+				After:       a.getUnknownValueDisplay(),
+				Action:      "add", // Assume add for unknown nested properties
+				IsUnknown:   true,
+				UnknownType: "after",
+			})
+			
+			// Recursively collect deeper nested properties
+			a.collectNestedUnknownProperties(childPath, childValue, analysis)
+		}
+	case []any:
+		for i, childValue := range val {
+			childPath := fmt.Sprintf("%s[%d]", basePath, i)
+			
+			// Add this array element as unknown
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:        fmt.Sprintf("%d", i),
+				Path:        a.parsePath(childPath),
+				Before:      nil,
+				After:       a.getUnknownValueDisplay(),
+				Action:      "add",
+				IsUnknown:   true,
+				UnknownType: "after",
+			})
+			
+			// Recursively collect nested properties in array elements
+			a.collectNestedUnknownProperties(childPath, childValue, analysis)
 		}
 	}
 }
