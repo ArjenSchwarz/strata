@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Action Argument Safety Regression Tests**: Added unit test coverage for `run_analysis` to validate safe argument handling for plan/config paths containing spaces and for plan files starting with `-`.
+
+### Fixed
+- **Action Command Construction Safety**: Updated `run_analysis` in `action.sh` to build and execute the Strata command as a Bash array (`"${cmd[@]}"`) and pass `--` before the plan file path, preventing argument splitting issues and option ambiguity for user-supplied paths.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed
