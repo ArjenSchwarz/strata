@@ -45,7 +45,7 @@ func NewFormatter(cfg *config.Config) *Formatter {
 
 // ValidateOutputFormat validates that the output format is supported
 func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
-	supportedFormats := []string{formatTable, "json", "html", "markdown"}
+	supportedFormats := []string{formatTable, "json", "csv", "html", "markdown"}
 	lowercaseFormat := strings.ToLower(outputFormat)
 	if slices.Contains(supportedFormats, lowercaseFormat) {
 		return nil

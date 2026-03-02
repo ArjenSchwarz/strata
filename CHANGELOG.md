@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CSV Output Validation**: Added `csv` to formatter output validation so `strata plan summary --output csv` works correctly and aligns with supported formatter rendering.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed

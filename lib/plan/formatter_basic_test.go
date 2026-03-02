@@ -18,6 +18,7 @@ func TestFormatter_ValidateOutputFormat(t *testing.T) {
 	}{
 		{"table", false},
 		{"json", false},
+		{"csv", false},
 		{"html", false},
 		{"markdown", false},
 		{"xml", true}, // unsupported
