@@ -1,119 +1,92 @@
-# Bug Fix Report: Unknown Parent Propagation to Nested Properties
+# Bugfix Report: Unknown Parent Propagation to Nested Properties
 
-**Bug ID**: T-146  
-**Date**: 2025-01-01  
-**Severity**: Medium  
-**Status**: Fixed  
+**Date:** 2026-03-02
+**Status:** Fixed
 
-## Problem Statement
+## Description of the Issue
 
-When a parent property is marked as unknown in Terraform's `after_unknown` field (e.g., `"config": true`), the nested properties within that parent (e.g., `config.timeout`, `config.retry_count`) were not being identified as unknown values. Only the parent property itself was tracked in the `UnknownProperties` list.
+When Terraform marks a parent object as unknown in `after_unknown` (for example, `"tags": true`), nested properties were not always propagated as unknown.
+The failure occurred when the parent object was treated as a grouped nested-object change and `before`/`after` values were equal.
 
-### Expected Behavior
-- When `after_unknown` contains `"config": true`, all nested properties under `config` should be treated as unknown
-- Properties like `config.timeout`, `config.retry_count`, `config.nested.deep_value` should appear in the `UnknownProperties` list
-- These nested properties should display `(known after apply)` in the output
+**Reproduction steps:**
+1. Build a resource change where `before.tags` and `after.tags` are identical maps.
+2. Set `after_unknown` to `{"tags": true}`.
+3. Run summary generation and observe `UnknownProperties` missing `tags` and nested paths.
 
-### Actual Behavior
-- Only the parent property `config` was identified as unknown
-- Nested properties like `config.timeout` were not in the `UnknownProperties` list
-- Nested properties appeared as regular changes instead of unknown values
+**Impact:** Unknown values were under-reported, which hid uncertainty in nested plan fields and reduced trust in risk visibility.
 
-## Root Cause Analysis
+## Investigation Summary
 
-The issue was in the `compareObjects` function in `lib/plan/analyzer.go`. When recursively processing nested properties, the function only passed the specific child's `afterUnknown` value to the recursive call, not considering that a parent could be marked as entirely unknown with a boolean `true`.
+A systematic inspection focused on unknown-value handling in `compareObjects` and downstream unknown-property extraction.
 
-**Specific Issues:**
+- **Symptoms examined:** Missing `HasUnknownValues`, empty `UnknownProperties`, and no `(known after apply)` output for nested fields under unknown parents.
+- **Code inspected:** `lib/plan/analyzer.go` (`compareObjects`, nested-object branch, unknown collection logic).
+- **Hypotheses tested:**
+  - Unknown traversal (`isValueUnknown`) failed for parent booleans (ruled out).
+  - Child propagation failed on recursive map/array traversal (ruled out).
+  - Nested-object shortcut skipped unknown handling when values were equal (confirmed).
 
-1. **Incomplete Unknown Propagation**: When `afterUnknown` contained `{"config": true}`, the recursive call for `config.timeout` would receive `afterUnknownChild = true`, but the `isValueUnknown` function expected to navigate a structure, not just receive a boolean.
+## Discovered Root Cause
 
-2. **Missing Nested Property Collection**: When a nested object was treated as a single change (due to `shouldTreatAsNestedObject` logic), individual nested properties weren't being added to the `UnknownProperties` list.
+In the nested-object shortcut path of `compareObjects`, property-change creation was guarded by `!reflect.DeepEqual(before, after)` and then returned early.
+For unknown parent objects with equal `before`/`after`, this condition prevented both the unknown parent change and `collectNestedUnknownProperties`, so propagation never occurred.
 
-## Solution
+**Defect type:** Logic error (incorrect condition in control flow).
 
-### 1. Enhanced Unknown Propagation Logic
+**Why it occurred:**
+- The branch assumed only value differences should produce grouped nested-object changes.
+- Unknown semantics require recording uncertainty even when concrete values compare equal.
+- Early return prevented fallback recursion that could have surfaced unknown children.
 
-Modified the `compareObjects` function to properly propagate unknown status from parent to child properties:
+**Contributing factors:**
+- Grouped nested-object optimization combines presentation and traversal decisions in one conditional.
 
-```go
-// Extract afterUnknown for the child property
-var afterUnknownChild any
-if afterUnknown != nil {
-    if afterUnknownMap, ok := afterUnknown.(map[string]any); ok {
-        afterUnknownChild = afterUnknownMap[key]
-    } else if parentUnknown, ok := afterUnknown.(bool); ok && parentUnknown {
-        // If parent is entirely unknown (boolean true), propagate to all children
-        afterUnknownChild = true
-    }
-}
-```
+## Resolution for the Issue
 
-This change was applied to:
-- Map property processing (object properties)
-- Array element processing 
-- Nil-to-map transitions
-- Nil-to-array transitions
+**Changes made:**
+- `lib/plan/analyzer.go:195` - Updated grouped nested-object condition to also create a change when `isUnknown` is true.
+- `lib/plan/unknown_parent_propagation_regression_test.go` - Added regression case for unknown parent with unchanged nested values.
 
-### 2. Nested Unknown Properties Collection
+**Approach rationale:**
+This is the smallest safe fix: keep existing grouping behavior, but ensure unknown semantics are always preserved.
 
-Added a new helper function `collectNestedUnknownProperties` that recursively collects all nested property paths when a parent object is marked as unknown:
+**Alternatives considered:**
+- Remove early return and recurse always for grouped nested objects — rejected due larger behavioral and output impact.
 
-```go
-func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, analysis *PropertyChangeAnalysis) {
-    // Recursively traverse the structure and add each nested property as unknown
-}
-```
+## Regression Test
 
-This ensures that when a nested object like `config` is treated as a single change but is unknown, all its nested properties are still individually tracked in the `UnknownProperties` list.
+**Test file:** `lib/plan/unknown_parent_propagation_regression_test.go`
+**Test name:** `TestUnknownParentPropagationToNestedProperties/parent_unknown_with_unchanged_nested_object_should_still_propagate`
 
-## Files Modified
+**What it verifies:** Unknown parent markers (`after_unknown` boolean on object) propagate to parent and nested properties even when `before` and `after` values are identical.
 
-- `lib/plan/analyzer.go`: Enhanced unknown propagation logic and added nested property collection
-- `lib/plan/unknown_parent_propagation_regression_test.go`: Added comprehensive regression tests
+**Run command:** `go test ./lib/plan -run TestUnknownParentPropagationToNestedProperties -v`
+
+## Affected Files
+
+| File | Change |
+|------|--------|
+| `lib/plan/analyzer.go` | Fixed grouped nested-object condition to honor unknown parent propagation even for equal before/after values. |
+| `lib/plan/unknown_parent_propagation_regression_test.go` | Added failing-then-passing regression scenario for unchanged nested object with unknown parent. |
 
 ## Verification
 
-### Regression Test
-Created `TestUnknownParentPropagationToNestedProperties` with two test cases:
+**Automated:**
+- [x] Regression test passes
+- [x] Full test suite passes
+- [x] Linters/validators pass
 
-1. **Parent Object Unknown**: Tests that when `config` is entirely unknown, all nested properties (`config.timeout`, `config.retry_count`, `config.nested.deep_value`) are properly identified as unknown.
+**Manual verification:**
+- Ran `make run-sample SAMPLE=danger-sample.json` to confirm summary output remains healthy.
+- Ran `./strata plan summary nonexistent.tfplan` and verified graceful error output with usage text.
 
-2. **Mixed Scenario**: Tests that when `tags` is entirely unknown, all its nested properties are identified as unknown.
+## Prevention
 
-### Test Results
-- All existing tests continue to pass
-- New regression tests pass
-- Unknown value detection works correctly for both granular and parent-level unknown markers
+**Recommendations to avoid similar bugs:**
+- Treat unknown-state semantics as independent from value-diff checks in grouped/object fast paths.
+- Add regression tests that combine unknown markers with equal before/after values.
+- Keep unknown propagation checks in both recursive and shortcut code paths.
 
-## Impact
+## Related
 
-### Positive
-- Nested properties under unknown parents are now correctly identified as unknown
-- `UnknownProperties` list is complete and accurate
-- Output correctly shows `(known after apply)` for all unknown nested properties
-- Maintains backward compatibility with existing functionality
-
-### Risk Assessment
-- **Low Risk**: Changes are additive and don't modify existing logic paths
-- All existing tests pass, indicating no regressions
-- The fix handles edge cases (arrays, nil transitions) comprehensively
-
-## Future Considerations
-
-1. **Performance**: The nested property collection adds some overhead for unknown nested objects, but this is minimal and only occurs when objects are actually unknown.
-
-2. **Deep Nesting**: The current implementation handles arbitrary nesting depth, but very deep structures might generate many individual property entries.
-
-3. **Array Handling**: The fix properly handles arrays marked as entirely unknown, propagating the unknown status to all elements.
-
-## Validation Steps
-
-1. ✅ Regression test passes
-2. ✅ All existing unknown value tests pass  
-3. ✅ Full test suite passes
-4. ✅ Manual verification with sample Terraform plans
-5. ✅ Edge cases (arrays, deep nesting) handled correctly
-
-## Conclusion
-
-The bug has been successfully fixed with a comprehensive solution that handles both the immediate issue and related edge cases. The fix ensures that Terraform's `after_unknown` field is properly interpreted when parents are marked as entirely unknown, providing users with accurate and complete information about which properties will be known after apply.
+- Transit task: `T-146`

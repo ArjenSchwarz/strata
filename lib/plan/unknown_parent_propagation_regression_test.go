@@ -50,7 +50,7 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 			expectedUnknownPath: []string{
 				"config",
 				"config.timeout",
-				"config.retry_count", 
+				"config.retry_count",
 				"config.nested",
 				"config.nested.deep_value",
 			},
@@ -91,12 +91,49 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 				},
 			},
 			expectedUnknownPath: []string{
-				"tags",           // Parent unknown
-				"tags.Name",      // Should inherit from parent
+				"tags",             // Parent unknown
+				"tags.Name",        // Should inherit from parent
 				"tags.Environment", // Should inherit from parent
-				"tags.Project",   // Should inherit from parent
+				"tags.Project",     // Should inherit from parent
 			},
 			description: "When entire tags object is unknown, all nested properties should be unknown",
+		},
+		"parent_unknown_with_unchanged_nested_object_should_still_propagate": {
+			plan: &tfjson.Plan{
+				FormatVersion:    "1.0",
+				TerraformVersion: "1.5.0",
+				ResourceChanges: []*tfjson.ResourceChange{
+					{
+						Address: "aws_instance.unchanged",
+						Type:    "aws_instance",
+						Name:    "unchanged",
+						Change: &tfjson.Change{
+							Actions: []tfjson.Action{tfjson.ActionUpdate},
+							Before: map[string]any{
+								"tags": map[string]any{
+									"Name":        "stable-name",
+									"Environment": "dev",
+								},
+							},
+							After: map[string]any{
+								"tags": map[string]any{
+									"Name":        "stable-name",
+									"Environment": "dev",
+								},
+							},
+							AfterUnknown: map[string]any{
+								"tags": true, // Even unchanged values must propagate unknown to children
+							},
+						},
+					},
+				},
+			},
+			expectedUnknownPath: []string{
+				"tags",
+				"tags.Name",
+				"tags.Environment",
+			},
+			description: "Unknown parent should propagate even when before/after values are equal",
 		},
 	}
 
@@ -132,16 +169,16 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 						break
 					}
 				}
-				
+
 				// For nested properties under unknown parents, they might not have individual PropertyChange entries
 				// if they're grouped, so we mainly check UnknownProperties
-				t.Logf("Path %s - Found in UnknownProperties: %v, Found in PropertyChanges: %v", 
-					expectedPath, 
+				t.Logf("Path %s - Found in UnknownProperties: %v, Found in PropertyChanges: %v",
+					expectedPath,
 					contains(resource.UnknownProperties, expectedPath),
 					found)
 			}
 
-			t.Logf("%s: Resource has %d unknown properties: %v", 
+			t.Logf("%s: Resource has %d unknown properties: %v",
 				tc.description, len(resource.UnknownProperties), resource.UnknownProperties)
 		})
 	}
@@ -155,7 +192,7 @@ func joinPath(path []string) string {
 	if len(path) == 1 {
 		return path[0]
 	}
-	
+
 	result := path[0]
 	for i := 1; i < len(path); i++ {
 		// Check if the component looks like an array index

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Propagated `after_unknown` parent booleans for grouped nested objects even when `before` and `after` values are equal, so nested properties are correctly marked as unknown and shown as `(known after apply)`.
+- Added regression coverage for unknown parent propagation to unchanged nested properties.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed

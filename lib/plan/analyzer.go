@@ -192,8 +192,8 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	_, afterIsMap := processedAfter.(map[string]any)
 
 	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(processedBefore, processedAfter, path) {
-		// Only create a PropertyChange if the objects are actually different (compare originals to detect changes)
-		if !reflect.DeepEqual(before, after) {
+		// Create a PropertyChange if objects differ, or always when unknown values are present
+		if isUnknown || !reflect.DeepEqual(before, after) {
 			propertyPath := a.parsePath(path)
 			triggersReplacement := false
 			action := determineAction(processedBefore, processedAfter)
@@ -214,7 +214,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
 				unknownType = unknownAfter
-				
+
 				// When a nested object is unknown, collect all nested property paths
 				// and add them as individual unknown properties for tracking
 				a.collectNestedUnknownProperties(path, processedAfter, analysis)
@@ -473,7 +473,7 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, an
 			} else {
 				childPath = key
 			}
-			
+
 			// Add this nested property as unknown
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:        key,
@@ -484,14 +484,14 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, an
 				IsUnknown:   true,
 				UnknownType: "after",
 			})
-			
+
 			// Recursively collect deeper nested properties
 			a.collectNestedUnknownProperties(childPath, childValue, analysis)
 		}
 	case []any:
 		for i, childValue := range val {
 			childPath := fmt.Sprintf("%s[%d]", basePath, i)
-			
+
 			// Add this array element as unknown
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:        fmt.Sprintf("%d", i),
@@ -502,7 +502,7 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, an
 				IsUnknown:   true,
 				UnknownType: "after",
 			})
-			
+
 			// Recursively collect nested properties in array elements
 			a.collectNestedUnknownProperties(childPath, childValue, analysis)
 		}
