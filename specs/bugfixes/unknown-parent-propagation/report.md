@@ -13,7 +13,7 @@ The failure occurred when the parent object was treated as a grouped nested-obje
 2. Set `after_unknown` to `{"tags": true}`.
 3. Run summary generation and observe `UnknownProperties` missing `tags` and nested paths.
 
-**Impact:** Unknown values were under-reported, which hid uncertainty in nested plan fields and reduced trust in risk visibility.
+**Impact:** Unknown values were under-reported, and propagated nested fields could be misclassified as additions instead of updates, reducing output accuracy.
 
 ## Investigation Summary
 
@@ -45,7 +45,8 @@ For unknown parent objects with equal `before`/`after`, this condition prevented
 
 **Changes made:**
 - `lib/plan/analyzer.go:195` - Updated grouped nested-object condition to also create a change when `isUnknown` is true.
-- `lib/plan/unknown_parent_propagation_regression_test.go` - Added regression case for unknown parent with unchanged nested values.
+- `lib/plan/analyzer.go` - Enhanced nested unknown collection to retain prior values and preserve `add` vs `update` action semantics for child properties.
+- `lib/plan/unknown_parent_propagation_regression_test.go` - Added regression case for unknown parent with unchanged nested values and assertions for expected update actions.
 
 **Approach rationale:**
 This is the smallest safe fix: keep existing grouping behavior, but ensure unknown semantics are always preserved.

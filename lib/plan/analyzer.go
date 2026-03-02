@@ -217,7 +217,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 
 				// When a nested object is unknown, collect all nested property paths
 				// and add them as individual unknown properties for tracking
-				a.collectNestedUnknownProperties(path, processedAfter, analysis)
+				a.collectNestedUnknownProperties(path, processedBefore, processedAfter, analysis)
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
@@ -462,11 +462,13 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 }
 
 // collectNestedUnknownProperties recursively collects all nested property paths
-// when a parent object is marked as unknown, adding them as individual unknown properties
-func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, analysis *PropertyChangeAnalysis) {
-	switch val := value.(type) {
+// when a parent object is marked as unknown, adding them as individual unknown properties.
+// It preserves whether nested fields already existed to keep add/update semantics accurate.
+func (a *Analyzer) collectNestedUnknownProperties(basePath string, before, after any, analysis *PropertyChangeAnalysis) {
+	switch afterVal := after.(type) {
 	case map[string]any:
-		for key, childValue := range val {
+		beforeMap, _ := before.(map[string]any)
+		for key, childAfterValue := range afterVal {
 			var childPath string
 			if basePath != "" {
 				childPath = fmt.Sprintf("%s.%s", basePath, key)
@@ -474,37 +476,54 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, value any, an
 				childPath = key
 			}
 
+			childBeforeValue := any(nil)
+			action := actionAdd
+			if beforeMap != nil {
+				if existingBefore, exists := beforeMap[key]; exists {
+					childBeforeValue = existingBefore
+					action = actionUpdate
+				}
+			}
+
 			// Add this nested property as unknown
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:        key,
 				Path:        a.parsePath(childPath),
-				Before:      nil, // We don't have the before value in this context
+				Before:      childBeforeValue,
 				After:       a.getUnknownValueDisplay(),
-				Action:      "add", // Assume add for unknown nested properties
+				Action:      action,
 				IsUnknown:   true,
-				UnknownType: "after",
+				UnknownType: unknownAfter,
 			})
 
 			// Recursively collect deeper nested properties
-			a.collectNestedUnknownProperties(childPath, childValue, analysis)
+			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, analysis)
 		}
 	case []any:
-		for i, childValue := range val {
+		beforeSlice, _ := before.([]any)
+		for i, childAfterValue := range afterVal {
 			childPath := fmt.Sprintf("%s[%d]", basePath, i)
+
+			childBeforeValue := any(nil)
+			action := actionAdd
+			if beforeSlice != nil && i < len(beforeSlice) {
+				childBeforeValue = beforeSlice[i]
+				action = actionUpdate
+			}
 
 			// Add this array element as unknown
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:        fmt.Sprintf("%d", i),
 				Path:        a.parsePath(childPath),
-				Before:      nil,
+				Before:      childBeforeValue,
 				After:       a.getUnknownValueDisplay(),
-				Action:      "add",
+				Action:      action,
 				IsUnknown:   true,
-				UnknownType: "after",
+				UnknownType: unknownAfter,
 			})
 
 			// Recursively collect nested properties in array elements
-			a.collectNestedUnknownProperties(childPath, childValue, analysis)
+			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, analysis)
 		}
 	}
 }

@@ -14,6 +14,7 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 	tests := map[string]struct {
 		plan                *tfjson.Plan
 		expectedUnknownPath []string
+		expectedActions     map[string]string
 		description         string
 	}{
 		"parent_object_unknown_should_propagate_to_children": {
@@ -133,6 +134,11 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 				"tags.Name",
 				"tags.Environment",
 			},
+			expectedActions: map[string]string{
+				"tags":             "update",
+				"tags.Name":        "update",
+				"tags.Environment": "update",
+			},
 			description: "Unknown parent should propagate even when before/after values are equal",
 		},
 	}
@@ -166,6 +172,10 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 						found = true
 						assert.Equal(t, "(known after apply)", change.After,
 							"Unknown property %s should display '(known after apply)'", expectedPath)
+						if expectedAction, hasExpectedAction := tc.expectedActions[expectedPath]; hasExpectedAction {
+							assert.Equal(t, expectedAction, change.Action,
+								"Unknown property %s should preserve expected action", expectedPath)
+						}
 						break
 					}
 				}
