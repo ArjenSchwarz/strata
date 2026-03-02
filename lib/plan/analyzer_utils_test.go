@@ -941,6 +941,18 @@ func TestCompareObjectsEnhanced(t *testing.T) {
 			}},
 		},
 		{
+			name:   "array property type transition",
+			before: map[string]any{"items": []any{1, 2}},
+			after:  map[string]any{"items": "replaced"},
+			expected: []PropertyChange{{
+				Name:   "items",
+				Path:   []string{"items"},
+				Action: "update",
+				Before: []any{1, 2},
+				After:  "replaced",
+			}},
+		},
+		{
 			name:   "property removal",
 			before: map[string]any{"a": 1, "b": 2},
 			after:  map[string]any{"a": 1},
@@ -1294,6 +1306,23 @@ func TestCompareObjectsWithUnknownValues(t *testing.T) {
 			expectedActions: []string{"update"},
 			expectedNames:   []string{"ami"},
 			description:     "Known to unknown transitions should show before_value → (known after apply) (requirement 1.4)",
+		},
+		{
+			name: "array known to unknown transition",
+			before: map[string]any{
+				"items": []any{1, 2},
+			},
+			after: map[string]any{
+				"items": nil,
+			},
+			afterUnknown: map[string]any{
+				"items": true,
+			},
+			expectedChanges: 1,
+			expectedUnknown: []bool{true},
+			expectedActions: []string{"update"},
+			expectedNames:   []string{"items"},
+			description:     "Known arrays transitioning to unknown should be updates, not removals",
 		},
 		{
 			name: "mixed known and unknown properties",
