@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Statistics Total Consistency**: Updated `ChangeStatistics.Total` to include unmodified (no-op) resources so `Total Changes` now equals Added + Removed + Modified + Replacements + Unmodified in summaries.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed
