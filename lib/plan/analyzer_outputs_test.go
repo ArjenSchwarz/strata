@@ -534,6 +534,26 @@ func TestAnalyzeOutputChange(t *testing.T) {
 	}
 }
 
+func TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	result, err := analyzer.analyzeOutputChange("resource_reference", &tfjson.Change{
+		Actions: []tfjson.Action{tfjson.ActionDelete, tfjson.ActionCreate},
+		Before:  "same-reference",
+		After:   "same-reference",
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	if result == nil {
+		return
+	}
+
+	assert.Equal(t, ChangeTypeReplace, result.ChangeType)
+	assert.Equal(t, "Replace", result.Action)
+	assert.False(t, result.IsNoOp, "replace actions must not be treated as no-op")
+}
+
 // TestGetOutputActionAndIndicator tests the output action and indicator mapping function (Task 7.1)
 func TestGetOutputActionAndIndicator(t *testing.T) {
 	analyzer := &Analyzer{}

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Corrected output no-op detection so Terraform output `replace` actions are no longer misclassified as no-op when `before` and `after` values are equal.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed

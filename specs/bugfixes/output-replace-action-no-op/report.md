@@ -1,89 +1,89 @@
 # Bugfix Report: Output Replace Action Shown as No-op
 
-**Date:** 2025-01-03
+**Date:** 2026-03-02  
 **Status:** Fixed
 
 ## Description of the Issue
 
-Terraform output changes with replace actions (delete + create) were incorrectly displayed as "No-op" instead of "Replace" in the plan summary output.
+Output changes with replace actions could be treated as no-op when `before` and `after` happened to be equal, which hid the output change by default and made the replace effectively appear as no-op behavior.
 
 **Reproduction steps:**
-1. Create a Terraform plan with an output that has both delete and create actions (replace)
-2. Run `strata plan summary` on the plan file
-3. Observe that the output action is shown as "No-op" instead of "Replace"
+1. Create a plan JSON with an output change using replace actions (`["delete","create"]`) and equal `before`/`after` values.
+2. Run `strata plan summary <plan.json>` with default settings.
+3. Observe the output change is filtered away as no-op.
 
-**Impact:** Medium - Users would see misleading "No-op" actions for output changes that were actually replacements, reducing clarity in plan summaries and creating inconsistency with resource change handling.
+**Impact:** Medium. Users can miss real output replacement events in summaries, especially in plans where replacement happens but rendered values are unchanged.
 
 ## Investigation Summary
 
-Systematic debugging revealed the issue was in the `getOutputActionAndIndicator` function in `lib/plan/analyzer.go`.
+Systematic inspection followed four phases: problem framing, code inspection, Five Whys root-cause analysis, and fix verification.
 
-- **Symptoms examined:** Replace actions showing as "No-op" in output tables
-- **Code inspected:** `getOutputActionAndIndicator` function, `FromTerraformAction` function, test cases
-- **Hypotheses tested:** 
-  - Incorrect action detection in `FromTerraformAction` (ruled out - correctly returns `ChangeTypeReplace`)
-  - Missing case handling in `getOutputActionAndIndicator` (confirmed as root cause)
+- **Symptoms examined:** Output replacement disappeared in default output when values were equal.
+- **Code inspected:** `lib/plan/analyzer.go` (`analyzeOutputChange`), output filtering in `lib/plan/formatter.go`, and output tests in `lib/plan/analyzer_outputs_test.go`.
+- **Hypotheses tested:**
+  - Action mapping was broken (ruled out; replace already mapped correctly).
+  - No-op detection logic was over-broad (confirmed).
 
 ## Discovered Root Cause
 
-The `getOutputActionAndIndicator` function did not handle the `ChangeTypeReplace` case, causing replace actions to fall through to the default case and return "No-op".
+`analyzeOutputChange` marked outputs as no-op using `reflect.DeepEqual(change.Before, change.After)`.  
+This ignored Terraform action metadata and incorrectly flagged some replace/create/update outputs as no-op when values matched.
 
-**Defect type:** Missing case handling in switch statement
+**Defect type:** Logic error (incorrect no-op classification rule).
 
-**Why it occurred:** The function was implemented with cases for Create, Update, and Delete, but Replace was overlooked despite being a valid ChangeType.
+**Why it occurred:**  
+1. No-op was inferred from value equality.  
+2. Value equality was assumed to mean no change.  
+3. Terraform action semantics were not used as source-of-truth for output operation type.
 
-**Contributing factors:** 
-- Replace actions are less common for outputs than resources
-- Existing tests were expecting the incorrect "No-op" behavior, masking the bug
+**Contributing factors:** Replace outputs are less common and existing tests did not assert `IsNoOp` for this scenario.
 
 ## Resolution for the Issue
 
 **Changes made:**
-- `lib/plan/analyzer.go:925` - Added `case ChangeTypeReplace: return "Replace", "~"` to handle replace actions
-- `lib/plan/analyzer_outputs_test.go:580` - Updated test to expect "Replace" with "~" indicator
-- `lib/plan/analyzer_outputs_test.go:503` - Updated test to expect correct replace action behavior
+- `lib/plan/analyzer.go` - Updated output no-op detection to use `changeType == ChangeTypeNoOp` instead of `reflect.DeepEqual(before, after)`.
+- `lib/plan/analyzer_outputs_test.go` - Added regression test `TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp`.
 
-**Approach rationale:** Added the missing case to align with how resource changes handle replace actions, maintaining consistency across the codebase.
+**Approach rationale:** Terraform action metadata is authoritative for operation intent; equal values should not reclassify replace actions as no-op.
 
 **Alternatives considered:**
-- Map replace to "Modify" - Rejected as it would be misleading since replace is more destructive than modify
-- Keep as "No-op" - Rejected as it's factually incorrect and inconsistent
+- Keep equality-based fallback for all actions — rejected because it repeats the same misclassification.
 
 ## Regression Test
 
-**Test file:** `lib/plan/analyzer_outputs_test.go`
-**Test name:** `TestGetOutputActionAndIndicator/replace_should_return_Replace_with_~`
+**Test file:** `lib/plan/analyzer_outputs_test.go`  
+**Test name:** `TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp`
 
-**What it verifies:** That replace actions return "Replace" with "~" indicator instead of "No-op"
+**What it verifies:** Replace output actions remain actionable (`IsNoOp == false`) even when before/after display values are equal.
 
-**Run command:** `go test -v ./lib/plan -run TestGetOutputActionAndIndicator`
+**Run command:** `go test ./lib/plan -run TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp -count=1`
 
 ## Affected Files
 
 | File | Change |
 |------|--------|
-| `lib/plan/analyzer.go` | Added missing case for ChangeTypeReplace |
-| `lib/plan/analyzer_outputs_test.go` | Updated tests to expect correct behavior |
+| `lib/plan/analyzer.go` | Corrected output no-op classification logic |
+| `lib/plan/analyzer_outputs_test.go` | Added focused regression test |
+| `specs/bugfixes/output-replace-action-no-op/report.md` | Updated bugfix documentation |
 
 ## Verification
 
 **Automated:**
 - [x] Regression test passes
 - [x] Full test suite passes
-- [x] Build completes successfully
+- [x] Linters/validators pass
 
 **Manual verification:**
-- Created and ran test program confirming replace actions now return "Replace" with "~" indicator
-- Verified ChangeType is correctly identified as "replace"
+- Verified `go run . plan summary /tmp/t87-repro-same.json` now shows output action `Replace` in the Output Changes table.
+- Verified `make run-sample SAMPLE=danger-sample.json` works normally.
+- Verified `./strata plan summary nonexistent.tfplan` still returns a clear load error.
 
 ## Prevention
 
 **Recommendations to avoid similar bugs:**
-- When adding new ChangeType values, ensure all switch statements handling ChangeType are updated
-- Consider using exhaustive switch linting rules to catch missing cases
-- Review test expectations more critically - tests expecting "wrong" behavior can mask bugs
+- Use Terraform action metadata as primary classification input for no-op decisions.
+- Add regression tests for equal-value outputs with non-no-op actions (replace/create/update).
 
 ## Related
 
 - Transit ticket: T-87
-- Commit: be0b1542c35e4927ca42ad5ea7873c2c597e1e59
