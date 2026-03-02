@@ -99,18 +99,22 @@ func (p *Parser) ValidateStructure(plan *tfjson.Plan) error {
 
 // extractWorkspaceInfo extracts workspace information from the plan
 func (p *Parser) extractWorkspaceInfo(_ *tfjson.Plan) string {
+	if workspace := p.getCurrentWorkspace(); workspace != "" {
+		return workspace
+	}
+
+	// Fallback to "default"
+	return "default"
+}
+
+func (p *Parser) getCurrentWorkspace() string {
 	// Method 1: Check TF_WORKSPACE environment variable
 	if workspace := os.Getenv("TF_WORKSPACE"); workspace != "" {
 		return workspace
 	}
 
 	// Method 2: Try to execute terraform workspace show in the plan file's directory
-	if workspace := p.getWorkspaceFromCLI(); workspace != "" {
-		return workspace
-	}
-
-	// Method 3: Fallback to "default"
-	return "default"
+	return p.getWorkspaceFromCLI()
 }
 
 // getWorkspaceFromCLI attempts to get workspace information from terraform CLI
@@ -220,6 +224,11 @@ func (p *Parser) extractBackendLocation(backendType string, config map[string]an
 		if workspaces, ok := config["workspaces"].(map[string]any); ok {
 			if name, ok := workspaces["name"].(string); ok && org != "" {
 				return fmt.Sprintf("app.terraform.io/%s/%s", org, name)
+			}
+			if prefix, ok := workspaces["prefix"].(string); ok && prefix != "" && org != "" {
+				if workspace := p.getCurrentWorkspace(); workspace != "" {
+					return fmt.Sprintf("app.terraform.io/%s/%s%s", org, prefix, workspace)
+				}
 			}
 		}
 	case "local":
