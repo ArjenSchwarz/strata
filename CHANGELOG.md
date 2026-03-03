@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
+
 ## [1.5.0] - 2025-01-21
 
 ### Changed

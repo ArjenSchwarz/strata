@@ -82,7 +82,7 @@ func (fv *FileValidator) validatePathSafety(filePath string) error {
 }
 
 // validateDirectoryPermissions checks if the directory exists and is writable.
-// Uses efficient permission checking without creating temporary files when possible.
+// Uses temporary file creation to verify write access.
 func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 	dir := filepath.Dir(filePath)
 
@@ -97,9 +97,8 @@ func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 		}
 	}
 
-	// Test write permissions using os.OpenFile with O_WRONLY for better cross-platform compatibility
-	testFile := filepath.Join(dir, ".strata_write_test")
-	file, err := os.OpenFile(testFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	// Test write permissions using a unique temporary file.
+	file, err := os.CreateTemp(dir, ".strata_write_test_*")
 	if err != nil {
 		return &FileOutputError{
 			Type:    "permission",
@@ -109,6 +108,7 @@ func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 			Cause:   err,
 		}
 	}
+	testFile := file.Name()
 	_ = file.Close()
 	_ = os.Remove(testFile)
 
@@ -116,7 +116,7 @@ func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 }
 
 // validateFormatSupport checks if the specified output format is supported.
-// Supported formats include: table, json, csv, markdown, html, dot
+// Supported formats include: table, json, csv, markdown, html
 func (fv *FileValidator) validateFormatSupport(formatName string) error {
 	supportedFormats := []string{
 		"table",
@@ -124,7 +124,6 @@ func (fv *FileValidator) validateFormatSupport(formatName string) error {
 		"csv",
 		"markdown",
 		"html",
-		"dot",
 	}
 
 	formatLower := strings.ToLower(formatName)
