@@ -89,6 +89,25 @@ func TestParser_extractBackendLocation_RemoteWorkspacePrefix(t *testing.T) {
 	}
 }
 
+func TestParser_extractBackendLocation_RemoteWorkspacePrefix_DefaultWorkspaceFallback(t *testing.T) {
+	t.Setenv("TF_WORKSPACE", "")
+	t.Setenv("PATH", "")
+
+	p := &Parser{}
+	config := map[string]any{
+		"organization": "example-org",
+		"workspaces": map[string]any{
+			"prefix": "team-",
+		},
+	}
+
+	got := p.extractBackendLocation("remote", config)
+	want := "app.terraform.io/example-org/team-default"
+	if got != want {
+		t.Errorf("extractBackendLocation() = %v, want %v", got, want)
+	}
+}
+
 func TestParser_getPlanFileInfo(t *testing.T) {
 	// Create a temporary file for testing
 	tmpDir := t.TempDir()

@@ -226,9 +226,11 @@ func (p *Parser) extractBackendLocation(backendType string, config map[string]an
 				return fmt.Sprintf("app.terraform.io/%s/%s", org, name)
 			}
 			if prefix, ok := workspaces["prefix"].(string); ok && prefix != "" && org != "" {
-				if workspace := p.getCurrentWorkspace(); workspace != "" {
-					return fmt.Sprintf("app.terraform.io/%s/%s%s", org, prefix, workspace)
+				workspace := p.getCurrentWorkspace()
+				if workspace == "" {
+					workspace = "default"
 				}
+				return fmt.Sprintf("app.terraform.io/%s/%s%s", org, prefix, workspace)
 			}
 		}
 	case "local":
