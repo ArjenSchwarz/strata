@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Statistics Total Consistency**: Updated `ChangeStatistics.Total` to include unmodified (no-op) resources so `Total Changes` now equals Added + Removed + Modified + Replacements + Unmodified in summaries.
+- **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
 
 ## [1.5.0] - 2025-01-21
 
