@@ -78,7 +78,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.strata.yaml)")
 
 	// Output format flags
-	rootCmd.PersistentFlags().StringP("output", "o", "table", "Output format (table, json, html, markdown)")
+	rootCmd.PersistentFlags().StringP("output", "o", "table", "Output format (table, json, csv, html, markdown)")
 	rootCmd.PersistentFlags().String("file", "", "Optional file to save the output to, in addition to stdout")
 	rootCmd.PersistentFlags().String("file-format", "", "Optional format for the file, defaults to the same as output")
 
