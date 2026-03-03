@@ -1023,7 +1023,7 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange, outputs []Outpu
 		}
 	}
 
-	stats.Total = stats.ToAdd + stats.ToChange + stats.ToDestroy + stats.Replacements
+	stats.Total = stats.ToAdd + stats.ToChange + stats.ToDestroy + stats.Replacements + stats.Unmodified
 	return stats
 }
 

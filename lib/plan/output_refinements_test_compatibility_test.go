@@ -193,6 +193,6 @@ func testStatisticsIncludeNoOps(t *testing.T) {
 	assert.Equal(t, 1, stats.ToDestroy, "Should count deletes")
 	assert.Equal(t, 1, stats.Replacements, "Should count replacements")
 	assert.Equal(t, 2, stats.Unmodified, "Should count no-ops in Unmodified")
-	assert.Equal(t, 4, stats.Total, "Total should exclude no-ops (only counts actionable resources)")
+	assert.Equal(t, 6, stats.Total, "Total should include all resources, including no-ops")
 	assert.Equal(t, 2, stats.OutputChanges, "Should exclude no-op outputs from OutputChanges count")
 }
