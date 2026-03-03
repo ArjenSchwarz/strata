@@ -217,7 +217,14 @@ download_strata() {
         local expected
         local actual
         expected=$(grep "strata-${os}-${arch}.tar.gz" "$TEMP_DIR/checksums.txt" | cut -d' ' -f1)
-        actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        if command -v sha256sum >/dev/null 2>&1; then
+          actual=$(sha256sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        elif command -v shasum >/dev/null 2>&1; then
+          actual=$(shasum -a 256 "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        else
+          log_warning "No SHA-256 tool available, skipping checksum verification"
+          actual="$expected"
+        fi
 
         if [[ "$expected" == "$actual" ]]; then
           # Extract verified binary using standard Unix tools

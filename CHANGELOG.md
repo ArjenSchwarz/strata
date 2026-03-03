@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Corrected output no-op detection so Terraform output `replace` actions are no longer misclassified as no-op when `before` and `after` values are equal.
+- **CSV Output Validation**: Added `csv` to formatter output validation so `strata plan summary --output csv` works correctly and aligns with supported formatter rendering.
 - **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
 
 ## [1.5.0] - 2025-01-21

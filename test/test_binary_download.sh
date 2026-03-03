@@ -413,6 +413,91 @@ test_checksum_verification_failure() {
     assert_equals "3" "$exit_code" "Should exit with code 3 on failure"
 }
 
+test_action_simplified_checksum_fallback() {
+    log_test "action_simplified checksum fallback when sha256sum is unavailable"
+
+    local harness="$TEST_OUTPUT_DIR/test_action_simplified_checksum_fallback.sh"
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+repo_root="$1"
+work_dir=$(mktemp -d)
+trap '/bin/rm -rf "$work_dir"' EXIT
+
+sed -e '/^readonly TEMP_DIR$/d' \
+    -e '/^TEMP_DIR=\$(mktemp -d)$/d' \
+    -e '/^trap cleanup EXIT$/d' \
+    -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
+    "$repo_root/action_simplified.sh" > "$work_dir/action_testable.sh"
+
+# shellcheck source=/dev/null
+source "$work_dir/action_testable.sh"
+
+TEMP_DIR="$work_dir/runtime"
+mkdir -p "$TEMP_DIR"
+PATH="/nonexistent"
+
+shasum() { /usr/bin/shasum "$@"; }
+grep() { /usr/bin/grep "$@"; }
+cut() { /usr/bin/cut "$@"; }
+tar() { /usr/bin/tar "$@"; }
+chmod() { /bin/chmod "$@"; }
+sleep() { :; }
+
+detect_os() { echo "darwin"; }
+detect_arch() { echo "amd64"; }
+
+curl() {
+    local output=""
+    local url=""
+    local args=("$@")
+
+    for i in "${!args[@]}"; do
+        if [[ "${args[$i]}" == "-o" ]]; then
+            output="${args[$((i + 1))]}"
+        elif [[ "${args[$i]}" == http* ]]; then
+            url="${args[$i]}"
+        fi
+    done
+
+    if [[ "$url" == *"checksums.txt" ]]; then
+        local checksum
+        checksum=$(shasum -a 256 "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+        echo "$checksum  strata-darwin-amd64.tar.gz" > "$output"
+        return 0
+    fi
+
+    if [[ "$url" == *".tar.gz" ]]; then
+        /bin/mkdir -p "$TEMP_DIR/build"
+        /bin/cat > "$TEMP_DIR/build/strata" <<'BIN'
+#!/bin/bash
+echo "Strata vtest"
+BIN
+        /bin/chmod +x "$TEMP_DIR/build/strata"
+        /usr/bin/tar -czf "$output" -C "$TEMP_DIR/build" strata
+        return 0
+    fi
+
+    return 1
+}
+
+download_strata "latest"
+EOF
+
+    chmod +x "$harness"
+
+    local output
+    local exit_code
+    set +e
+    output=$("$harness" "$(pwd)" 2>&1)
+    exit_code=$?
+    set -e
+
+    assert_equals "0" "$exit_code" "Should succeed when only shasum is available"
+    assert_contains "$output" "Download and verification successful" "Should verify with shasum fallback"
+}
+
 test_retry_on_first_failure() {
     log_test "Retry mechanism on first failure"
     MOCK_OS="Linux"
@@ -591,6 +676,7 @@ main() {
     log_section "Checksum Verification Tests"
     test_checksum_verification_success
     test_checksum_verification_failure
+    test_action_simplified_checksum_fallback
 
     log_section "Retry Logic Tests"
     test_retry_on_first_failure

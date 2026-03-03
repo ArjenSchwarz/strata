@@ -46,7 +46,7 @@ func NewFormatter(cfg *config.Config) *Formatter {
 
 // ValidateOutputFormat validates that the output format is supported
 func (f *Formatter) ValidateOutputFormat(outputFormat string) error {
-	supportedFormats := []string{formatTable, "json", "html", "markdown"}
+	supportedFormats := []string{formatTable, "json", "csv", "html", "markdown"}
 	lowercaseFormat := strings.ToLower(outputFormat)
 	if slices.Contains(supportedFormats, lowercaseFormat) {
 		return nil
@@ -1255,7 +1255,7 @@ func (f *Formatter) handleResourceDisplay(summary *PlanSummary, showDetails bool
 }
 
 // handleSensitiveResourceDisplay handles the display of sensitive resources when details are disabled
-func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, outputConfig *config.OutputConfiguration, builder *output.Builder) error {
+func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, _ *config.OutputConfiguration, builder *output.Builder) error {
 	sensitiveChanges := f.filterSensitiveChanges(summary.ResourceChanges)
 	if len(sensitiveChanges) > 0 {
 		sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
@@ -1270,7 +1270,7 @@ func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, outputC
 			// Log warning but continue operation - conservative error handling
 			fmt.Printf("Warning: Failed to create sensitive resource changes table: %v\n", err)
 		}
-	} else if outputConfig.OutputFile == "" {
+	} else {
 		builder.Text("No sensitive resource changes detected.")
 	}
 	return nil
