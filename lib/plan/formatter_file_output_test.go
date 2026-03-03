@@ -71,3 +71,17 @@ func TestFormatter_FileOutput_FormatterIntegration(t *testing.T) {
 		t.Errorf("ValidateOutputFormat should fail for invalid format")
 	}
 }
+
+func TestFormatter_FileOutputColorDecision(t *testing.T) {
+	if !shouldUseColorTransformer(true, "table") {
+		t.Errorf("expected colors to be enabled for table output when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(true, "markdown") {
+		t.Errorf("expected colors to be disabled for markdown output even when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(false, "table") {
+		t.Errorf("expected colors to be disabled when UseColors is false")
+	}
+}
