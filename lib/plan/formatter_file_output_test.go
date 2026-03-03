@@ -1,7 +1,13 @@
 package plan
 
 import (
+	"bytes"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ArjenSchwarz/strata/config"
 )
@@ -69,5 +75,77 @@ func TestFormatter_FileOutput_FormatterIntegration(t *testing.T) {
 	err = formatter.ValidateOutputFormat("invalid")
 	if err == nil {
 		t.Errorf("ValidateOutputFormat should fail for invalid format")
+	}
+}
+
+func TestFormatter_FileOutput_SensitiveOnlyNoSensitiveMessageStillShown(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			AlwaysShowSensitive: true,
+		},
+	}
+	formatter := NewFormatter(cfg)
+
+	summary := &PlanSummary{
+		PlanFile:         "test.tfplan",
+		TerraformVersion: "1.6.0",
+		Workspace:        "default",
+		Backend: BackendInfo{
+			Type:     "local",
+			Location: "terraform.tfstate",
+		},
+		CreatedAt: time.Now(),
+		Statistics: ChangeStatistics{
+			Total: 1,
+			ToAdd: 1,
+		},
+		ResourceChanges: []ResourceChange{
+			{
+				Address:       "aws_s3_bucket.test",
+				Type:          "aws_s3_bucket",
+				Name:          "test",
+				ChangeType:    ChangeTypeCreate,
+				IsDestructive: false,
+				IsDangerous:   false,
+			},
+		},
+	}
+
+	outputFile := filepath.Join(t.TempDir(), "summary.md")
+	outputConfig := &config.OutputConfiguration{
+		Format:           "markdown",
+		OutputFile:       outputFile,
+		OutputFileFormat: "markdown",
+		UseEmoji:         false,
+		UseColors:        false,
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create stdout pipe: %v", err)
+	}
+	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+		_ = r.Close()
+	}()
+
+	err = formatter.OutputSummary(summary, outputConfig, false)
+	_ = w.Close()
+	if err != nil {
+		t.Fatalf("OutputSummary() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	stdoutOutput := buf.String()
+
+	if !strings.Contains(stdoutOutput, "No sensitive resource changes detected.") {
+		t.Fatalf("expected stdout to contain no-sensitive message, got: %s", stdoutOutput)
+	}
+
+	if _, err := os.Stat(outputFile); err != nil {
+		t.Fatalf("expected output file to be created: %v", err)
 	}
 }
