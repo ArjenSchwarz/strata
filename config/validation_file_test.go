@@ -102,9 +102,9 @@ func TestFileValidator_ValidateFormatSupport(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "dot format",
+			name:    "dot format unsupported",
 			format:  "dot",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "uppercase format",
@@ -140,6 +140,20 @@ func TestFileValidator_ValidateFormatSupport(t *testing.T) {
 				t.Errorf("validateFormatSupport() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestFileValidator_ValidateFormatSupport_DotFormatRejected(t *testing.T) {
+	config := &Config{}
+	validator := NewFileValidator(config)
+
+	err := validator.validateFormatSupport("dot")
+	if err == nil {
+		t.Fatal("validateFormatSupport() expected error for dot format to avoid table fallback")
+	}
+
+	if !strings.Contains(err.Error(), "unsupported output format: dot") {
+		t.Fatalf("validateFormatSupport() unexpected error for dot format: %v", err)
 	}
 }
 

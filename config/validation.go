@@ -116,7 +116,7 @@ func (fv *FileValidator) validateDirectoryPermissions(filePath string) error {
 }
 
 // validateFormatSupport checks if the specified output format is supported.
-// Supported formats include: table, json, csv, markdown, html, dot
+// Supported formats include: table, json, csv, markdown, html
 func (fv *FileValidator) validateFormatSupport(formatName string) error {
 	supportedFormats := []string{
 		"table",
@@ -124,7 +124,6 @@ func (fv *FileValidator) validateFormatSupport(formatName string) error {
 		"csv",
 		"markdown",
 		"html",
-		"dot",
 	}
 
 	formatLower := strings.ToLower(formatName)
