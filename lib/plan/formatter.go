@@ -15,6 +15,7 @@ import (
 const (
 	notApplicable       = "N/A"
 	formatTable         = "table"
+	formatMarkdown      = "markdown"
 	noPropertiesChanged = "No properties changed"
 	truncatedIndicator  = " [truncated]"
 	// Unicode En space (U+2002) constants for consistent indentation across output formats
@@ -171,7 +172,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	if outputConfig.UseEmoji {
 		stdoutOptions = append(stdoutOptions, output.WithTransformer(&output.EmojiTransformer{}))
 	}
-	if outputConfig.UseColors {
+	if shouldUseColorTransformer(outputConfig.UseColors, outputConfig.Format) {
 		stdoutOptions = append(stdoutOptions, output.WithTransformer(output.NewColorTransformer()))
 	}
 
@@ -200,7 +201,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		if outputConfig.UseEmoji {
 			fileOptions = append(fileOptions, output.WithTransformer(&output.EmojiTransformer{}))
 		}
-		if outputConfig.UseColors {
+		if shouldUseColorTransformer(outputConfig.UseColors, outputConfig.OutputFileFormat) {
 			fileOptions = append(fileOptions, output.WithTransformer(output.NewColorTransformer()))
 		}
 
@@ -211,6 +212,10 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	}
 
 	return nil
+}
+
+func shouldUseColorTransformer(useColors bool, outputFormat string) bool {
+	return useColors && strings.ToLower(outputFormat) != formatMarkdown
 }
 
 // getFormatFromConfig converts string format to v2 Format with collapsible support
@@ -230,7 +235,7 @@ func (f *Formatter) getFormatFromConfig(format string) output.Format {
 			Name:     output.HTML.Name,
 			Renderer: output.NewHTMLRendererWithCollapsible(rendererConfig),
 		}
-	case "markdown":
+	case formatMarkdown:
 		return output.Format{
 			Name:     output.Markdown.Name,
 			Renderer: output.NewMarkdownRendererWithCollapsible(rendererConfig),
