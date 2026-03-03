@@ -346,6 +346,35 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	case []any:
 		afterSlice, ok := after.([]any)
 		if !ok || afterSlice == nil {
+			propertyPath := a.parsePath(path)
+			triggersReplacement := false
+			if len(replacePathStrings) > 0 {
+				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
+			}
+
+			action := determineAction(processedBefore, processedAfter)
+			if shouldSkipEmptyValue(action, before, after) {
+				return
+			}
+
+			displayAfter := after
+			unknownType := ""
+			if isUnknown {
+				displayAfter = a.getUnknownValueDisplay()
+				unknownType = unknownAfter
+			}
+
+			analysis.Changes = append(analysis.Changes, PropertyChange{
+				Name:                a.extractPropertyName(path),
+				Path:                propertyPath,
+				Before:              before,
+				After:               displayAfter,
+				Action:              action,
+				TriggersReplacement: triggersReplacement,
+				Sensitive:           isSensitive,
+				IsUnknown:           isUnknown,
+				UnknownType:         unknownType,
+			})
 			return
 		}
 

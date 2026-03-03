@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Propagated `after_unknown` parent booleans for grouped nested objects even when `before` and `after` values are equal, so nested properties are correctly marked as unknown and shown as `(known after apply)`.
 - Preserved nested property action semantics during unknown parent propagation so existing child fields remain updates instead of being incorrectly emitted as additions.
 - Added regression coverage for unknown parent propagation to unchanged nested properties.
+- **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
 
 ## [1.5.0] - 2025-01-21
 
