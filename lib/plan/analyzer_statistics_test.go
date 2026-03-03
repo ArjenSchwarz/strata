@@ -243,7 +243,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 			changes: []ResourceChange{
 				{ChangeType: ChangeTypeCreate},
 				{ChangeType: ChangeTypeUpdate},
-				{ChangeType: ChangeTypeNoOp}, // Should count in Unmodified but not Total
+				{ChangeType: ChangeTypeNoOp}, // Should count in Unmodified and Total
 			},
 			outputs: []OutputChange{
 				{Name: "output1", ChangeType: ChangeTypeUpdate, IsNoOp: false},
@@ -257,7 +257,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 				Replacements:  0,
 				HighRisk:      0,
 				Unmodified:    1, // No-op resource counts in Unmodified
-				Total:         2, // Only non-no-op resources
+				Total:         3, // Includes unmodified resources
 				OutputChanges: 2, // Only non-no-op outputs
 			},
 		},
@@ -296,7 +296,7 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 				Replacements:  0,
 				HighRisk:      0,
 				Unmodified:    2, // Resource no-ops count in Unmodified
-				Total:         0, // No-op resources don't count in Total
+				Total:         2, // Includes unmodified resources
 				OutputChanges: 1, // Non-no-op output counts
 			},
 		},
@@ -315,4 +315,23 @@ func TestCalculateStatisticsWithOutputChanges(t *testing.T) {
 			assert.Equal(t, tc.want.OutputChanges, got.OutputChanges, "OutputChanges mismatch")
 		})
 	}
+}
+
+func TestCalculateStatistics_TotalIncludesUnmodifiedResources(t *testing.T) {
+	analyzer := &Analyzer{
+		config: &config.Config{},
+	}
+
+	changes := []ResourceChange{
+		{ChangeType: ChangeTypeCreate},
+		{ChangeType: ChangeTypeNoOp},
+		{ChangeType: ChangeTypeNoOp},
+	}
+
+	stats := analyzer.calculateStatistics(changes, []OutputChange{})
+
+	assert.Equal(t, 1, stats.ToAdd)
+	assert.Equal(t, 2, stats.Unmodified)
+	assert.Equal(t, 3, stats.Total, "Total should include unmodified resources")
+	assert.Equal(t, stats.ToAdd+stats.ToChange+stats.ToDestroy+stats.Replacements+stats.Unmodified, stats.Total)
 }
