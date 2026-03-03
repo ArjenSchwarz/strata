@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Statistics Total Consistency**: Updated `ChangeStatistics.Total` to include unmodified (no-op) resources so `Total Changes` now equals Added + Removed + Modified + Replacements + Unmodified in summaries.
 - **CSV Output Validation**: Added `csv` to formatter output validation so `strata plan summary --output csv` works correctly and aligns with supported formatter rendering.
 - **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
 
