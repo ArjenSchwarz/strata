@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Action Command Construction Safety**: Updated `run_analysis` in `action.sh` to build and execute the Strata command as a Bash array (`"${cmd[@]}"`) and pass `--` before the plan file path, preventing argument splitting issues and option ambiguity for user-supplied paths.
+- **CSV Output Validation**: Added `csv` to formatter output validation so `strata plan summary --output csv` works correctly and aligns with supported formatter rendering.
 - **Property Change Analysis**: Capture removed array attributes in deep comparison by emitting removal changes when list values transition to `nil` or non-slice values.
 
 ## [1.5.0] - 2025-01-21
