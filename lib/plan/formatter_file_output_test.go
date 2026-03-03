@@ -149,3 +149,17 @@ func TestFormatter_FileOutput_SensitiveOnlyNoSensitiveMessageStillShown(t *testi
 		t.Fatalf("expected output file to be created: %v", err)
 	}
 }
+
+func TestFormatter_FileOutputColorDecision(t *testing.T) {
+	if !shouldUseColorTransformer(true, "table") {
+		t.Errorf("expected colors to be enabled for table output when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(true, "markdown") {
+		t.Errorf("expected colors to be disabled for markdown output even when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(false, "table") {
+		t.Errorf("expected colors to be disabled when UseColors is false")
+	}
+}

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -101,9 +102,9 @@ func TestFileValidator_ValidateFormatSupport(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "dot format",
+			name:    "dot format unsupported",
 			format:  "dot",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "uppercase format",
@@ -142,6 +143,20 @@ func TestFileValidator_ValidateFormatSupport(t *testing.T) {
 	}
 }
 
+func TestFileValidator_ValidateFormatSupport_DotFormatRejected(t *testing.T) {
+	config := &Config{}
+	validator := NewFileValidator(config)
+
+	err := validator.validateFormatSupport("dot")
+	if err == nil {
+		t.Fatal("validateFormatSupport() expected error for dot format to avoid table fallback")
+	}
+
+	if !strings.Contains(err.Error(), "unsupported output format: dot") {
+		t.Fatalf("validateFormatSupport() unexpected error for dot format: %v", err)
+	}
+}
+
 func TestFileValidator_ValidateDirectoryPermissions(t *testing.T) {
 	config := &Config{}
 	validator := NewFileValidator(config)
@@ -167,6 +182,21 @@ func TestFileValidator_ValidateDirectoryPermissions(t *testing.T) {
 			wantErr: true,
 			setup: func() string {
 				return filepath.Join(tempDir, "nonexistent", "output.json")
+			},
+		},
+		{
+			name:    "existing test marker file should not fail permission check",
+			wantErr: false,
+			setup: func() string {
+				caseDir := filepath.Join(tempDir, "existing-marker")
+				if err := os.MkdirAll(caseDir, 0755); err != nil {
+					t.Fatalf("failed to create test directory: %v", err)
+				}
+				existingFile := filepath.Join(caseDir, ".strata_write_test")
+				if err := os.WriteFile(existingFile, []byte("leftover"), 0644); err != nil {
+					t.Fatalf("failed to create existing marker file: %v", err)
+				}
+				return filepath.Join(caseDir, "output.json")
 			},
 		},
 		{
