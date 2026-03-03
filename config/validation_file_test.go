@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -181,6 +182,21 @@ func TestFileValidator_ValidateDirectoryPermissions(t *testing.T) {
 			wantErr: true,
 			setup: func() string {
 				return filepath.Join(tempDir, "nonexistent", "output.json")
+			},
+		},
+		{
+			name:    "existing test marker file should not fail permission check",
+			wantErr: false,
+			setup: func() string {
+				caseDir := filepath.Join(tempDir, "existing-marker")
+				if err := os.MkdirAll(caseDir, 0755); err != nil {
+					t.Fatalf("failed to create test directory: %v", err)
+				}
+				existingFile := filepath.Join(caseDir, ".strata_write_test")
+				if err := os.WriteFile(existingFile, []byte("leftover"), 0644); err != nil {
+					t.Fatalf("failed to create existing marker file: %v", err)
+				}
+				return filepath.Join(caseDir, "output.json")
 			},
 		},
 		{
