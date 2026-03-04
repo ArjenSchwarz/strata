@@ -500,8 +500,8 @@ func TestAnalyzeOutputChange(t *testing.T) {
 				Before:     "old-reference",
 				After:      "new-reference",
 				IsUnknown:  false,
-				Action:     "No-op",
-				Indicator:  "",
+				Action:     "Replace",
+				Indicator:  "~",
 			},
 			expectedError: false,
 			description:   "Replace actions should be handled (though uncommon for outputs)",
@@ -532,6 +532,26 @@ func TestAnalyzeOutputChange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	result, err := analyzer.analyzeOutputChange("resource_reference", &tfjson.Change{
+		Actions: []tfjson.Action{tfjson.ActionDelete, tfjson.ActionCreate},
+		Before:  "same-reference",
+		After:   "same-reference",
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	if result == nil {
+		return
+	}
+
+	assert.Equal(t, ChangeTypeReplace, result.ChangeType)
+	assert.Equal(t, "Replace", result.Action)
+	assert.False(t, result.IsNoOp, "replace actions must not be treated as no-op")
 }
 
 // TestGetOutputActionAndIndicator tests the output action and indicator mapping function (Task 7.1)
@@ -574,11 +594,11 @@ func TestGetOutputActionAndIndicator(t *testing.T) {
 			description:       "No-op changes should show 'No-op' with empty indicator",
 		},
 		{
-			name:              "replace should return No-op with empty indicator",
+			name:              "replace should return Replace with ~",
 			changeType:        ChangeTypeReplace,
-			expectedAction:    "No-op",
-			expectedIndicator: "",
-			description:       "Replace changes should show 'No-op' with empty indicator (uncommon for outputs)",
+			expectedAction:    "Replace",
+			expectedIndicator: "~",
+			description:       "Replace changes should show 'Replace' with '~' indicator",
 		},
 	}
 

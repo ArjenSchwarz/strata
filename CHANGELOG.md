@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Corrected output no-op detection so Terraform output `replace` actions are no longer misclassified as no-op when `before` and `after` values are equal.
 - Propagated `after_unknown` parent booleans for grouped nested objects even when `before` and `after` values are equal, so nested properties are correctly marked as unknown and shown as `(known after apply)`.
 - Preserved nested property action semantics during unknown parent propagation so existing child fields remain updates instead of being incorrectly emitted as additions.
 - Added regression coverage for unknown parent propagation to unchanged nested properties.
