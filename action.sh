@@ -240,21 +240,21 @@ run_analysis() {
   local json_file="./strata-analysis.json"
 
   # Build command with all flags
-  local cmd="$TEMP_DIR/strata plan summary"
-  cmd="$cmd --output ${INPUT_OUTPUT_FORMAT:-markdown}"
-  cmd="$cmd --file $json_file --file-format json"
+  local cmd=("$TEMP_DIR/strata" "plan" "summary")
+  cmd+=("--output" "${INPUT_OUTPUT_FORMAT:-markdown}")
+  cmd+=("--file" "$json_file" "--file-format" "json")
 
-  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd="$cmd --details"
-  [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd="$cmd --expand-all"
-  [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd="$cmd --config $INPUT_CONFIG_FILE"
+  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd+=("--details")
+  [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd+=("--expand-all")
+  [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd+=("--config" "$INPUT_CONFIG_FILE")
 
-  cmd="$cmd $INPUT_PLAN_FILE"
+  cmd+=("--" "$INPUT_PLAN_FILE")
 
   echo "🔍 Analyzing Terraform plan"
-  echo "⚙️ Running: $cmd"
+  echo "⚙️ Running: ${cmd[*]}"
 
   # Execute and capture display output
-  if display_output=$($cmd 2>&1); then
+  if display_output=$("${cmd[@]}" 2>&1); then
     echo "✅ Analysis complete"
 
     # Store display output for GitHub integration

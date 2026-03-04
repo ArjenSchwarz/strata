@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Action Argument Safety Regression Tests**: Added unit test coverage for `run_analysis` to validate safe argument handling for plan/config paths containing spaces and for plan files starting with `-`.
+
 ### Fixed
+- **Action Command Construction Safety**: Updated `run_analysis` in `action.sh` to build and execute the Strata command as a Bash array (`"${cmd[@]}"`) and pass `--` before the plan file path, preventing argument splitting issues and option ambiguity for user-supplied paths.
 - Corrected output no-op detection so Terraform output `replace` actions are no longer misclassified as no-op when `before` and `after` values are equal.
 - Propagated `after_unknown` parent booleans for grouped nested objects even when `before` and `after` values are equal, so nested properties are correctly marked as unknown and shown as `(known after apply)`.
 - Preserved nested property action semantics during unknown parent propagation so existing child fields remain updates instead of being incorrectly emitted as additions.

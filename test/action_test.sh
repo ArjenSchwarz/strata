@@ -577,6 +577,103 @@ test_dual_output_functions() {
     test_format_validation
 }
 
+# Test run_analysis argument handling for safety and spaces
+test_run_analysis_argument_safety() {
+    log_test "run_analysis argument safety"
+
+    local run_dir="$TEST_DIR/run_analysis_safety"
+    local temp_dir="$run_dir/temp"
+    local harness="$run_dir/run_analysis_harness.sh"
+    mkdir -p "$temp_dir"
+
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+ACTION_PATH="$1"
+TEST_TEMP_DIR="$2"
+PLAN_INPUT="$3"
+CONFIG_INPUT="$4"
+EXPECTED_PLAN="$5"
+EXPECTED_CONFIG="$6"
+
+cat > "$TEST_TEMP_DIR/strata" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+
+json_file=""
+config_file=""
+plan_file=""
+saw_separator="false"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    plan|summary) shift ;;
+    --output) shift 2 ;;
+    --file) json_file="$2"; shift 2 ;;
+    --file-format) shift 2 ;;
+    --details|--expand-all) shift ;;
+    --config) config_file="$2"; shift 2 ;;
+    --) saw_separator="true"; shift; plan_file="$1"; shift ;;
+    *) echo "unexpected-arg:$1" >&2; exit 99 ;;
+  esac
+done
+
+[[ "$saw_separator" == "true" ]] || { echo "missing -- separator" >&2; exit 98; }
+[[ "$plan_file" == "$EXPECTED_PLAN" ]] || { echo "plan mismatch: $plan_file" >&2; exit 97; }
+if [[ -n "$EXPECTED_CONFIG" ]]; then
+  [[ "$config_file" == "$EXPECTED_CONFIG" ]] || { echo "config mismatch: $config_file" >&2; exit 96; }
+fi
+
+cat > "$json_file" <<'JSON'
+{"statistics":{"total_changes":1,"dangerous_changes":0}}
+JSON
+echo "ok"
+MOCK
+chmod +x "$TEST_TEMP_DIR/strata"
+
+export EXPECTED_PLAN EXPECTED_CONFIG
+TEMP_DIR="$TEST_TEMP_DIR"
+INPUT_PLAN_FILE="$PLAN_INPUT"
+INPUT_OUTPUT_FORMAT="markdown"
+INPUT_SHOW_DETAILS="false"
+INPUT_EXPAND_ALL="false"
+INPUT_CONFIG_FILE="$CONFIG_INPUT"
+
+extract_outputs() { :; }
+set_default_outputs() { :; }
+
+eval "$(sed -n '/^run_analysis()/,/^}/p' "$ACTION_PATH")"
+run_analysis
+EOF
+    chmod +x "$harness"
+
+    local plan_with_spaces="$run_dir/plan with spaces.tfplan"
+    local config_with_spaces="$run_dir/config with spaces.yaml"
+    mkdir -p "$run_dir"
+    echo "plan" > "$plan_with_spaces"
+    echo "config" > "$config_with_spaces"
+
+    if bash "$harness" "action.sh" "$temp_dir" "$plan_with_spaces" "$config_with_spaces" "$plan_with_spaces" "$config_with_spaces" >/dev/null 2>&1; then
+        echo -e "${GREEN}[PASS]${NC} run_analysis should handle plan/config paths containing spaces"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} run_analysis should handle plan/config paths containing spaces"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+
+    local dash_prefixed_plan="$run_dir/-dash-prefixed.tfplan"
+    echo "plan" > "$dash_prefixed_plan"
+
+    if bash "$harness" "action.sh" "$temp_dir" "$dash_prefixed_plan" "" "$dash_prefixed_plan" "" >/dev/null 2>&1; then
+        echo -e "${GREEN}[PASS]${NC} run_analysis should handle plan paths that start with '-'"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} run_analysis should handle plan paths that start with '-'"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+}
+
 # Run all tests
 echo "Running GitHub Action Unit Tests..."
 echo "=================================="
@@ -591,6 +688,7 @@ test_cache_functionality
 test_environment_variables
 test_github_context
 test_dual_output_functions
+test_run_analysis_argument_safety
 
 # Print test summary
 echo ""
