@@ -86,15 +86,18 @@ var versionCmd = &cobra.Command{
 This command shows the current version of Strata, along with build information
 when available. Use this to verify which version you're running or for
 troubleshooting purposes.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if versionOutputFormat != "table" && versionOutputFormat != "json" {
+			return fmt.Errorf("unsupported output format %q: supported formats are table, json", versionOutputFormat)
+		}
+
 		versionInfo := GetVersionInfo()
 
 		switch versionOutputFormat {
 		case "json":
 			jsonData, err := json.MarshalIndent(versionInfo, "", "  ")
 			if err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStderr(), "Error marshaling version info to JSON: %v\n", err)
-				return
+				return fmt.Errorf("error marshaling version info to JSON: %w", err)
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(jsonData))
 		default:
@@ -107,6 +110,8 @@ troubleshooting purposes.`,
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Go: %s\n", versionInfo.GoVersion)
 		}
+
+		return nil
 	},
 }
 
