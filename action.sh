@@ -397,10 +397,10 @@ extract_outputs() {
     return
   fi
 
-  # Extract statistics safely
+  # Extract statistics safely (current schema keys with fallback to legacy keys)
   local total_changes danger_changes
-  total_changes=$(echo "$json" | jq -r '.statistics.total_changes // 0' 2>/dev/null || echo "0")
-  danger_changes=$(echo "$json" | jq -r '.statistics.dangerous_changes // 0' 2>/dev/null || echo "0")
+  total_changes=$(echo "$json" | jq -r '.statistics.total // .statistics.total_changes // 0' 2>/dev/null || echo "0")
+  danger_changes=$(echo "$json" | jq -r '.statistics.high_risk // .statistics.dangerous_changes // 0' 2>/dev/null || echo "0")
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

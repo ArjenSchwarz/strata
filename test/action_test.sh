@@ -626,7 +626,7 @@ if [[ -n "$EXPECTED_CONFIG" ]]; then
 fi
 
 cat > "$json_file" <<'JSON'
-{"statistics":{"total_changes":1,"dangerous_changes":0}}
+{"statistics":{"total":1,"high_risk":0}}
 JSON
 echo "ok"
 MOCK

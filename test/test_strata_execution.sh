@@ -189,8 +189,8 @@ MDEOF
     {"address": "aws_instance.api", "change_type": "update"}
   ],
   "statistics": {
-    "total_changes": 3,
-    "dangerous_changes": 0
+    "total": 3,
+    "high_risk": 0
   }
 }
 JSONEOF
@@ -256,8 +256,8 @@ if [[ -n "$json_file" && "$file_format" == "json" ]]; then
   ],
   "output_changes": [],
   "statistics": {
-    "total_changes": 3,
-    "dangerous_changes": 0,
+    "total": 3,
+    "high_risk": 0,
     "creates": 2,
     "updates": 1,
     "deletes": 0,
