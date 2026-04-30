@@ -1038,7 +1038,7 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 		{
 			Name:      "Resource",
 			Type:      "string",
-			Formatter: output.FilePathFormatter(50),
+			Formatter: output.FilePathFormatter(f.config.Table.MaxColumnWidth),
 		},
 		{
 			Name: "Type",
