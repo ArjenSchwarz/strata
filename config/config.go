@@ -68,26 +68,17 @@ type PlanConfig struct {
 
 // GetLCString returns a lowercase string value for the given setting
 func (config *Config) GetLCString(setting string) string {
-	if viper.IsSet(setting) {
-		return strings.ToLower(viper.GetString(setting))
-	}
-	return ""
+	return strings.ToLower(viper.GetString(setting))
 }
 
 // GetString returns a string value for the given setting
 func (config *Config) GetString(setting string) string {
-	if viper.IsSet(setting) {
-		return viper.GetString(setting)
-	}
-	return ""
+	return viper.GetString(setting)
 }
 
 // GetInt returns an integer value for the given setting
 func (config *Config) GetInt(setting string) int {
-	if viper.IsSet(setting) {
-		return viper.GetInt(setting)
-	}
-	return 0
+	return viper.GetInt(setting)
 }
 
 // OutputConfiguration holds the v2 output configuration settings
