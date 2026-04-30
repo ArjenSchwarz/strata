@@ -10,6 +10,9 @@ TEMP_DIR=$(mktemp -d) || { echo "❌ Failed to create temporary directory"; exit
 readonly TEMP_DIR
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Track whether GitHub Action outputs have been written
+OUTPUTS_WRITTEN=false
+
 # Cleanup on exit (success or failure)
 trap cleanup EXIT
 
@@ -19,8 +22,8 @@ cleanup() {
   # Disable strict error handling for cleanup
   set +e
 
-  # Set default outputs on failure
-  if [[ $exit_code -ne 0 ]] && [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  # Set default outputs on failure only if no outputs were written yet
+  if [[ $exit_code -ne 0 ]] && [[ "$OUTPUTS_WRITTEN" == "false" ]] && [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     local delim="ghadelim_$(date +%s)_${RANDOM}"
     {
       echo "has-changes=false"
@@ -370,6 +373,7 @@ run_analysis() {
         echo "{\"error\": \"Analysis failed\"}"
         echo "${delim}"
       } >> "$GITHUB_OUTPUT"
+      OUTPUTS_WRITTEN=true
     fi
 
     exit 4
@@ -414,6 +418,7 @@ extract_outputs() {
       echo ""
       echo "${delim}"
     } >> "$GITHUB_OUTPUT"
+    OUTPUTS_WRITTEN=true
   fi
 }
 
@@ -433,6 +438,7 @@ set_default_outputs() {
       echo "{}"
       echo "${delim}"
     } >> "$GITHUB_OUTPUT"
+    OUTPUTS_WRITTEN=true
   fi
 }
 
