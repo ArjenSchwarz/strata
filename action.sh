@@ -209,7 +209,7 @@ validate_inputs() {
 
   # Output format validation
   local format="${INPUT_OUTPUT_FORMAT:-markdown}"
-  if [[ ! "$format" =~ ^(table|json|markdown|html)$ ]]; then
+  if [[ ! "$format" =~ ^(table|json|markdown|html|csv)$ ]]; then
     echo "❌ Invalid output format: $format"
     exit 2
   fi
