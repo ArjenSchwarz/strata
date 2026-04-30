@@ -1249,6 +1249,36 @@ func TestIsValueUnknown(t *testing.T) {
 	}
 }
 
+// TestHasAnyUnknown tests recursive unknown detection in AfterUnknown values (T-395)
+func TestHasAnyUnknown(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	testCases := []struct {
+		name     string
+		value    any
+		expected bool
+	}{
+		{"nil returns false", nil, false},
+		{"bool true", true, true},
+		{"bool false", false, false},
+		{"map with true leaf", map[string]any{"id": true, "name": false}, true},
+		{"map all false", map[string]any{"a": false, "b": false}, false},
+		{"nested map with deep true", map[string]any{"outer": map[string]any{"inner": true}}, true},
+		{"nested map all false", map[string]any{"outer": map[string]any{"inner": false}}, false},
+		{"slice with true", []any{false, true}, true},
+		{"slice all false", []any{false, false}, false},
+		{"mixed map and slice", map[string]any{"list": []any{false, map[string]any{"id": true}}}, true},
+		{"empty map", map[string]any{}, false},
+		{"empty slice", []any{}, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, analyzer.hasAnyUnknown(tc.value))
+		})
+	}
+}
+
 // TestGetUnknownValueDisplay tests the unknown value display function
 func TestGetUnknownValueDisplay(t *testing.T) {
 	analyzer := &Analyzer{}
