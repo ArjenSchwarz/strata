@@ -136,7 +136,7 @@ func TestPlanSummaryOutputImprovements_EndToEnd(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			if summary == nil {
 				t.Fatalf("Failed to generate summary from plan file %s", tt.planFile)
 			}
@@ -243,7 +243,7 @@ func TestPropertyChangesFormatterTerraformIntegration(t *testing.T) {
 
 	cfg := getTestConfig()
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	if summary == nil {
 		t.Fatal("Failed to generate summary")
 	}
@@ -307,7 +307,7 @@ func TestEmptyTableSuppressionLogic(t *testing.T) {
 
 	cfg := getTestConfig()
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	if summary == nil {
 		t.Fatal("Failed to generate summary")
 	}
@@ -357,7 +357,7 @@ func TestRiskBasedSortingBehavior(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	if summary == nil {
 		t.Fatal("Failed to generate summary")
 	}
@@ -403,7 +403,7 @@ func TestBackwardCompatibility(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			if summary == nil {
 				t.Fatal("Failed to generate summary")
 			}

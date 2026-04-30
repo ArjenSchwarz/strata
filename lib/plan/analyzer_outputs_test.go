@@ -840,7 +840,7 @@ func TestOutputsProcessingEndToEnd(t *testing.T) {
 			}
 
 			// Test integration with GenerateSummary
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			assert.NotNil(t, summary, tc.description+" - summary should not be nil")
 			assert.Equal(t, tc.expectedOutputCount, len(summary.OutputChanges), tc.description+" - summary output count should match")
 
@@ -991,7 +991,7 @@ func TestOutputsIntegrationWithResourceChanges(t *testing.T) {
 			analyzer.plan = tc.plan
 
 			// Generate full summary
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			assert.NotNil(t, summary, tc.description+" - summary should not be nil")
 
 			// Verify counts
@@ -1076,7 +1076,7 @@ func TestOutputsDisplayConsistencyAcrossFormats(t *testing.T) {
 
 	t.Run("outputs should maintain consistency in complete summary", func(t *testing.T) {
 		analyzer.plan = plan
-		summary := analyzer.GenerateSummary("")
+		summary, _ := analyzer.GenerateSummary("")
 
 		assert.NotNil(t, summary, "summary should not be nil")
 		assert.Len(t, summary.OutputChanges, 3, "summary should have 3 outputs")
@@ -1381,7 +1381,7 @@ func TestCompleteWorkflowWithUnknownValuesAndOutputsIntegration(t *testing.T) {
 			analyzer.plan = tc.plan
 
 			// Generate complete summary - this tests the full workflow
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			assert.NotNil(t, summary, tc.description+" - summary should not be nil")
 
 			// Run comprehensive validation

@@ -20,7 +20,7 @@ func BenchmarkAnalysis_SmallPlan(b *testing.B) {
 	analyzer := NewAnalyzer(nil, cfg)
 
 	for b.Loop() {
-		summary := analyzer.GenerateSummary(planPath)
+		summary, _ := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
 		}
@@ -36,7 +36,7 @@ func BenchmarkAnalysis_MediumPlan(b *testing.B) {
 	analyzer := NewAnalyzer(nil, cfg)
 
 	for b.Loop() {
-		summary := analyzer.GenerateSummary(planPath)
+		summary, _ := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
 		}
@@ -52,7 +52,7 @@ func BenchmarkAnalysis_LargePlan(b *testing.B) {
 	analyzer := NewAnalyzer(nil, cfg)
 
 	for b.Loop() {
-		summary := analyzer.GenerateSummary(planPath)
+		summary, _ := analyzer.GenerateSummary(planPath)
 		if summary == nil {
 			b.Fatal("Expected non-nil summary")
 		}
@@ -69,7 +69,7 @@ func BenchmarkFormatting_ProgressiveDisclosure(b *testing.B) {
 	analyzer := NewAnalyzer(nil, cfg)
 	formatter := NewFormatter(cfg)
 
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		b.Fatal("Failed to generate summary for benchmark")
 	}
@@ -97,7 +97,7 @@ func BenchmarkFormatting_GroupedSections(b *testing.B) {
 	analyzer := NewAnalyzer(nil, cfg)
 	formatter := NewFormatter(cfg)
 
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		b.Fatal("Failed to generate summary for benchmark")
 	}
@@ -138,7 +138,7 @@ func BenchmarkPropertyAnalysis(b *testing.B) {
 
 			b.ResetTimer()
 			for b.Loop() {
-				summary := analyzer.GenerateSummary(planPath)
+				summary, _ := analyzer.GenerateSummary(planPath)
 				if summary == nil {
 					b.Fatal("Expected non-nil summary")
 				}
@@ -188,7 +188,7 @@ func TestPerformanceTargets(t *testing.T) {
 			analyzer := NewAnalyzer(nil, cfg)
 
 			start := time.Now()
-			summary := analyzer.GenerateSummary(planPath)
+			summary, _ := analyzer.GenerateSummary(planPath)
 			duration := time.Since(start)
 
 			if summary == nil {
@@ -222,7 +222,7 @@ func TestMemoryUsage(t *testing.T) {
 	cfg := getBenchmarkConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		t.Fatal("Expected non-nil summary")
 	}
@@ -268,7 +268,7 @@ func TestPerformanceLimitsEnforcement(t *testing.T) {
 	analyzer := NewAnalyzer(nil, cfg)
 
 	start := time.Now()
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	duration := time.Since(start)
 
 	if summary == nil {
@@ -303,7 +303,7 @@ func TestCollapsibleFormatterPerformance(t *testing.T) {
 	analyzer1 := NewAnalyzer(nil, cfg1)
 	formatter1 := NewFormatter(cfg1)
 
-	summary1 := analyzer1.GenerateSummary(planPath)
+	summary1, _ := analyzer1.GenerateSummary(planPath)
 	if summary1 == nil {
 		t.Fatal("Expected non-nil summary for first formatter test")
 	}
@@ -321,7 +321,7 @@ func TestCollapsibleFormatterPerformance(t *testing.T) {
 	analyzer2 := NewAnalyzer(nil, cfg2)
 	formatter2 := NewFormatter(cfg2)
 
-	summary2 := analyzer2.GenerateSummary(planPath)
+	summary2, _ := analyzer2.GenerateSummary(planPath)
 	if summary2 == nil {
 		t.Fatal("Failed to generate summary")
 	}

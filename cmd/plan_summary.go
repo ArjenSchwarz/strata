@@ -192,7 +192,10 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 
 	// Create analyzer and generate summary
 	analyzer := plan.NewAnalyzer(tfPlan, cfg)
-	summary := analyzer.GenerateSummary(planFile)
+	summary, err := analyzer.GenerateSummary(planFile)
+	if err != nil {
+		return fmt.Errorf("failed to generate summary: %w", err)
+	}
 
 	// Create formatter and output summary
 	formatter := plan.NewFormatter(cfg)

@@ -129,7 +129,7 @@ func TestComplexNestedUnknownValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tt.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.Len(t, summary.ResourceChanges, 1, "Should have exactly one resource change")
@@ -248,7 +248,7 @@ func TestArraysWithUnknownElements(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tt.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.Len(t, summary.ResourceChanges, 1, "Should have exactly one resource change")
@@ -370,7 +370,7 @@ func TestPropertiesRemainingUnknown(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tt.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.Len(t, summary.ResourceChanges, 1, "Should have exactly one resource change")
@@ -450,7 +450,7 @@ func TestLargePlansWithManyUnknownValues(t *testing.T) {
 			plan := generateLargePlanWithUnknownValues(tt.numResources, tt.unknownPropsRate)
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should be generated even with many unknown values")
 			assert.Len(t, summary.ResourceChanges, tt.numResources, "Should process all resources")

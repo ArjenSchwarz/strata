@@ -1236,7 +1236,7 @@ func TestCrossFormatHeaderConsistency(t *testing.T) {
 
 	cfg := &config.Config{}
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	formatter := NewFormatter(cfg)
 
 	// Test formats that support custom headers

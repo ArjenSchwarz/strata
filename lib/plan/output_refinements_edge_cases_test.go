@@ -32,7 +32,7 @@ func TestOutputRefinements_EdgeCases_EmptyPlan(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("test_empty_plan.json")
+	summary, _ := analyzer.GenerateSummary("test_empty_plan.json")
 
 	// Verify empty plan handling
 	assert.NotNil(t, summary, "Summary should not be nil for empty plan")
@@ -143,7 +143,7 @@ func TestOutputRefinements_EdgeCases_OnlyNoOps(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("test_only_noops.json")
+			summary, _ := analyzer.GenerateSummary("test_only_noops.json")
 
 			// Verify all resources are marked as no-op
 			for _, resource := range summary.ResourceChanges {
@@ -281,7 +281,7 @@ func TestOutputRefinements_EdgeCases_ComplexSensitiveStructures(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("test_complex_sensitive.json")
+	summary, _ := analyzer.GenerateSummary("test_complex_sensitive.json")
 
 	// Find the update resource
 	var updateResource *ResourceChange
@@ -501,7 +501,7 @@ func TestOutputRefinements_EdgeCases_LargePlansPerformance(t *testing.T) {
 
 	// Time the analysis
 	start := time.Now()
-	summary := analyzer.GenerateSummary("test_large_plan.json")
+	summary, _ := analyzer.GenerateSummary("test_large_plan.json")
 	analysisTime := time.Since(start)
 
 	// Time the formatting

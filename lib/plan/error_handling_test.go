@@ -74,7 +74,7 @@ func TestMalformedTerraformPlans(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			planPath := filepath.Join(testDir, tt.filename)
-			summary := analyzer.GenerateSummary(planPath)
+			summary, _ := analyzer.GenerateSummary(planPath)
 
 			if tt.expectNil && summary != nil {
 				t.Errorf("Expected nil summary for %s, but got: %+v", tt.filename, summary)
@@ -189,7 +189,7 @@ func TestGracefulDegradation(t *testing.T) {
 	cfg := getErrorTestConfig()
 	analyzer := NewAnalyzer(nil, cfg)
 
-	summary := analyzer.GenerateSummary(testFile)
+	summary, _ := analyzer.GenerateSummary(testFile)
 	if summary == nil {
 		t.Skip("Error handling test failing due to plan generation issue - main functionality works")
 	}
@@ -292,7 +292,7 @@ func TestMemoryLimits(t *testing.T) {
 	cfg.Plan.PerformanceLimits.MaxTotalMemory = 10 * 1024   // 10KB total
 
 	analyzer := NewAnalyzer(nil, cfg)
-	summary := analyzer.GenerateSummary(testFile)
+	summary, _ := analyzer.GenerateSummary(testFile)
 
 	if summary == nil {
 		t.Fatal("Expected non-nil summary")
@@ -329,7 +329,7 @@ func TestUserFriendlyErrorMessages(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run("Path: "+testCase, func(t *testing.T) {
 			// Should not panic and should return nil gracefully
-			summary := analyzer.GenerateSummary(testCase)
+			summary, _ := analyzer.GenerateSummary(testCase)
 			if summary != nil {
 				t.Errorf("Expected nil summary for invalid path '%s', got: %+v", testCase, summary)
 			}

@@ -44,7 +44,7 @@ func TestDataPipelineSortingOutputVerification(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			if summary == nil {
 				t.Fatalf("Failed to generate summary from plan file %s", sample)
 			}
@@ -92,7 +92,7 @@ func TestSortingWithinProviderGroups(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	if summary == nil {
 		t.Fatalf("Failed to generate summary from plan file %s", sample)
 	}
@@ -133,7 +133,7 @@ func TestAllOutputFormatsIdentical(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 	if summary == nil {
 		t.Fatalf("Failed to generate summary from plan file %s", sample)
 	}
@@ -193,7 +193,7 @@ func TestAllSampleFiles(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 			if summary == nil {
 				t.Fatalf("Failed to generate summary from plan file %s", sample)
 			}

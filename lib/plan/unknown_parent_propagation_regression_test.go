@@ -147,7 +147,7 @@ func TestUnknownParentPropagationToNestedProperties(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tc.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.Len(t, summary.ResourceChanges, 1, "Should have exactly one resource change")
