@@ -35,7 +35,7 @@ func (p *Parser) LoadPlan() (*tfjson.Plan, error) {
 	var jsonData []byte
 	var err error
 
-	if strings.HasSuffix(p.planFile, ".json") {
+	if strings.EqualFold(filepath.Ext(p.planFile), ".json") {
 		// Already a JSON file, read directly
 		jsonData, err = os.ReadFile(p.planFile)
 		if err != nil {

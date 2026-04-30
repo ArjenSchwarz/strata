@@ -176,6 +176,38 @@ func TestParser_LoadPlan_JSONFile(t *testing.T) {
 	}
 }
 
+func TestParser_LoadPlan_UppercaseJSONExtension(t *testing.T) {
+	// Create a temporary JSON plan file with uppercase extension
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "PLAN.JSON")
+
+	plan := &tfjson.Plan{
+		FormatVersion:    "1.0",
+		TerraformVersion: "1.6.0",
+		ResourceChanges:  []*tfjson.ResourceChange{},
+	}
+
+	planJSON, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatalf("Failed to marshal test plan: %v", err)
+	}
+
+	err = os.WriteFile(tmpFile, planJSON, 0644)
+	if err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	p := NewParser(tmpFile)
+	result, err := p.LoadPlan()
+	if err != nil {
+		t.Fatalf("LoadPlan() error = %v", err)
+	}
+
+	if result.FormatVersion != "1.0" {
+		t.Errorf("LoadPlan().FormatVersion = %v, want %v", result.FormatVersion, "1.0")
+	}
+}
+
 func TestParser_LoadPlan_NonExistentFile(t *testing.T) {
 	p := NewParser("/non/existent/file")
 	_, err := p.LoadPlan()
