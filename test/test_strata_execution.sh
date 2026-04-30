@@ -149,7 +149,7 @@ while [[ $# -gt 0 ]]; do
         --output) output_format="$2"; shift; shift ;;
         --file) json_file="$2"; shift; shift ;;
         --file-format) file_format="$2"; shift; shift ;;
-        --show-details) show_details="true"; shift ;;
+        --details) show_details="true"; shift ;;
         --expand-all) expand_all="true"; shift ;;
         --config) config_file="$2"; shift; shift ;;
         --version) echo "strata version 1.4.0"; exit 0 ;;
@@ -436,7 +436,7 @@ run_analysis_test() {
     cmd="\$cmd --output \$output_format"
     cmd="\$cmd --file \$json_file --file-format json"
 
-    [[ "\$show_details" == "true" ]] && cmd="\$cmd --show-details"
+    [[ "\$show_details" == "true" ]] && cmd="\$cmd --details"
     [[ "\$expand_all" == "true" ]] && cmd="\$cmd --expand-all"
     [[ -n "\$config_file" ]] && cmd="\$cmd --config \$config_file"
 
@@ -473,7 +473,7 @@ EOF
     assert_contains "$output" "$plan_file" "Should include plan file path"
 
     # Test conditional parameters
-    assert_contains "$output" "--show-details" "Should include show-details when enabled"
+    assert_contains "$output" "--details" "Should include details when enabled"
     assert_contains "$output" "--expand-all" "Should include expand-all when enabled"
     assert_contains "$output" "--config /tmp/config.yaml" "Should include config file when specified"
 
