@@ -953,6 +953,18 @@ func TestCompareObjectsEnhanced(t *testing.T) {
 			}},
 		},
 		{
+			name:   "typed nil slice removal",
+			before: map[string]any{"items": []any{1, 2}},
+			after:  map[string]any{"items": ([]any)(nil)},
+			expected: []PropertyChange{{
+				Name:   "items",
+				Path:   []string{"items"},
+				Action: "remove",
+				Before: []any{1, 2},
+				After:  ([]any)(nil),
+			}},
+		},
+		{
 			name:   "property removal",
 			before: map[string]any{"a": 1, "b": 2},
 			after:  map[string]any{"a": 1},
