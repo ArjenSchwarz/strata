@@ -234,12 +234,12 @@ func TestProcessOutputChanges(t *testing.T) {
 			expectedCount: 3,
 			expectedOutputs: []OutputChange{
 				{
-					Name:       "public_ip",
+					Name:       "instance_id",
 					ChangeType: ChangeTypeCreate,
 					Sensitive:  false,
 					Before:     nil,
-					After:      "203.0.113.10",
-					IsUnknown:  false,
+					After:      "(known after apply)",
+					IsUnknown:  true,
 					Action:     "Add",
 					Indicator:  "+",
 				},
@@ -254,18 +254,18 @@ func TestProcessOutputChanges(t *testing.T) {
 					Indicator:  "~",
 				},
 				{
-					Name:       "instance_id",
+					Name:       "public_ip",
 					ChangeType: ChangeTypeCreate,
 					Sensitive:  false,
 					Before:     nil,
-					After:      "(known after apply)",
-					IsUnknown:  true,
+					After:      "203.0.113.10",
+					IsUnknown:  false,
 					Action:     "Add",
 					Indicator:  "+",
 				},
 			},
 			expectedError: false,
-			description:   "Multiple mixed outputs should all be processed correctly",
+			description:   "Multiple mixed outputs should be sorted by name",
 		},
 	}
 
@@ -281,32 +281,21 @@ func TestProcessOutputChanges(t *testing.T) {
 
 			assert.Equal(t, tc.expectedCount, len(outputs), tc.description+" - output count")
 
-			// Check individual outputs (order-independent comparison)
+			// Check individual outputs (order-dependent: outputs should be sorted by name)
 			if len(tc.expectedOutputs) > 0 && len(outputs) > 0 {
-				// Create maps for easier comparison since output order isn't guaranteed
-				expectedMap := make(map[string]OutputChange)
-				actualMap := make(map[string]OutputChange)
-
-				for _, expected := range tc.expectedOutputs {
-					expectedMap[expected.Name] = expected
-				}
-				for _, actual := range outputs {
-					actualMap[actual.Name] = actual
-				}
-
-				for name, expected := range expectedMap {
-					if actual, exists := actualMap[name]; exists {
-						assert.Equal(t, expected.Name, actual.Name, "Output %s name should match (%s)", name, tc.description)
-						assert.Equal(t, expected.ChangeType, actual.ChangeType, "Output %s ChangeType should match (%s)", name, tc.description)
-						assert.Equal(t, expected.Sensitive, actual.Sensitive, "Output %s Sensitive should match (%s)", name, tc.description)
-						assert.Equal(t, expected.Before, actual.Before, "Output %s Before should match (%s)", name, tc.description)
-						assert.Equal(t, expected.After, actual.After, "Output %s After should match (%s)", name, tc.description)
-						assert.Equal(t, expected.IsUnknown, actual.IsUnknown, "Output %s IsUnknown should match (%s)", name, tc.description)
-						assert.Equal(t, expected.Action, actual.Action, "Output %s Action should match (%s)", name, tc.description)
-						assert.Equal(t, expected.Indicator, actual.Indicator, "Output %s Indicator should match (%s)", name, tc.description)
-					} else {
-						t.Errorf("Expected output %s not found in results (%s)", name, tc.description)
+				for i, expected := range tc.expectedOutputs {
+					if i >= len(outputs) {
+						break
 					}
+					actual := outputs[i]
+					assert.Equal(t, expected.Name, actual.Name, "Output[%d] name should match (%s)", i, tc.description)
+					assert.Equal(t, expected.ChangeType, actual.ChangeType, "Output[%d] ChangeType should match (%s)", i, tc.description)
+					assert.Equal(t, expected.Sensitive, actual.Sensitive, "Output[%d] Sensitive should match (%s)", i, tc.description)
+					assert.Equal(t, expected.Before, actual.Before, "Output[%d] Before should match (%s)", i, tc.description)
+					assert.Equal(t, expected.After, actual.After, "Output[%d] After should match (%s)", i, tc.description)
+					assert.Equal(t, expected.IsUnknown, actual.IsUnknown, "Output[%d] IsUnknown should match (%s)", i, tc.description)
+					assert.Equal(t, expected.Action, actual.Action, "Output[%d] Action should match (%s)", i, tc.description)
+					assert.Equal(t, expected.Indicator, actual.Indicator, "Output[%d] Indicator should match (%s)", i, tc.description)
 				}
 			}
 		})
