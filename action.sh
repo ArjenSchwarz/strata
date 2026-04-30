@@ -503,10 +503,28 @@ ${footer}"
   echo "📝 Processing PR comment for PR #$pr_number"
 
   if [[ "${INPUT_UPDATE_COMMENT:-true}" == "true" ]]; then
-    # Try to update existing comment
-    local comments
-    if comments=$(curl -s -H "Authorization: token ${GITHUB_TOKEN:-}" \
-      "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/$pr_number/comments" 2>/dev/null); then
+    # Try to update existing comment, paginating through all comments
+    local page=1 comment_id=""
+    while :; do
+      local comments
+      if ! comments=$(curl -s -H "Authorization: token ${GITHUB_TOKEN:-}" \
+        "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/$pr_number/comments?per_page=100&page=$page" 2>/dev/null); then
+        break
+      fi
+
+      # Check if we got a valid array response
+      if ! echo "$comments" | jq -e 'type == "array"' >/dev/null 2>&1; then
+        echo "⚠️ Unexpected API response format, falling back to new comment"
+        break
+      fi
+
+
+      # Check if we got an empty page (no more comments)
+      local count
+      count=$(echo "$comments" | jq 'length' 2>/dev/null || echo "0")
+      if [[ "$count" -eq 0 ]]; then
+        break
+      fi
 
       local comment_id
       if comment_id=$(echo "$comments" | jq -r --arg marker "$marker" '.[] | select(.body | contains($marker)) | .id' 2>/dev/null | head -1); then
@@ -517,7 +535,13 @@ ${footer}"
           fi
         fi
       fi
-    fi
+
+      # If fewer than 100 results, this was the last page
+      if [[ "$count" -lt 100 ]]; then
+        break
+      fi
+      page=$((page + 1))
+    done
   fi
 
   # Create new comment
