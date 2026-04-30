@@ -37,9 +37,6 @@ cleanup() {
   # Clean temp directory
   [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
 
-  # Clean workspace JSON file (for security)
-  [[ -f "./strata-analysis.json" ]] && rm -f "./strata-analysis.json"
-
   # Preserve original exit code
   exit $exit_code
 }
@@ -237,7 +234,7 @@ validate_inputs() {
 
 # Execute Strata analysis with dual output
 run_analysis() {
-  local json_file="./strata-analysis.json"
+  local json_file="$TEMP_DIR/strata-analysis.json"
 
   # Build command with all flags
   local cmd=("$TEMP_DIR/strata" "plan" "summary")
