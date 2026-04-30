@@ -21,8 +21,7 @@ readonly GITHUB_API_URL="${GITHUB_API_URL:-https://api.github.com}"
 
 # Create temporary directory for all operations using mktemp
 # This ensures unique, secure temp directory creation with 700 permissions
-readonly TEMP_DIR
-TEMP_DIR=$(mktemp -d)
+readonly TEMP_DIR="$(mktemp -d)"
 
 # ============================================================================
 # Error Handling and Cleanup
