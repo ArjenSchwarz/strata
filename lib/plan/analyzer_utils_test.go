@@ -294,16 +294,16 @@ func TestMaskSensitiveValue(t *testing.T) {
 			expected:    "(sensitive value)",
 		},
 		{
-			name:        "Sensitive map should preserve structure",
+			name:        "Sensitive map should be masked",
 			value:       map[string]any{"key": "value"},
 			isSensitive: true,
-			expected:    map[string]any{"key": "value"},
+			expected:    "(sensitive value)",
 		},
 		{
-			name:        "Sensitive slice should preserve structure",
+			name:        "Sensitive slice should be masked",
 			value:       []any{"item1", "item2"},
 			isSensitive: true,
-			expected:    []any{"item1", "item2"},
+			expected:    "(sensitive value)",
 		},
 		{
 			name:        "Nil value should remain nil",
