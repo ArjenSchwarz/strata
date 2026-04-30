@@ -11,6 +11,7 @@ import (
 
 const (
 	markdownFormat = "markdown"
+	tableFormat    = "table"
 )
 
 // SensitiveResource defines a resource type that should be flagged as sensitive
@@ -108,8 +109,8 @@ func (config *Config) NewOutputConfiguration() *OutputConfiguration {
 		outputFileFormat = format
 	}
 
-	// Configure colors based on output format
-	useColors := format != markdownFormat
+	// Configure colors based on output format - only enable for table output
+	useColors := format == tableFormat
 
 	return &OutputConfiguration{
 		Format:           format,

@@ -236,7 +236,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 }
 
 func shouldUseColorTransformer(useColors bool, outputFormat string) bool {
-	return useColors && strings.ToLower(outputFormat) != formatMarkdown
+	return useColors && strings.ToLower(outputFormat) == formatTable
 }
 
 // getFormatFromConfig converts string format to v2 Format with collapsible support

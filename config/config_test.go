@@ -576,3 +576,32 @@ func TestGetString_ReturnsBoundFlagDefaults(t *testing.T) {
 	// Clean up
 	viper.Reset()
 }
+
+func TestNewOutputConfiguration_UseColorsOnlyForTable(t *testing.T) {
+	tests := []struct {
+		format    string
+		wantColor bool
+	}{
+		{"table", true},
+		{"json", false},
+		{"markdown", false},
+		{"html", false},
+		{"csv", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			viper.Reset()
+			viper.Set("output", tt.format)
+
+			cfg := GetDefaultConfig()
+			outputConfig := cfg.NewOutputConfiguration()
+
+			if outputConfig.UseColors != tt.wantColor {
+				t.Errorf("UseColors for format %q = %v, want %v", tt.format, outputConfig.UseColors, tt.wantColor)
+			}
+
+			viper.Reset()
+		})
+	}
+}
