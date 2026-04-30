@@ -241,7 +241,7 @@ run_analysis() {
   cmd+=("--output" "${INPUT_OUTPUT_FORMAT:-markdown}")
   cmd+=("--file" "$json_file" "--file-format" "json")
 
-  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd+=("--details")
+  [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd+=("--details=true") || cmd+=("--details=false")
   [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd+=("--expand-all")
   [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd+=("--config" "$INPUT_CONFIG_FILE")
 
