@@ -146,6 +146,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	cfg.Plan.StatisticsSummaryFormat = viper.GetString("plan.statistics-summary-format")
 	cfg.Plan.ShowNoOps = viper.GetBool("plan.show-no-ops")
 	cfg.ExpandAll = viper.GetBool("expand_all")
+	cfg.UseEmoji = viper.GetBool("use_emoji")
 
 	// Load expandable sections configuration from config file if it exists
 	if viper.IsSet("plan.expandable_sections") {
