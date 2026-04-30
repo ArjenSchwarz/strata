@@ -573,6 +573,7 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			config: &config.Config{
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: true,
 					},
 				},
@@ -589,6 +590,7 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			config: &config.Config{
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: false,
 					},
 				},
@@ -608,6 +610,7 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			config: &config.Config{
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: true,
 					},
 				},
@@ -628,6 +631,7 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			config: &config.Config{
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: false,
 					},
 				},
@@ -647,6 +651,7 @@ func TestPropertyChangesFormatterTerraform(t *testing.T) {
 			config: &config.Config{
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: true,
 					},
 				},
@@ -731,6 +736,7 @@ func TestPropertyChangesFormatterTerraform_WithDifferentActions(t *testing.T) {
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
 			ExpandableSections: config.ExpandableSectionsConfig{
+				Enabled:             true,
 				AutoExpandDangerous: true,
 			},
 		},
