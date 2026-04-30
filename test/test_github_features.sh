@@ -250,8 +250,8 @@ No changes detected"
     cat > "$json_file" <<EOF
 {
   "statistics": {
-    "total": 0,
-    "high_risk": 0
+    "total_changes": 0,
+    "dangerous_changes": 0
   }
 }
 EOF
