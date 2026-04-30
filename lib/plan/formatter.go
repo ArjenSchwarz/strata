@@ -245,6 +245,22 @@ func shouldUseColorTransformer(useColors bool, outputFormat string) bool {
 
 // getFormatFromConfig converts string format to v2 Format with collapsible support
 func (f *Formatter) getFormatFromConfig(format string) output.Format {
+	// When expandable sections are disabled, use standard renderers
+	if !f.config.Plan.ExpandableSections.Enabled {
+		switch strings.ToLower(format) {
+		case "json":
+			return output.JSON
+		case "csv":
+			return output.CSV
+		case "html":
+			return output.HTML
+		case formatMarkdown:
+			return output.Markdown
+		default:
+			return output.Table
+		}
+	}
+
 	rendererConfig := f.getRendererConfig()
 
 	switch strings.ToLower(format) {
@@ -434,76 +450,61 @@ func (f *Formatter) formatPropertyChangeDetails(changes []PropertyChange) string
 	return strings.Join(details, "\n")
 }
 
-// propertyChangesFormatterTerraform creates a collapsible formatter that displays property changes in Terraform's diff-style format
+// propertyChangesFormatterTerraform creates a formatter that displays property changes in Terraform's diff-style format.
+// When expandable sections are enabled, it returns collapsible values; otherwise plain text.
 func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 	return func(val any) any {
-		// Handle the new map-based data structure
-		if dataMap, ok := val.(map[string]any); ok {
-			if analysis, hasAnalysis := dataMap["analysis"]; hasAnalysis {
-				if propAnalysis, isPropAnalysis := analysis.(PropertyChangeAnalysis); isPropAnalysis {
-					if propAnalysis.Count == 0 {
-						return noPropertiesChanged
-					}
-
-					// Create summary
-					summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
-					if f.hasSensitive(propAnalysis.Changes) {
-						summary = fmt.Sprintf("⚠️ %s (includes sensitive)", summary)
-					}
-					if propAnalysis.Truncated {
-						summary += truncatedIndicator
-					}
-
-					// Format details in Terraform style
-					var details []string
-					for _, change := range propAnalysis.Changes {
-						line := f.formatPropertyChange(change)
-						details = append(details, line)
-					}
-
-					shouldExpand := (f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasSensitive(propAnalysis.Changes)) ||
-						f.config.ExpandAll
-
-					return output.NewCollapsibleValue(summary,
-						strings.Join(details, "\n"),
-						output.WithExpanded(shouldExpand),
-						output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
-				}
-			}
+		propAnalysis, ok := f.extractPropertyAnalysis(val)
+		if !ok {
+			return val
+		}
+		if propAnalysis.Count == 0 {
+			return noPropertiesChanged
 		}
 
-		// Fallback for backward compatibility with direct PropertyChangeAnalysis
-		if propAnalysis, ok := val.(PropertyChangeAnalysis); ok {
-			if propAnalysis.Count == 0 {
-				return noPropertiesChanged
-			}
-
-			// Create summary
-			summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
-			if f.hasSensitive(propAnalysis.Changes) {
-				summary = fmt.Sprintf("⚠️ %s (includes sensitive)", summary)
-			}
-			if propAnalysis.Truncated {
-				summary += truncatedIndicator
-			}
-
-			// Format details in Terraform style - use standard formatting without context
-			var details []string
-			for _, change := range propAnalysis.Changes {
-				line := f.formatPropertyChange(change)
-				details = append(details, line)
-			}
-
-			shouldExpand := (f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasSensitive(propAnalysis.Changes)) ||
-				f.config.ExpandAll
-
-			return output.NewCollapsibleValue(summary,
-				strings.Join(details, "\n"),
-				output.WithExpanded(shouldExpand),
-				output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
+		// Create summary
+		summary := fmt.Sprintf("%d properties changed", propAnalysis.Count)
+		if f.hasSensitive(propAnalysis.Changes) {
+			summary = fmt.Sprintf("⚠️ %s (includes sensitive)", summary)
 		}
-		return val
+		if propAnalysis.Truncated {
+			summary += truncatedIndicator
+		}
+
+		// Format details in Terraform style
+		var details []string
+		for _, change := range propAnalysis.Changes {
+			details = append(details, f.formatPropertyChange(change))
+		}
+		detailsStr := strings.Join(details, "\n")
+
+		// When expandable sections are disabled, return plain text
+		if !f.config.Plan.ExpandableSections.Enabled {
+			return summary + "\n" + detailsStr
+		}
+
+		shouldExpand := (f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasSensitive(propAnalysis.Changes)) ||
+			f.config.ExpandAll
+
+		return output.NewCollapsibleValue(summary, detailsStr,
+			output.WithExpanded(shouldExpand),
+			output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 	}
+}
+
+// extractPropertyAnalysis extracts PropertyChangeAnalysis from either a map-based or direct value
+func (f *Formatter) extractPropertyAnalysis(val any) (PropertyChangeAnalysis, bool) {
+	if dataMap, ok := val.(map[string]any); ok {
+		if analysis, has := dataMap["analysis"]; has {
+			if pa, ok := analysis.(PropertyChangeAnalysis); ok {
+				return pa, true
+			}
+		}
+	}
+	if pa, ok := val.(PropertyChangeAnalysis); ok {
+		return pa, true
+	}
+	return PropertyChangeAnalysis{}, false
 }
 
 // formatPropertyChange formats a single property change in Terraform's diff-style format with optional context
@@ -989,47 +990,39 @@ func (f *Formatter) addGroupedResourceChangesWithCollapsibleSections(builder *ou
 	}
 	sort.Strings(providers)
 
-	// Create collapsible sections for each provider with auto-expansion for high-risk changes
 	for _, provider := range providers {
 		resources := groups[provider]
 		if len(resources) == 0 {
 			continue
 		}
 
-		// Apply priority sorting within this provider group (Requirement 2.4)
 		sortedResources := f.sortResourcesByPriority(resources)
-		// Prepare table data for this provider's resources
 		tableData := f.prepareResourceTableData(sortedResources)
 		schema := f.getResourceTableSchema()
 
-		// Determine if this provider section should auto-expand based on high-risk changes
-		// Auto-expand when AutoExpandDangerous is enabled and provider has high-risk changes
-		shouldExpandProvider := f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasHighRiskChanges(resources)
+		sectionTitle := fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(provider), len(resources))
+		tableName := fmt.Sprintf("%s Resources", strings.ToUpper(provider))
 
-		// Override expansion if global ExpandAll is enabled
+		addTable := func(b *output.Builder) {
+			providerTable, err := output.NewTableContent(tableName, tableData, output.WithSchema(schema...))
+			if err == nil {
+				b.AddContent(providerTable)
+			} else {
+				fmt.Printf("Warning: Failed to create %s provider table: %v\n", provider, err)
+			}
+		}
+
+		if !f.config.Plan.ExpandableSections.Enabled {
+			builder = builder.Section(sectionTitle, addTable)
+			continue
+		}
+
+		shouldExpandProvider := f.config.Plan.ExpandableSections.AutoExpandDangerous && f.hasHighRiskChanges(resources)
 		if f.config.ExpandAll {
 			shouldExpandProvider = true
 		}
 
-		// Add collapsible section using builder's CollapsibleSection method with NewTableContent pattern
-		// This enables auto-expansion behavior for high-risk changes within provider groups
-		builder = builder.CollapsibleSection(
-			fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(provider), len(resources)),
-			func(b *output.Builder) {
-				providerTable, err := output.NewTableContent(
-					fmt.Sprintf("%s Resources", strings.ToUpper(provider)),
-					tableData,
-					output.WithSchema(schema...),
-				)
-				if err == nil {
-					b.AddContent(providerTable)
-				} else {
-					// Log warning but continue operation - conservative error handling
-					fmt.Printf("Warning: Failed to create %s provider table: %v\n", provider, err)
-				}
-			},
-			output.WithSectionExpanded(shouldExpandProvider),
-		)
+		builder = builder.CollapsibleSection(sectionTitle, addTable, output.WithSectionExpanded(shouldExpandProvider))
 	}
 
 	return builder
@@ -1084,7 +1077,6 @@ func (f *Formatter) propertyChangesFormatterDirect() func(any) any {
 	return func(val any) any {
 		if propAnalysis, ok := val.(PropertyChangeAnalysis); ok {
 			if propAnalysis.Count > 0 {
-				// Create summary showing count and highlighting sensitive properties
 				sensitiveCount := 0
 				for _, change := range propAnalysis.Changes {
 					if change.Sensitive {
@@ -1100,22 +1092,21 @@ func (f *Formatter) propertyChangesFormatterDirect() func(any) any {
 					summary += truncatedIndicator
 				}
 
-				// Create detailed content
 				details := f.formatPropertyChangeDetails(propAnalysis.Changes)
 
-				// Auto-expand if sensitive properties are present and AutoExpandDangerous is enabled
-				// Note: ExpandAll is handled by renderer's ForceExpansion, not here
+				if !f.config.Plan.ExpandableSections.Enabled {
+					return summary + "\n" + details
+				}
+
 				shouldExpand := f.config.Plan.ExpandableSections.AutoExpandDangerous && sensitiveCount > 0
 
 				return output.NewCollapsibleValue(summary, details,
 					output.WithExpanded(shouldExpand),
 					output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 			} else {
-				// No properties changed - return simple string
 				return noPropertiesChanged
 			}
 		}
-		// Return input unchanged for non-PropertyChangeAnalysis types (required for test compatibility)
 		return val
 	}
 }
@@ -1169,6 +1160,9 @@ func (f *Formatter) shouldAutoExpandProvider(resources []ResourceChange) bool {
 
 // getCollapsibleTableFormat returns collapsible-enabled table format with specific style
 func (f *Formatter) getCollapsibleTableFormat(style string) output.Format {
+	if !f.config.Plan.ExpandableSections.Enabled {
+		return output.Table
+	}
 	rendererConfig := f.getRendererConfig()
 	return output.Format{
 		Name:     output.Table.Name,
@@ -1231,26 +1225,33 @@ func (f *Formatter) addProviderGroupTable(providerName string, resources []Resou
 	sortedResources := f.sortResourcesByPriority(resources)
 	groupData := f.prepareResourceTableData(sortedResources)
 	// Requirement 1.1: Only create table if data exists after filtering no-ops
-	if len(groupData) > 0 {
-		schema := f.getResourceTableSchema()
-		// Create table for this provider group
-		providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData,
-			output.WithSchema(schema...))
-		if err == nil {
-			// Create collapsible section for this provider (requirement 1.3: show only changed resources in count)
-			changedCount := f.countChangedResources(resources)
-			providerSection := output.NewCollapsibleSection(
-				fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), changedCount),
-				[]output.Content{providerTable},
-				output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
-				output.WithSectionLevel(2),
-			)
-			builder.AddContent(providerSection)
-		} else {
-			fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
-		}
+	if len(groupData) == 0 {
+		return
 	}
-	// If groupData is empty, table is suppressed (requirement 1.2)
+
+	schema := f.getResourceTableSchema()
+	providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData,
+		output.WithSchema(schema...))
+	if err != nil {
+		fmt.Printf("Warning: Failed to create %s provider table: %v\n", providerName, err)
+		return
+	}
+
+	changedCount := f.countChangedResources(resources)
+	sectionTitle := fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(providerName), changedCount)
+
+	if !f.config.Plan.ExpandableSections.Enabled {
+		builder.AddContent(providerTable)
+		return
+	}
+
+	providerSection := output.NewCollapsibleSection(
+		sectionTitle,
+		[]output.Content{providerTable},
+		output.WithSectionExpanded(f.shouldAutoExpandProvider(resources)),
+		output.WithSectionLevel(2),
+	)
+	builder.AddContent(providerSection)
 }
 
 // addStandardResourceTable creates a standard resource changes table without grouping

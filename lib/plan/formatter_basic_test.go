@@ -417,6 +417,7 @@ func TestFormatter_propertyChangesFormatter_ExpandAll(t *testing.T) {
 				ExpandAll: tc.expandAll,
 				Plan: config.PlanConfig{
 					ExpandableSections: config.ExpandableSectionsConfig{
+						Enabled:             true,
 						AutoExpandDangerous: true, // Enable auto-expansion for sensitive properties
 					},
 				},
