@@ -108,7 +108,7 @@ func TestEnhancedSummaryVisualization_EndToEnd(t *testing.T) {
 			analyzer := NewAnalyzer(nil, cfg) // Plan will be loaded internally
 
 			// Generate summary using the plan file path
-			summary := analyzer.GenerateSummary(planPath)
+			summary, _ := analyzer.GenerateSummary(planPath)
 			if summary == nil {
 				t.Fatalf("Failed to generate summary from plan file %s", tt.planFile)
 			}
@@ -180,7 +180,7 @@ func TestProviderGrouping_Integration(t *testing.T) {
 
 	// Create analyzer and generate summary
 	analyzer := NewAnalyzer(nil, cfg)
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		t.Fatalf("Failed to generate summary from plan")
 	}
@@ -235,7 +235,7 @@ func TestCollapsibleFormatters_Integration(t *testing.T) {
 	// Test with expand-all disabled
 	cfg.ExpandAll = false
 	analyzer := NewAnalyzer(nil, cfg)
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		t.Fatalf("Failed to generate summary")
 	}
@@ -284,7 +284,7 @@ func TestRiskAssessment_Integration(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(nil, cfg)
-	summary := analyzer.GenerateSummary(planPath)
+	summary, _ := analyzer.GenerateSummary(planPath)
 	if summary == nil {
 		t.Fatalf("Failed to generate summary")
 	}
@@ -320,15 +320,21 @@ func TestErrorHandling_Integration(t *testing.T) {
 	analyzer := NewAnalyzer(nil, cfg)
 
 	// Test with non-existent file
-	summary := analyzer.GenerateSummary("non-existent-file.json")
+	summary, err := analyzer.GenerateSummary("non-existent-file.json")
 	if summary != nil {
 		t.Error("Expected nil summary for non-existent file")
 	}
+	if err == nil {
+		t.Error("Expected error for non-existent file")
+	}
 
 	// Test with empty file path
-	summary = analyzer.GenerateSummary("")
+	summary, err = analyzer.GenerateSummary("")
 	if summary != nil {
 		t.Error("Expected nil summary for empty file path")
+	}
+	if err == nil {
+		t.Error("Expected error for empty file path")
 	}
 }
 

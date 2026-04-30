@@ -84,7 +84,7 @@ func TestSensitiveOutputsWithUnknownValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tt.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.NotEmpty(t, summary.OutputChanges, "Should have output changes")
@@ -187,7 +187,7 @@ func TestLargeOutputValues(t *testing.T) {
 
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			require.Len(t, summary.OutputChanges, 2, "Should have 2 output changes")
@@ -298,7 +298,7 @@ func TestMalformedOutputStructures(t *testing.T) {
 			analyzer := NewAnalyzer(tt.plan, cfg)
 
 			// This should not panic or crash
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil even with malformed data")
 
@@ -380,7 +380,7 @@ func TestPlansWithOnlyOutputChanges(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(tt.plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 
@@ -497,7 +497,7 @@ func TestOutputPerformanceWithLargeOutputSets(t *testing.T) {
 
 			cfg := getTestConfig()
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			require.NotNil(t, summary, "Summary should not be nil")
 			// Note: Some outputs might be filtered out due to processing logic

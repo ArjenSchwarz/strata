@@ -849,14 +849,14 @@ func (a *Analyzer) extractSensitiveIndex(sensitiveValues any, index int) any {
 }
 
 // GenerateSummary creates a comprehensive summary of the plan
-func (a *Analyzer) GenerateSummary(planFile string) *PlanSummary {
+func (a *Analyzer) GenerateSummary(planFile string) (*PlanSummary, error) {
 	parser := NewParser(planFile)
 
 	// Load the plan if not already loaded
 	if a.plan == nil {
 		plan, err := parser.LoadPlan()
 		if err != nil {
-			return nil
+			return nil, fmt.Errorf("failed to load plan: %w", err)
 		}
 		a.plan = plan
 	}
@@ -877,7 +877,7 @@ func (a *Analyzer) GenerateSummary(planFile string) *PlanSummary {
 	}
 
 	summary.Statistics = a.calculateStatistics(summary.ResourceChanges, summary.OutputChanges)
-	return summary
+	return summary, nil
 }
 
 // analyzeResourceChanges processes all resource changes in the plan

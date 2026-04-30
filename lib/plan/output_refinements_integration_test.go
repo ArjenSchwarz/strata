@@ -110,7 +110,7 @@ func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
 
 			// Test analyzer with output refinements
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary(testDataPath)
+			summary, _ := analyzer.GenerateSummary(testDataPath)
 			require.NotNil(t, summary, "Summary should not be nil")
 
 			// Test formatter filtering by creating formatter and using internal methods
@@ -260,7 +260,7 @@ func TestOutputRefinements_ConfigurationPrecedence(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary(testDataPath)
+			summary, _ := analyzer.GenerateSummary(testDataPath)
 
 			formatter := NewFormatter(cfg)
 			filteredResources := formatter.filterNoOps(summary.ResourceChanges)
@@ -305,7 +305,7 @@ func TestOutputRefinements_BackwardCompatibility(t *testing.T) {
 			}
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary(testDataPath)
+			summary, _ := analyzer.GenerateSummary(testDataPath)
 			require.NotNil(t, summary, "Summary should not be nil for existing plan file")
 
 			// Ensure formatter works with existing plans
@@ -360,7 +360,7 @@ func TestOutputRefinements_PropertySortingIntegration(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary(testDataPath)
+	summary, _ := analyzer.GenerateSummary(testDataPath)
 
 	// Find a resource with property changes to verify sorting
 	var updateResource *ResourceChange
@@ -416,7 +416,7 @@ func TestOutputRefinements_SensitiveMaskingIntegration(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary(testDataPath)
+	summary, _ := analyzer.GenerateSummary(testDataPath)
 
 	// Test that sensitive properties are correctly identified in resource changes
 	sensitiveFound := false

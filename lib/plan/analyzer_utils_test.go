@@ -1734,7 +1734,7 @@ func TestCrossFormatConsistencyForUnknownValuesAndOutputs(t *testing.T) {
 	}
 
 	analyzer.plan = plan
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 
 	testCases := []struct {
 		name            string

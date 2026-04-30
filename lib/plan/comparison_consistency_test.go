@@ -169,7 +169,7 @@ func TestComparisonConsistency_StandardizedDeepEqual(t *testing.T) {
 
 			cfg := &config.Config{}
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("test.json")
+			summary, _ := analyzer.GenerateSummary("test.json")
 
 			// If values are equal, we shouldn't see any property changes
 			// If values are different, we should see changes
@@ -287,7 +287,7 @@ func TestComparisonConsistency_SensitiveValueMasking(t *testing.T) {
 	}
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("test_sensitive.json")
+	summary, _ := analyzer.GenerateSummary("test_sensitive.json")
 
 	// Verify that sensitive comparisons are handled consistently
 	require.True(t, len(summary.ResourceChanges) > 0, "Should detect resource changes")

@@ -65,7 +65,7 @@ func TestPerformanceLimitsWithLargePlans(t *testing.T) {
 			plan := generateLargeSyntheticPlan(tt.numResources, tt.propertiesPerResource)
 
 			analyzer := NewAnalyzer(plan, cfg)
-			summary := analyzer.GenerateSummary("")
+			summary, _ := analyzer.GenerateSummary("")
 
 			if summary == nil {
 				t.Fatal("Expected summary to be generated even with large plans")
@@ -132,7 +132,7 @@ func TestFormatterPerformanceWithLargePlans(t *testing.T) {
 
 	cfg := getTestConfig()
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 
 	if summary == nil {
 		t.Fatal("Expected summary to be generated")
@@ -175,7 +175,7 @@ func TestProviderGroupingWithLargePlans(t *testing.T) {
 	cfg.Plan.Grouping.Threshold = 10 // Low threshold to trigger grouping
 
 	analyzer := NewAnalyzer(plan, cfg)
-	summary := analyzer.GenerateSummary("")
+	summary, _ := analyzer.GenerateSummary("")
 
 	if summary == nil {
 		t.Fatal("Expected summary to be generated")
