@@ -86,8 +86,11 @@ func TestVersionCommand(t *testing.T) {
 			versionCmd.SetOut(buf)
 			versionCmd.SetErr(buf)
 
-			// Execute the Run function directly
-			versionCmd.Run(versionCmd, []string{})
+			// Execute the RunE function directly
+			err := versionCmd.RunE(versionCmd, []string{})
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 
 			// Check output contains expected strings
 			output := buf.String()
@@ -95,6 +98,31 @@ func TestVersionCommand(t *testing.T) {
 				if !bytes.Contains([]byte(output), []byte(expected)) {
 					t.Errorf("Expected output to contain %q, got %q", expected, output)
 				}
+			}
+		})
+	}
+}
+
+func TestVersionCommandUnsupportedFormat(t *testing.T) {
+	originalOutputFormat := versionOutputFormat
+	defer func() {
+		versionOutputFormat = originalOutputFormat
+	}()
+
+	unsupportedFormats := []string{"yaml", "xml", "csv", "html", "markdown"}
+	for _, format := range unsupportedFormats {
+		t.Run(format, func(t *testing.T) {
+			versionOutputFormat = format
+			buf := new(bytes.Buffer)
+			versionCmd.SetOut(buf)
+			versionCmd.SetErr(buf)
+
+			err := versionCmd.RunE(versionCmd, []string{})
+			if err == nil {
+				t.Errorf("Expected error for unsupported format %q, got nil", format)
+			}
+			if !strings.Contains(err.Error(), "unsupported output format") {
+				t.Errorf("Expected error to mention unsupported format, got: %v", err)
 			}
 		})
 	}
@@ -381,8 +409,11 @@ func TestVersionCommandIntegration(t *testing.T) {
 			versionCmd.SetOut(buf)
 			versionCmd.SetErr(buf)
 
-			// Execute the Run function directly
-			versionCmd.Run(versionCmd, []string{})
+			// Execute the RunE function directly
+			err := versionCmd.RunE(versionCmd, []string{})
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 
 			// Check output
 			output := buf.String()
@@ -438,7 +469,10 @@ func TestVersionCommandConsistency(t *testing.T) {
 			buf := new(bytes.Buffer)
 			versionCmd.SetOut(buf)
 			versionCmd.SetErr(buf)
-			versionCmd.Run(versionCmd, []string{})
+			err := versionCmd.RunE(versionCmd, []string{})
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 			subcommandOutput := buf.String()
 
 			// Verify version appears in subcommand output
@@ -473,7 +507,10 @@ func TestVersionErrorHandling(t *testing.T) {
 		versionCmd.SetErr(buf)
 
 		// Execute command - should not panic even with edge cases
-		versionCmd.Run(versionCmd, []string{})
+		err := versionCmd.RunE(versionCmd, []string{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 
 		output := buf.String()
 		// Should produce valid JSON
