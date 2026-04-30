@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
@@ -1360,7 +1361,11 @@ func formatOutputValue(value any, sensitive bool, isUnknown bool) string {
 	case string:
 		return fmt.Sprintf("%q", v)
 	default:
-		return fmt.Sprintf("%v", v)
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Sprintf("%v", v)
+		}
+		return string(b)
 	}
 }
 
