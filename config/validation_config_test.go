@@ -118,3 +118,50 @@ func TestConfig_ResolvePlaceholders(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateConfiguration_GroupingThreshold(t *testing.T) {
+	tests := []struct {
+		name      string
+		enabled   bool
+		threshold int
+		wantErr   bool
+	}{
+		{
+			name:      "enabled with valid threshold",
+			enabled:   true,
+			threshold: 10,
+			wantErr:   false,
+		},
+		{
+			name:      "enabled with zero threshold fails",
+			enabled:   true,
+			threshold: 0,
+			wantErr:   true,
+		},
+		{
+			name:      "disabled with zero threshold succeeds",
+			enabled:   false,
+			threshold: 0,
+			wantErr:   false,
+		},
+		{
+			name:      "disabled with valid threshold succeeds",
+			enabled:   false,
+			threshold: 10,
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := GetDefaultConfig()
+			config.Plan.Grouping.Enabled = tt.enabled
+			config.Plan.Grouping.Threshold = tt.threshold
+
+			err := config.ValidateConfiguration()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateConfiguration() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
