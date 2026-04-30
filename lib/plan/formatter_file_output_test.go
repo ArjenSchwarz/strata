@@ -159,6 +159,18 @@ func TestFormatter_FileOutputColorDecision(t *testing.T) {
 		t.Errorf("expected colors to be disabled for markdown output even when UseColors is true")
 	}
 
+	if shouldUseColorTransformer(true, "json") {
+		t.Errorf("expected colors to be disabled for json output even when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(true, "html") {
+		t.Errorf("expected colors to be disabled for html output even when UseColors is true")
+	}
+
+	if shouldUseColorTransformer(true, "csv") {
+		t.Errorf("expected colors to be disabled for csv output even when UseColors is true")
+	}
+
 	if shouldUseColorTransformer(false, "table") {
 		t.Errorf("expected colors to be disabled when UseColors is false")
 	}
