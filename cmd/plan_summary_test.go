@@ -24,6 +24,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/ArjenSchwarz/strata/config"
 	"github.com/spf13/viper"
 )
 
@@ -260,5 +261,33 @@ func TestPlanSummaryViperConfigRespected(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAlwaysShowSensitiveDefaultPreserved(t *testing.T) {
+	// Verify that when plan.always-show-sensitive is NOT set in viper,
+	// the default value (true) from GetDefaultConfig is preserved.
+	// This guards against viper.GetBool returning false for unset keys.
+	viper.Reset()
+
+	cfg := config.GetDefaultConfig()
+
+	// Simulate the same logic as runPlanSummary
+	if viper.IsSet("plan.always-show-sensitive") {
+		cfg.Plan.AlwaysShowSensitive = viper.GetBool("plan.always-show-sensitive")
+	}
+
+	if !cfg.Plan.AlwaysShowSensitive {
+		t.Error("AlwaysShowSensitive should default to true when not set in config")
+	}
+
+	// Now verify explicit false overrides the default
+	viper.Set("plan.always-show-sensitive", false)
+	if viper.IsSet("plan.always-show-sensitive") {
+		cfg.Plan.AlwaysShowSensitive = viper.GetBool("plan.always-show-sensitive")
+	}
+
+	if cfg.Plan.AlwaysShowSensitive {
+		t.Error("AlwaysShowSensitive should be false when explicitly set to false in config")
 	}
 }
