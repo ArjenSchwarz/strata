@@ -1010,6 +1010,10 @@ func (a *Analyzer) ProcessOutputChanges(plan *tfjson.Plan) ([]OutputChange, erro
 		}
 	}
 
+	sort.Slice(changes, func(i, j int) bool {
+		return changes[i].Name < changes[j].Name
+	})
+
 	return changes, nil
 }
 
