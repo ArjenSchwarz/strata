@@ -828,6 +828,7 @@ func TestEvaluateResourceDanger(t *testing.T) {
 		},
 		SensitiveProperties: []config.SensitiveProperty{
 			{ResourceType: "aws_ec2_instance", Property: "user_data"},
+			{ResourceType: "aws_ec2_instance", Property: "ami"},
 		},
 	}
 	analyzer := &Analyzer{config: cfg}
@@ -944,6 +945,26 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			expectedReason:    "Sensitive resource deletion and User data modification",
 			expectedDangerProps: []string{"user_data"},
 		},
+		{
+			name: "Multiple danger properties should be sorted",
+			change: &tfjson.ResourceChange{
+				Type: "aws_ec2_instance",
+				Change: &tfjson.Change{
+					Before: map[string]any{
+						"user_data": "old-data",
+						"ami":       "ami-old",
+					},
+					After: map[string]any{
+						"user_data": "new-data",
+						"ami":       "ami-new",
+					},
+				},
+			},
+			changeType:          ChangeTypeUpdate,
+			expectedDanger:      true,
+			expectedReason:      "Multiple sensitive properties changed",
+			expectedDangerProps: []string{"ami", "user_data"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -962,17 +983,11 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			} else {
 				if len(dangerProps) != len(tc.expectedDangerProps) {
 					t.Errorf("evaluateResourceDanger() dangerProps = %v, want %v", dangerProps, tc.expectedDangerProps)
-				}
-				for _, expected := range tc.expectedDangerProps {
-					found := false
-					for _, actual := range dangerProps {
-						if actual == expected {
-							found = true
-							break
+				} else {
+					for i, expected := range tc.expectedDangerProps {
+						if dangerProps[i] != expected {
+							t.Errorf("evaluateResourceDanger() dangerProps[%d] = %q, want %q (full: %v)", i, dangerProps[i], expected, dangerProps)
 						}
-					}
-					if !found {
-						t.Errorf("evaluateResourceDanger() dangerProps missing %q, got %v", expected, dangerProps)
 					}
 				}
 			}

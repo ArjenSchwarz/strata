@@ -1481,6 +1481,7 @@ func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeT
 		reason = strings.Join(reasonParts, " and ")
 	}
 
+	sort.Strings(dangerProps)
 	return isDangerous, reason, dangerProps
 }
 
