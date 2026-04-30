@@ -426,7 +426,7 @@ work_dir=$(mktemp -d)
 trap '/bin/rm -rf "$work_dir"' EXIT
 
 sed -e '/^readonly TEMP_DIR$/d' \
-    -e '/^TEMP_DIR=\$(mktemp -d)$/d' \
+    -e '/^TEMP_DIR=.*/d' \
     -e '/^trap cleanup EXIT$/d' \
     -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
     "$repo_root/action_simplified.sh" > "$work_dir/action_testable.sh"

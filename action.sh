@@ -6,7 +6,8 @@ set -euo pipefail
 
 # Constants and configuration
 readonly GITHUB_API_URL="${GITHUB_API_URL:-https://api.github.com}"
-readonly TEMP_DIR=$(mktemp -d)
+TEMP_DIR=$(mktemp -d) || { echo "❌ Failed to create temporary directory"; exit 1; }
+readonly TEMP_DIR
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Cleanup on exit (success or failure)
