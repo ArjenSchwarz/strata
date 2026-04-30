@@ -156,7 +156,7 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 		statsData, err := f.createStatisticsSummaryDataV2(summary)
 		if err == nil && len(statsData) > 0 {
 			statsTable, err := output.NewTableContent("Summary Statistics", statsData,
-				output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+				output.WithKeys(f.statisticsKeys()...))
 			if err == nil {
 				builder = builder.AddContent(statsTable)
 			} else {
@@ -306,6 +306,10 @@ func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[s
 		return nil, fmt.Errorf("plan file name is required")
 	}
 
+	if f.config.Plan.StatisticsSummaryFormat == "vertical" {
+		return f.createVerticalStatisticsData(summary), nil
+	}
+
 	data := []map[string]any{
 		{
 			"Total Changes": summary.Statistics.Total,
@@ -319,6 +323,27 @@ func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[s
 	}
 
 	return data, nil
+}
+
+// createVerticalStatisticsData creates statistics data in vertical layout (one row per metric)
+func (f *Formatter) createVerticalStatisticsData(summary *PlanSummary) []map[string]any {
+	return []map[string]any{
+		{"Metric": "Total Changes", "Value": summary.Statistics.Total},
+		{"Metric": "Added", "Value": summary.Statistics.ToAdd},
+		{"Metric": "Removed", "Value": summary.Statistics.ToDestroy},
+		{"Metric": "Modified", "Value": summary.Statistics.ToChange},
+		{"Metric": "Replacements", "Value": summary.Statistics.Replacements},
+		{"Metric": "High Risk", "Value": summary.Statistics.HighRisk},
+		{"Metric": "Unmodified", "Value": summary.Statistics.Unmodified},
+	}
+}
+
+// statisticsKeys returns the table keys appropriate for the configured statistics format
+func (f *Formatter) statisticsKeys() []string {
+	if f.config.Plan.StatisticsSummaryFormat == "vertical" {
+		return []string{"Metric", "Value"}
+	}
+	return []string{"Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"}
 }
 
 // createSensitiveResourceChangesDataV2 creates data for sensitive resource changes only for v2 API
@@ -913,7 +938,7 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 			return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
 		}
 		statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+			output.WithKeys(f.statisticsKeys()...))
 		if err == nil {
 			builder = builder.AddContent(statsTable)
 		}
@@ -942,7 +967,7 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 			return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
 		}
 		statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+			output.WithKeys(f.statisticsKeys()...))
 		if err == nil {
 			builder = builder.AddContent(statsTable)
 		}
