@@ -788,8 +788,8 @@ func (f *Formatter) prepareResourceTableData(changes []ResourceChange) []map[str
 	tableData := make([]map[string]any, 0, len(changes))
 
 	for _, change := range changes {
-		// Skip no-op changes from details (requirement 1: Empty Table Suppression)
-		if change.ChangeType == ChangeTypeNoOp {
+		// Skip no-op changes unless ShowNoOps is enabled
+		if change.ChangeType == ChangeTypeNoOp && !f.config.Plan.ShowNoOps {
 			continue
 		}
 
