@@ -53,7 +53,11 @@ func (fv *FileValidator) sanitizeFilePath(path string) (string, error) {
 	}
 
 	// Reject URL-encoded traversal attempts (e.g. "..%2F", "..%252F")
-	if strings.Contains(path, "%") {
+	// Only target encoded separators and traversal patterns, not all '%' usage.
+	lowered := strings.ToLower(path)
+	if strings.Contains(lowered, "%2f") || strings.Contains(lowered, "%5c") ||
+		strings.Contains(lowered, "%252f") || strings.Contains(lowered, "%255c") ||
+		strings.Contains(lowered, "%2e") || strings.Contains(lowered, "%252e") {
 		return "", traversalErr
 	}
 
