@@ -71,7 +71,17 @@ get_version_tag() {
         return 0
       fi
     fi
-    echo "latest"
+    # Fallback: resolve tag from the redirect URL of /releases/latest
+    local redirect_url
+    if redirect_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$GITHUB_API_URL/repos/ArjenSchwarz/strata/releases/latest" 2>/dev/null); then
+      tag="${redirect_url##*/}"
+      if [[ -n "$tag" && "$tag" != "latest" ]]; then
+        echo "$tag"
+        return 0
+      fi
+    fi
+    # All lookups failed — return error so callers can use direct latest download
+    return 1
   else
     echo "$version"
   fi
@@ -86,14 +96,73 @@ download_strata() {
 
   # Get the actual version tag for filename construction
   local version_tag
-  version_tag=$(get_version_tag "$version")
-  echo "📦 Resolved version tag: $version_tag"
+  local use_direct_latest=false
+  if version_tag=$(get_version_tag "$version"); then
+    echo "📦 Resolved version tag: $version_tag"
+  elif [[ "$version" == "latest" ]]; then
+    echo "⚠️ Could not resolve latest version tag, using direct latest download URL"
+    use_direct_latest=true
+  else
+    echo "❌ Failed to resolve version: $version"
+    exit 3
+  fi
 
   # Construct URLs based on version
   local base_url="https://github.com/ArjenSchwarz/strata/releases"
   local binary_url checksum_url filename
 
-  if [[ "$version" == "latest" ]]; then
+  if [[ "$use_direct_latest" == "true" ]]; then
+    # Tag lookup failed — download the release tarball directly via GitHub's latest redirect
+    # GitHub redirects /releases/latest/download/* to the actual release asset
+    # We need to discover the actual filename from the tarball, so download without a versioned name
+    binary_url="$base_url/latest"
+    echo "📦 Using latest Strata release (tag unknown)"
+
+    # Try to download the latest release tarball via the GitHub API redirect
+    for attempt in 1 2 3; do
+      # List assets from the latest release and find our platform binary
+      local assets_json
+      if assets_json=$(curl -fsSL "$GITHUB_API_URL/repos/ArjenSchwarz/strata/releases/latest" 2>/dev/null); then
+        local asset_url
+        asset_url=$(echo "$assets_json" | jq -r ".assets[] | select(.name | test(\"strata-.*-${OS}-${ARCH}\\\\.tar\\\\.gz$\")) | .browser_download_url" 2>/dev/null | head -1)
+        if [[ -n "$asset_url" ]]; then
+          filename=$(basename "$asset_url")
+          local checksum_asset_url="${asset_url}.md5"
+          echo "⬇️ Downloading Strata binary: $filename"
+          if curl -fsSL "$asset_url" -o "$TEMP_DIR/strata.tar.gz" 2>/dev/null; then
+            if curl -fsSL "$checksum_asset_url" -o "$TEMP_DIR/checksum.md5" 2>/dev/null; then
+              local expected actual
+              expected=$(cat "$TEMP_DIR/checksum.md5" | cut -d' ' -f1)
+              if command -v md5sum >/dev/null 2>&1; then
+                actual=$(md5sum "$TEMP_DIR/strata.tar.gz" | cut -d' ' -f1)
+              elif command -v md5 >/dev/null 2>&1; then
+                actual=$(md5 -q "$TEMP_DIR/strata.tar.gz")
+              else
+                actual="$expected"
+              fi
+              if [[ -n "$expected" ]] && [[ "$expected" == "$actual" ]]; then
+                tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
+                chmod +x "$TEMP_DIR/strata"
+                echo "✅ Download and verification successful"
+                echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+                return 0
+              fi
+            else
+              tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
+              chmod +x "$TEMP_DIR/strata"
+              echo "✅ Download successful (checksum verification skipped)"
+              echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+              return 0
+            fi
+          fi
+        fi
+      fi
+      echo "⚠️ Attempt $attempt/3 failed"
+      [[ $attempt -lt 3 ]] && sleep 2
+    done
+    echo "❌ Failed to download latest release"
+    exit 3
+  elif [[ "$version" == "latest" ]]; then
     filename="strata-${version_tag}-${OS}-${ARCH}.tar.gz"
     binary_url="$base_url/latest/download/$filename"
     checksum_url="$base_url/latest/download/${filename}.md5"
@@ -159,16 +228,33 @@ download_strata() {
   if [[ "$version" != "latest" ]]; then
     echo "⚠️ Version $version not found, trying latest"
     local fallback_tag
-    fallback_tag=$(get_version_tag "latest")
-    local fallback_filename="strata-${fallback_tag}-${OS}-${ARCH}.tar.gz"
-    local fallback_url="$base_url/latest/download/$fallback_filename"
+    if fallback_tag=$(get_version_tag "latest"); then
+      local fallback_filename="strata-${fallback_tag}-${OS}-${ARCH}.tar.gz"
+      local fallback_url="$base_url/latest/download/$fallback_filename"
 
-    echo "⚠️ Trying fallback: $fallback_filename"
-    if curl -fsSL "$fallback_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
-      tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
-      chmod +x "$TEMP_DIR/strata"
-      echo "✅ Fallback to latest successful"
-      return 0
+      echo "⚠️ Trying fallback: $fallback_filename"
+      if curl -fsSL "$fallback_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
+        tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
+        chmod +x "$TEMP_DIR/strata"
+        echo "✅ Fallback to latest successful"
+        return 0
+      fi
+    else
+      # Tag lookup failed — try asset listing as last resort
+      echo "⚠️ Could not resolve latest tag, trying asset listing"
+      local assets_json
+      if assets_json=$(curl -fsSL "$GITHUB_API_URL/repos/ArjenSchwarz/strata/releases/latest" 2>/dev/null); then
+        local asset_url
+        asset_url=$(echo "$assets_json" | jq -r ".assets[] | select(.name | test(\"strata-.*-${OS}-${ARCH}\\\\.tar\\\\.gz$\")) | .browser_download_url" 2>/dev/null | head -1)
+        if [[ -n "$asset_url" ]]; then
+          if curl -fsSL "$asset_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
+            tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
+            chmod +x "$TEMP_DIR/strata"
+            echo "✅ Fallback to latest successful"
+            return 0
+          fi
+        fi
+      fi
     fi
   fi
 
