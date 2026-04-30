@@ -942,6 +942,34 @@ func TestPrepareResourceTableData_EmptyTableSuppression(t *testing.T) {
 	}
 }
 
+// TestPrepareResourceTableData_ShowNoOps verifies that prepareResourceTableData respects ShowNoOps config
+func TestPrepareResourceTableData_ShowNoOps(t *testing.T) {
+	changes := []ResourceChange{
+		{Address: "aws_instance.changed", Type: "aws_instance", ChangeType: ChangeTypeUpdate},
+		{Address: "aws_s3_bucket.unchanged", Type: "aws_s3_bucket", ChangeType: ChangeTypeNoOp},
+	}
+
+	t.Run("ShowNoOps false excludes no-op rows", func(t *testing.T) {
+		cfg := &config.Config{}
+		cfg.Plan.ShowNoOps = false
+		f := NewFormatter(cfg)
+		data := f.prepareResourceTableData(changes)
+		if len(data) != 1 {
+			t.Errorf("expected 1 row, got %d", len(data))
+		}
+	})
+
+	t.Run("ShowNoOps true includes no-op rows", func(t *testing.T) {
+		cfg := &config.Config{}
+		cfg.Plan.ShowNoOps = true
+		f := NewFormatter(cfg)
+		data := f.prepareResourceTableData(changes)
+		if len(data) != 2 {
+			t.Errorf("expected 2 rows, got %d", len(data))
+		}
+	})
+}
+
 // TestCountChangedResources tests requirement 1.4: Changed resource counting for thresholds
 func TestCountChangedResources(t *testing.T) {
 	cfg := &config.Config{}
