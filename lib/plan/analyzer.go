@@ -1438,8 +1438,14 @@ func (a *Analyzer) formatReplacePath(path any) string {
 	return ""
 }
 
-// evaluateResourceDanger determines if a resource change is dangerous and provides a descriptive reason
+// evaluateResourceDanger determines if a resource change is dangerous and provides a descriptive reason.
+// When HighlightDangers is disabled in config, danger detection is suppressed entirely.
 func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeType ChangeType) (bool, string) {
+	// Honor the highlight-dangers flag: when false, suppress all danger detection
+	if a.config != nil && !a.config.Plan.HighlightDangers {
+		return false, ""
+	}
+
 	isDangerous := false
 	reasonParts := make([]string, 0)
 

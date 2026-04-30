@@ -819,6 +819,9 @@ func TestGetTopChangedProperties(t *testing.T) {
 
 func TestEvaluateResourceDanger(t *testing.T) {
 	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			HighlightDangers: true,
+		},
 		SensitiveResources: []config.SensitiveResource{
 			{ResourceType: "aws_rds_instance"},
 			{ResourceType: "aws_ec2_instance"},
@@ -944,6 +947,30 @@ func TestEvaluateResourceDanger(t *testing.T) {
 				t.Errorf("evaluateResourceDanger() reason = %q, want %q", reason, tc.expectedReason)
 			}
 		})
+	}
+}
+
+func TestEvaluateResourceDangerHighlightDangersDisabled(t *testing.T) {
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			HighlightDangers: false,
+		},
+		SensitiveResources: []config.SensitiveResource{
+			{ResourceType: "aws_rds_instance"},
+		},
+	}
+	analyzer := &Analyzer{config: cfg}
+
+	// Even a sensitive resource deletion should not be flagged when HighlightDangers is false
+	dangerous, reason := analyzer.evaluateResourceDanger(&tfjson.ResourceChange{
+		Type: "aws_rds_instance",
+	}, ChangeTypeDelete)
+
+	if dangerous {
+		t.Error("evaluateResourceDanger() should return false when HighlightDangers is disabled")
+	}
+	if reason != "" {
+		t.Errorf("evaluateResourceDanger() reason should be empty when HighlightDangers is disabled, got %q", reason)
 	}
 }
 
