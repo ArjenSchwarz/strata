@@ -352,7 +352,21 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
 			}
 
-			action := determineAction(processedBefore, processedAfter)
+			// Determine action: when afterSlice is nil (including typed nil
+			// []any), treat as removal. A typed nil []any does not compare
+			// equal to interface nil, so processedAfter-based detection in
+			// determineAction would incorrectly return "update".
+			var action string
+			switch {
+			case isUnknown:
+				action = actionUpdate
+			case !ok && after != nil:
+				// after is a non-slice type (e.g. string, bool) — type transition
+				action = actionUpdate
+			default:
+				// afterSlice is nil (untyped nil or typed nil []any) — removal
+				action = actionRemove
+			}
 			if shouldSkipEmptyValue(action, before, after) {
 				return
 			}
