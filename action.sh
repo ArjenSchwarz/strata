@@ -21,17 +21,18 @@ cleanup() {
 
   # Set default outputs on failure
   if [[ $exit_code -ne 0 ]] && [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    local delim="ghadelim_$(date +%s)_${RANDOM}"
     {
       echo "has-changes=false"
       echo "has-dangers=false"
       echo "change-count=0"
       echo "danger-count=0"
-      echo "summary<<EOF"
+      echo "summary<<${delim}"
       echo "Analysis failed"
-      echo "EOF"
-      echo "json-summary<<EOF"
+      echo "${delim}"
+      echo "json-summary<<${delim}"
       echo "{}"
-      echo "EOF"
+      echo "${delim}"
     } >> "$GITHUB_OUTPUT"
   fi
 
@@ -270,17 +271,18 @@ run_analysis() {
 
     # Set failure outputs
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+      local delim="ghadelim_$(date +%s)_${RANDOM}"
       {
         echo "has-changes=false"
         echo "has-dangers=false"
         echo "change-count=0"
         echo "danger-count=0"
-        echo "summary<<EOF"
+        echo "summary<<${delim}"
         echo "Analysis failed: $display_output"
-        echo "EOF"
-        echo "json-summary<<EOF"
+        echo "${delim}"
+        echo "json-summary<<${delim}"
         echo "{\"error\": \"Analysis failed\"}"
-        echo "EOF"
+        echo "${delim}"
       } >> "$GITHUB_OUTPUT"
     fi
 
@@ -312,18 +314,19 @@ extract_outputs() {
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    local delim="ghadelim_$(date +%s)_${RANDOM}"
     {
       echo "has-changes=$([[ $total_changes -gt 0 ]] && echo true || echo false)"
       echo "has-dangers=$([[ $danger_changes -gt 0 ]] && echo true || echo false)"
       echo "change-count=$total_changes"
       echo "danger-count=$danger_changes"
-      echo "summary<<EOF"
+      echo "summary<<${delim}"
       echo "$DISPLAY_OUTPUT"
-      echo "EOF"
-      echo "json-summary<<EOF"
+      echo "${delim}"
+      echo "json-summary<<${delim}"
       cat "$json_file" 2>/dev/null || echo "{}"
       echo ""
-      echo "EOF"
+      echo "${delim}"
     } >> "$GITHUB_OUTPUT"
   fi
 }
@@ -331,17 +334,18 @@ extract_outputs() {
 # Set default outputs when JSON parsing fails
 set_default_outputs() {
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    local delim="ghadelim_$(date +%s)_${RANDOM}"
     {
       echo "has-changes=false"
       echo "has-dangers=false"
       echo "change-count=0"
       echo "danger-count=0"
-      echo "summary<<EOF"
+      echo "summary<<${delim}"
       echo "${DISPLAY_OUTPUT:-No output available}"
-      echo "EOF"
-      echo "json-summary<<EOF"
+      echo "${delim}"
+      echo "json-summary<<${delim}"
       echo "{}"
-      echo "EOF"
+      echo "${delim}"
     } >> "$GITHUB_OUTPUT"
   fi
 }

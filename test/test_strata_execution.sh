@@ -645,9 +645,9 @@ EOF
         assert_contains "$output_content" "has-dangers=true" "Should set has-dangers=true when dangers > 0"
         assert_contains "$output_content" "change-count=5" "Should set correct change count"
         assert_contains "$output_content" "danger-count=2" "Should set correct danger count"
-        assert_contains "$output_content" "summary<<EOF" "Should include summary with delimiter"
+        assert_contains "$output_content" "summary<<ghadelim_" "Should include summary with unique delimiter"
         assert_contains "$output_content" "$display_output" "Should include display output in summary"
-        assert_contains "$output_content" "json-summary<<EOF" "Should include JSON summary with delimiter"
+        assert_contains "$output_content" "json-summary<<ghadelim_" "Should include JSON summary with unique delimiter"
     fi
 
     # Check GitHub Step Summary
