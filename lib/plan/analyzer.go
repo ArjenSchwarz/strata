@@ -683,9 +683,12 @@ func (a *Analyzer) splitNatural(s string) []string {
 
 // enforcePropertyLimits enforces performance limits on property analysis to prevent excessive memory usage
 func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
+	// Read limits from config (with defaults for zero values)
+	limits := a.getPerformanceLimits()
+
 	// Limit the number of properties per resource
-	if len(analysis.Changes) > MaxPropertiesPerResource {
-		analysis.Changes = analysis.Changes[:MaxPropertiesPerResource]
+	if len(analysis.Changes) > limits.MaxPropertiesPerResource {
+		analysis.Changes = analysis.Changes[:limits.MaxPropertiesPerResource]
 		analysis.Truncated = true
 	}
 
@@ -694,10 +697,10 @@ func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
 	for i, change := range analysis.Changes {
 		size := min(a.estimateValueSize(change.Before)+a.estimateValueSize(change.After),
 			// Cap individual property size
-			MaxPropertyValueSize)
+			limits.MaxPropertySize)
 		analysis.Changes[i].Size = size
 
-		if totalSize+size > MaxTotalPropertyMemory {
+		if int64(totalSize+size) > limits.MaxTotalMemory {
 			// Truncate at this point to stay within memory limits
 			analysis.Changes = analysis.Changes[:i]
 			analysis.Truncated = true
@@ -708,6 +711,18 @@ func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
 
 	analysis.TotalSize = totalSize
 	analysis.Count = len(analysis.Changes)
+}
+
+// getPerformanceLimits returns performance limits from config, falling back to defaults
+func (a *Analyzer) getPerformanceLimits() config.PerformanceLimitsConfig {
+	if a.config != nil {
+		return a.config.GetPerformanceLimitsWithDefaults()
+	}
+	return config.PerformanceLimitsConfig{
+		MaxPropertiesPerResource: MaxPropertiesPerResource,
+		MaxPropertySize:          MaxPropertyValueSize,
+		MaxTotalMemory:           MaxTotalPropertyMemory,
+	}
 }
 
 // extractPropertyName extracts the final property name from a path

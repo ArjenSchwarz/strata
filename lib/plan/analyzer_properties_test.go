@@ -12,7 +12,7 @@ func TestAnalyzePropertyChanges(t *testing.T) {
 	cfg := &config.Config{
 		Plan: config.PlanConfig{
 			PerformanceLimits: config.PerformanceLimitsConfig{
-				MaxPropertiesPerResource: 2, // Set low for testing
+				MaxPropertiesPerResource: 100, // Use default; limit-specific tests below override this
 			},
 		},
 	}
