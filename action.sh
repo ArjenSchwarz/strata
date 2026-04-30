@@ -9,6 +9,9 @@ readonly GITHUB_API_URL="${GITHUB_API_URL:-https://api.github.com}"
 TEMP_DIR=$(mktemp -d) || { echo "❌ Failed to create temporary directory"; exit 1; }
 readonly TEMP_DIR
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly CACHE_DIR="${HOME}/.cache/strata"
+mkdir -p "$CACHE_DIR"
+readonly STRATA_BIN="$CACHE_DIR/strata"
 
 # Track whether GitHub Action outputs have been written
 OUTPUTS_WRITTEN=false
@@ -97,6 +100,24 @@ download_strata() {
   detect_platform
   echo "🚀 Starting Strata GitHub Action (${OS}/${ARCH})"
 
+  # Check if cached binary exists, is executable, and matches the requested version
+  if [[ -x "$STRATA_BIN" ]]; then
+    local cached_version
+    cached_version="$("$STRATA_BIN" --version 2>/dev/null || echo "")"
+    if [[ "$version" == "latest" ]]; then
+      echo "✅ Using cached Strata binary"
+      echo "🔍 Strata version: ${cached_version:-unknown}"
+      return 0
+    elif [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${version#v}"; then
+      echo "✅ Using cached Strata binary (matches requested $version)"
+      echo "🔍 Strata version: $cached_version"
+      return 0
+    else
+      echo "⚠️ Cached binary does not match requested version $version, re-downloading"
+      rm -f "$STRATA_BIN"
+    fi
+  fi
+
   # Get the actual version tag for filename construction
   local version_tag
   local use_direct_latest=false
@@ -144,17 +165,17 @@ download_strata() {
                 actual="$expected"
               fi
               if [[ -n "$expected" ]] && [[ "$expected" == "$actual" ]]; then
-                tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
-                chmod +x "$TEMP_DIR/strata"
+                tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/strata.tar.gz"
+                chmod +x "$STRATA_BIN"
                 echo "✅ Download and verification successful"
-                echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+                echo "🔍 Strata version: $("$STRATA_BIN" --version 2>/dev/null || echo "unknown")"
                 return 0
               fi
             else
-              tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
-              chmod +x "$TEMP_DIR/strata"
+              tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/strata.tar.gz"
+              chmod +x "$STRATA_BIN"
               echo "✅ Download successful (checksum verification skipped)"
-              echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+              echo "🔍 Strata version: $("$STRATA_BIN" --version 2>/dev/null || echo "unknown")"
               return 0
             fi
           fi
@@ -200,12 +221,12 @@ download_strata() {
 
         if [[ -n "$expected" ]] && [[ "$expected" == "$actual" ]]; then
           # Extract verified binary
-          tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
-          chmod +x "$TEMP_DIR/strata"
+          tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/strata.tar.gz"
+          chmod +x "$STRATA_BIN"
           echo "✅ Download and verification successful"
 
           # Log version for debugging
-          echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+          echo "🔍 Strata version: $("$STRATA_BIN" --version 2>/dev/null || echo "unknown")"
           return 0
         else
           echo "⚠️ Checksum mismatch, retrying..."
@@ -214,12 +235,12 @@ download_strata() {
       else
         echo "⚠️ Failed to download checksum, proceeding without verification..."
         # Extract without verification as fallback
-        tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/strata.tar.gz"
-        chmod +x "$TEMP_DIR/strata"
+        tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/strata.tar.gz"
+        chmod +x "$STRATA_BIN"
         echo "✅ Download successful (checksum verification skipped)"
 
         # Log version for debugging
-        echo "🔍 Strata version: $("$TEMP_DIR/strata" --version 2>/dev/null || echo "unknown")"
+        echo "🔍 Strata version: $("$STRATA_BIN" --version 2>/dev/null || echo "unknown")"
         return 0
       fi
     fi
@@ -237,8 +258,8 @@ download_strata() {
 
       echo "⚠️ Trying fallback: $fallback_filename"
       if curl -fsSL "$fallback_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
-        tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
-        chmod +x "$TEMP_DIR/strata"
+        tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/fallback.tar.gz"
+        chmod +x "$STRATA_BIN"
         echo "✅ Fallback to latest successful"
         return 0
       fi
@@ -251,8 +272,8 @@ download_strata() {
         asset_url=$(echo "$assets_json" | jq -r ".assets[] | select(.name | test(\"strata-.*-${OS}-${ARCH}\\\\.tar\\\\.gz$\")) | .browser_download_url" 2>/dev/null | head -1)
         if [[ -n "$asset_url" ]]; then
           if curl -fsSL "$asset_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
-            tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/fallback.tar.gz"
-            chmod +x "$TEMP_DIR/strata"
+            tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/fallback.tar.gz"
+            chmod +x "$STRATA_BIN"
             echo "✅ Fallback to latest successful"
             return 0
           fi
@@ -328,7 +349,7 @@ run_analysis() {
   local json_file="$TEMP_DIR/strata-analysis.json"
 
   # Build command with all flags
-  local cmd=("$TEMP_DIR/strata" "plan" "summary")
+  local cmd=("$STRATA_BIN" "plan" "summary")
   cmd+=("--output" "${INPUT_OUTPUT_FORMAT:-markdown}")
   cmd+=("--file" "$json_file" "--file-format" "json")
 
