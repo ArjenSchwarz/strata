@@ -661,6 +661,29 @@ func TestAnalyzeOutputChangeUpdateWithEqualValuesIsNoOp(t *testing.T) {
 	assert.True(t, result.IsNoOp, "update actions with identical before/after should be treated as no-op")
 }
 
+// TestAnalyzeOutputChangeUnknownUpdateWithEqualValuesIsNotNoOp verifies that an update
+// with equal before/after but AfterUnknown=true is NOT treated as a no-op.
+func TestAnalyzeOutputChangeUnknownUpdateWithEqualValuesIsNotNoOp(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	result, err := analyzer.analyzeOutputChange("pending_output", &tfjson.Change{
+		Actions:      []tfjson.Action{tfjson.ActionUpdate},
+		Before:       "same-value",
+		After:        "same-value",
+		AfterUnknown: true,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	if result == nil {
+		return
+	}
+
+	assert.Equal(t, ChangeTypeUpdate, result.ChangeType)
+	assert.True(t, result.IsUnknown, "output with AfterUnknown=true should be marked unknown")
+	assert.False(t, result.IsNoOp, "unknown outputs with equal before/after should NOT be treated as no-op")
+}
+
 // TestGetOutputActionAndIndicator tests the output action and indicator mapping function (Task 7.1)
 func TestGetOutputActionAndIndicator(t *testing.T) {
 	analyzer := &Analyzer{}

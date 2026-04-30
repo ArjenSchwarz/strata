@@ -1032,8 +1032,10 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 
 	// Detect no-op outputs: explicit no-op action OR update with identical before/after values.
 	// Replace actions with equal values are intentionally excluded (not treated as no-op).
+	// Unknown outputs are excluded: AfterUnknown with true values means the real value is
+	// unresolved, so equal before/after is coincidental, not a true no-op.
 	isNoOp := changeType == ChangeTypeNoOp ||
-		(changeType == ChangeTypeUpdate && reflect.DeepEqual(change.Before, change.After))
+		(changeType == ChangeTypeUpdate && !isUnknown && reflect.DeepEqual(change.Before, change.After))
 
 	outputChange := &OutputChange{
 		Name:       name,
