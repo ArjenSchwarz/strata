@@ -272,23 +272,23 @@ run_analysis() {
   local config_file="$5"
   local json_file="$TEMP_DIR/metadata.json"
 
-  # Build command
-  local cmd="$TEMP_DIR/strata plan summary"
-  cmd="$cmd --output $output_format"
-  cmd="$cmd --file $json_file --file-format json"
+  # Build command as array to prevent word-splitting and metacharacter interpretation
+  local cmd=("$TEMP_DIR/strata" "plan" "summary")
+  cmd+=("--output" "$output_format")
+  cmd+=("--file" "$json_file" "--file-format" "json")
 
-  [[ "$show_details" == "true" ]] && cmd="$cmd --details"
-  [[ "$expand_all" == "true" ]] && cmd="$cmd --expand-all"
-  [[ -n "$config_file" ]] && cmd="$cmd --config $config_file"
+  [[ "$show_details" == "true" ]] && cmd+=("--details")
+  [[ "$expand_all" == "true" ]] && cmd+=("--expand-all")
+  [[ -n "$config_file" ]] && cmd+=("--config" "$config_file")
 
-  cmd="$cmd $plan_file"
+  cmd+=("--" "$plan_file")
 
   log_analyze "Analyzing Terraform plan"
-  log_config "Running: $cmd"
+  log_config "Running: ${cmd[*]}"
 
   # Execute and capture display output
   local display_output
-  if display_output=$($cmd 2>&1); then
+  if display_output=$("${cmd[@]}" 2>&1); then
     log_success "Analysis complete"
 
     # Store display output for later use
