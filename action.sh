@@ -488,7 +488,7 @@ ${footer}"
       "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/$pr_number/comments" 2>/dev/null); then
 
       local comment_id
-      if comment_id=$(echo "$comments" | jq -r ".[] | select(.body | contains(\"$marker\")) | .id" 2>/dev/null | head -1); then
+      if comment_id=$(echo "$comments" | jq -r --arg marker "$marker" '.[] | select(.body | contains($marker)) | .id' 2>/dev/null | head -1); then
         if [[ -n "$comment_id" ]] && [[ "$comment_id" != "null" ]]; then
           echo "📝 Updating existing comment #$comment_id"
           if update_comment "$comment_id" "$body"; then
