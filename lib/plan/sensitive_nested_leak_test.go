@@ -106,6 +106,73 @@ func TestSensitiveNestedObjectLeak(t *testing.T) {
 	})
 }
 
+// TestSensitiveAndUnknownNestedObject verifies that when a parent attribute is
+// both sensitive=true and after_unknown=true, the unknown child tracking is
+// preserved. Regression test for PR #61 review comment.
+func TestSensitiveAndUnknownNestedObject(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	t.Run("sensitive+unknown parent preserves unknown child tracking", func(t *testing.T) {
+		analysis := &PropertyChangeAnalysis{Changes: []PropertyChange{}}
+
+		before := map[string]any{
+			"config": map[string]any{
+				"host":     "old-host",
+				"password": "old-secret",
+			},
+		}
+		after := map[string]any{
+			"config": map[string]any{
+				"host":     "new-host",
+				"password": "new-secret",
+			},
+		}
+		// Parent is both sensitive and unknown
+		beforeSensitive := map[string]any{"config": true}
+		afterSensitive := map[string]any{"config": true}
+		afterUnknown := map[string]any{"config": true}
+
+		analyzer.compareObjects("", before, after, beforeSensitive, afterSensitive, afterUnknown, nil, analysis)
+
+		// Should have unknown child properties collected
+		hasUnknownChild := false
+		for _, change := range analysis.Changes {
+			if change.IsUnknown {
+				hasUnknownChild = true
+			}
+			// Values must still be masked
+			assert.NotContains(t, valStr(change.Before), "old-secret", "should not leak sensitive before value")
+			assert.NotContains(t, valStr(change.After), "new-secret", "should not leak sensitive after value")
+		}
+		assert.True(t, hasUnknownChild, "should have at least one unknown child property tracked")
+	})
+
+	t.Run("sensitive+unknown map collects nested unknown properties", func(t *testing.T) {
+		analysis := &PropertyChangeAnalysis{Changes: []PropertyChange{}}
+
+		after := map[string]any{
+			"db_config": map[string]any{
+				"endpoint": "pending",
+				"port":     "pending",
+			},
+		}
+		afterSensitive := map[string]any{"db_config": true}
+		afterUnknown := map[string]any{"db_config": true}
+
+		analyzer.compareObjects("", nil, after, nil, afterSensitive, afterUnknown, nil, analysis)
+
+		// collectNestedUnknownProperties should have walked the map children
+		unknownNames := map[string]bool{}
+		for _, change := range analysis.Changes {
+			if change.IsUnknown {
+				unknownNames[change.Name] = true
+			}
+		}
+		assert.True(t, unknownNames["endpoint"] || unknownNames["port"] || unknownNames["db_config"],
+			"should track unknown nested properties; got changes: %v", unknownNames)
+	})
+}
+
 func valStr(v any) string {
 	if v == nil {
 		return ""

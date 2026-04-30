@@ -181,10 +181,11 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 	}
 
 	// Handle nested objects first - check if this should be treated as a single nested property change
-	_, beforeIsMap := processedBefore.(map[string]any)
-	_, afterIsMap := processedAfter.(map[string]any)
+	// Use original values for structural checks so sensitive masking doesn't hide map/slice structure
+	_, beforeIsMap := before.(map[string]any)
+	_, afterIsMap := after.(map[string]any)
 
-	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(processedBefore, processedAfter, path) {
+	if (beforeIsMap || afterIsMap) && shouldTreatAsNestedObject(before, after, path) {
 		// Create a PropertyChange if objects differ, or always when unknown values are present
 		if isUnknown || !reflect.DeepEqual(before, after) {
 			propertyPath := a.parsePath(path)
@@ -209,8 +210,12 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				unknownType = unknownAfter
 
 				// When a nested object is unknown, collect all nested property paths
-				// and add them as individual unknown properties for tracking
-				a.collectNestedUnknownProperties(path, processedBefore, processedAfter, analysis)
+				// and add them as individual unknown properties for tracking.
+				// Use original after (not processedAfter) to preserve structural
+				// data that collectNestedUnknownProperties needs to walk children,
+				// even when the parent is sensitive and processedAfter is masked.
+				// Use processedBefore so Before values are masked for sensitive parents.
+				a.collectNestedUnknownProperties(path, processedBefore, after, analysis)
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
