@@ -100,11 +100,22 @@ download_strata() {
   detect_platform
   echo "🚀 Starting Strata GitHub Action (${OS}/${ARCH})"
 
-  # Check if cached binary exists and is executable
+  # Check if cached binary exists, is executable, and matches the requested version
   if [[ -x "$STRATA_BIN" ]]; then
-    echo "✅ Using cached Strata binary"
-    echo "🔍 Strata version: $("$STRATA_BIN" --version 2>/dev/null || echo "unknown")"
-    return 0
+    local cached_version
+    cached_version="$("$STRATA_BIN" --version 2>/dev/null || echo "")"
+    if [[ "$version" == "latest" ]]; then
+      echo "✅ Using cached Strata binary"
+      echo "🔍 Strata version: ${cached_version:-unknown}"
+      return 0
+    elif [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${version#v}"; then
+      echo "✅ Using cached Strata binary (matches requested $version)"
+      echo "🔍 Strata version: $cached_version"
+      return 0
+    else
+      echo "⚠️ Cached binary does not match requested version $version, re-downloading"
+      rm -f "$STRATA_BIN"
+    fi
   fi
 
   # Get the actual version tag for filename construction
