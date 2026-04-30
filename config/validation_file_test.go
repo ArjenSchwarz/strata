@@ -316,6 +316,31 @@ func TestFileValidator_SanitizeFilePath(t *testing.T) {
 			path:    "reports//output.json",
 			wantErr: false,
 		},
+		{
+			name:    "double dots in filename",
+			path:    "report..json",
+			wantErr: false,
+		},
+		{
+			name:    "double dots in directory name",
+			path:    "versions/v1..2/output.json",
+			wantErr: false,
+		},
+		{
+			name:    "mid-path traversal",
+			path:    "reports/../../etc/passwd",
+			wantErr: true,
+		},
+		{
+			name:    "legitimate percent in filename",
+			path:    "reports/100%_complete.json",
+			wantErr: false,
+		},
+		{
+			name:    "percent sign in directory name",
+			path:    "100%done/output.json",
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
