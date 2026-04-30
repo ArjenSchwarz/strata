@@ -57,15 +57,8 @@ func (a *Analyzer) maskSensitiveValue(value any, isSensitive bool) any {
 		return value
 	}
 
-	// Only mask primitive values, preserve structure for nested objects (requirement 5.5)
-	switch value.(type) {
-	case map[string]any, []any:
-		// Don't mask complex types - preserve structure for recursion
-		return value
-	default:
-		// Mask primitive sensitive values (requirement 5.4)
-		return sensitiveValue // "(sensitive value)" constant already defined
-	}
+	// Mask all sensitive values including complex types
+	return sensitiveValue // "(sensitive value)" constant already defined
 }
 
 // compareObjects performs deep object comparison for property change extraction with optional replacement path checking
@@ -321,11 +314,15 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			if beforeSensitive != nil {
 				if beforeSensMap, ok := beforeSensitive.(map[string]any); ok {
 					beforeSensChild = beforeSensMap[key]
+				} else if parentSens, ok := beforeSensitive.(bool); ok && parentSens {
+					beforeSensChild = true
 				}
 			}
 			if afterSensitive != nil {
 				if afterSensMap, ok := afterSensitive.(map[string]any); ok {
 					afterSensChild = afterSensMap[key]
+				} else if parentSens, ok := afterSensitive.(bool); ok && parentSens {
+					afterSensChild = true
 				}
 			}
 
@@ -467,6 +464,8 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				if afterSensitive != nil {
 					if afterSensMap, ok := afterSensitive.(map[string]any); ok {
 						afterSensChild = afterSensMap[key]
+					} else if parentSens, ok := afterSensitive.(bool); ok && parentSens {
+						afterSensChild = true
 					}
 				}
 
@@ -852,6 +851,11 @@ func (a *Analyzer) extractSensitiveChild(sensitiveValues any, key string) any {
 func (a *Analyzer) extractSensitiveIndex(sensitiveValues any, index int) any {
 	if sensitiveValues == nil {
 		return nil
+	}
+
+	// If parent is marked sensitive as a boolean, propagate to all elements
+	if parentSens, ok := sensitiveValues.(bool); ok && parentSens {
+		return true
 	}
 
 	if sensitiveSlice, ok := sensitiveValues.([]any); ok {
