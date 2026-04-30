@@ -1528,3 +1528,39 @@ func TestFormatter_sortResourcesByPriority(t *testing.T) {
 		}
 	})
 }
+
+// TestCreateSensitiveResourceChangesDataV2_NoOpOnlyDangerous verifies that when all
+// dangerous changes are no-ops, createSensitiveResourceChangesDataV2 returns empty data
+// so that handleSensitiveResourceDisplay shows "No sensitive resource changes detected."
+// instead of rendering an empty table. (T-523)
+func TestCreateSensitiveResourceChangesDataV2_NoOpOnlyDangerous(t *testing.T) {
+	cfg := &config.Config{}
+	formatter := NewFormatter(cfg)
+
+	summary := &PlanSummary{
+		ResourceChanges: []ResourceChange{
+			{
+				Address:      "aws_db_instance.main",
+				Type:         "aws_db_instance",
+				ChangeType:   ChangeTypeNoOp,
+				IsDangerous:  true,
+				DangerReason: "Database resource",
+			},
+			{
+				Address:      "aws_rds_instance.replica",
+				Type:         "aws_rds_instance",
+				ChangeType:   ChangeTypeNoOp,
+				IsDangerous:  true,
+				DangerReason: "Database resource",
+			},
+		},
+	}
+
+	data, err := formatter.createSensitiveResourceChangesDataV2(summary)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(data) != 0 {
+		t.Errorf("expected empty data for no-op-only dangerous changes, got %d rows", len(data))
+	}
+}

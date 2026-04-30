@@ -1135,17 +1135,6 @@ func (f *Formatter) shouldAutoExpandProvider(resources []ResourceChange) bool {
 	return false
 }
 
-// filterSensitiveChanges returns only the changes marked as dangerous/sensitive
-func (f *Formatter) filterSensitiveChanges(changes []ResourceChange) []ResourceChange {
-	var sensitive []ResourceChange
-	for _, change := range changes {
-		if change.IsDangerous {
-			sensitive = append(sensitive, change)
-		}
-	}
-	return sensitive
-}
-
 // getCollapsibleTableFormat returns collapsible-enabled table format with specific style
 func (f *Formatter) getCollapsibleTableFormat(style string) output.Format {
 	rendererConfig := f.getRendererConfig()
@@ -1292,12 +1281,11 @@ func (f *Formatter) handleResourceDisplay(summary *PlanSummary, showDetails bool
 
 // handleSensitiveResourceDisplay handles the display of sensitive resources when details are disabled
 func (f *Formatter) handleSensitiveResourceDisplay(summary *PlanSummary, _ *config.OutputConfiguration, builder *output.Builder) error {
-	sensitiveChanges := f.filterSensitiveChanges(summary.ResourceChanges)
-	if len(sensitiveChanges) > 0 {
-		sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
-		if err != nil {
-			return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
-		}
+	sensitiveData, err := f.createSensitiveResourceChangesDataV2(summary)
+	if err != nil {
+		return fmt.Errorf("failed to create sensitive resource changes data: %w", err)
+	}
+	if len(sensitiveData) > 0 {
 		sensitiveTable, err := output.NewTableContent("Sensitive Resource Changes", sensitiveData,
 			output.WithKeys("Action", "Resource", "Type", "ID", "Replacement", "Module", "Danger"))
 		if err == nil {
