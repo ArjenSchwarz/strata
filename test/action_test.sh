@@ -612,7 +612,7 @@ while [[ $# -gt 0 ]]; do
     --output) shift 2 ;;
     --file) json_file="$2"; shift 2 ;;
     --file-format) shift 2 ;;
-    --details|--expand-all) shift ;;
+    --details|--details=*|--expand-all) shift ;;
     --config) config_file="$2"; shift 2 ;;
     --) saw_separator="true"; shift; plan_file="$1"; shift ;;
     *) echo "unexpected-arg:$1" >&2; exit 99 ;;
