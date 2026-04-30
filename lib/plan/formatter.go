@@ -949,8 +949,16 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 // auto-expansion behavior for high-risk changes within provider groups (Requirement 6.4).
 // Provider sections will auto-expand when they contain dangerous deletions or replacements.
 func (f *Formatter) addGroupedResourceChangesWithCollapsibleSections(builder *output.Builder, groups map[string][]ResourceChange) *output.Builder {
+	// Sort provider keys for deterministic output ordering
+	providers := make([]string, 0, len(groups))
+	for provider := range groups {
+		providers = append(providers, provider)
+	}
+	sort.Strings(providers)
+
 	// Create collapsible sections for each provider with auto-expansion for high-risk changes
-	for provider, resources := range groups {
+	for _, provider := range providers {
+		resources := groups[provider]
 		if len(resources) == 0 {
 			continue
 		}
@@ -1180,8 +1188,14 @@ func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *outp
 	groups := f.groupResourcesByProvider(summary.ResourceChanges)
 	if len(groups) > 1 {
 		// Multiple providers: create provider-grouped sections
-		for providerName, resources := range groups {
-			f.addProviderGroupTable(providerName, resources, builder)
+		providerNames := make([]string, 0, len(groups))
+		for name := range groups {
+			providerNames = append(providerNames, name)
+		}
+		sort.Strings(providerNames)
+
+		for _, providerName := range providerNames {
+			f.addProviderGroupTable(providerName, groups[providerName], builder)
 		}
 	} else {
 		// Single provider: create standard table
