@@ -254,8 +254,8 @@ func (config *Config) MigrateDeprecatedConfig() []string {
 
 // ValidateConfiguration checks for invalid configuration combinations
 func (config *Config) ValidateConfiguration() error {
-	// Validate grouping threshold
-	if config.Plan.Grouping.Threshold < 1 {
+	// Validate grouping threshold only when grouping is enabled
+	if config.Plan.Grouping.Enabled && config.Plan.Grouping.Threshold < 1 {
 		return fmt.Errorf("plan.grouping.threshold must be at least 1, got %d", config.Plan.Grouping.Threshold)
 	}
 
