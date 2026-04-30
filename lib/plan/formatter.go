@@ -151,15 +151,18 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 	// Summary Statistics table - RE-ENABLED using NewTableContent pattern
 	// TASK 4.3: Ensure statistics remain unchanged and count all resources including no-ops (Requirement 3.7)
 	// Use original summary for statistics to maintain count of all resources
-	statsData, err := f.createStatisticsSummaryDataV2(summary)
-	if err == nil && len(statsData) > 0 {
-		statsTable, err := output.NewTableContent("Summary Statistics", statsData,
-			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
-		if err == nil {
-			builder = builder.AddContent(statsTable)
-		} else {
-			// Log warning but continue operation - conservative error handling
-			fmt.Printf("Warning: Failed to create summary statistics table: %v\n", err)
+	// Only show statistics when ShowStatisticsSummary is enabled (honors --show-statistics flag)
+	if f.config.Plan.ShowStatisticsSummary {
+		statsData, err := f.createStatisticsSummaryDataV2(summary)
+		if err == nil && len(statsData) > 0 {
+			statsTable, err := output.NewTableContent("Summary Statistics", statsData,
+				output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+			if err == nil {
+				builder = builder.AddContent(statsTable)
+			} else {
+				// Log warning but continue operation - conservative error handling
+				fmt.Printf("Warning: Failed to create summary statistics table: %v\n", err)
+			}
 		}
 	}
 
@@ -903,15 +906,17 @@ func (f *Formatter) formatResourceChangesWithProgressiveDisclosure(summary *Plan
 	if err == nil {
 		builder = builder.AddContent(planTable)
 	}
-	// Add statistics summary section
-	statsData, err := f.createStatisticsSummaryDataV2(summary)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
-	}
-	statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-		output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
-	if err == nil {
-		builder = builder.AddContent(statsTable)
+	// Add statistics summary section only when enabled
+	if f.config.Plan.ShowStatisticsSummary {
+		statsData, err := f.createStatisticsSummaryDataV2(summary)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
+		}
+		statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
+			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+		if err == nil {
+			builder = builder.AddContent(statsTable)
+		}
 	}
 	builder = f.addResourceChangesWithProgressiveDisclosure(builder, summary)
 	return builder.Build(), nil
@@ -930,15 +935,17 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 	if err == nil {
 		builder = builder.AddContent(planTable)
 	}
-	// Add statistics summary section
-	statsData, err := f.createStatisticsSummaryDataV2(summary)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
-	}
-	statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
-		output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
-	if err == nil {
-		builder = builder.AddContent(statsTable)
+	// Add statistics summary section only when enabled
+	if f.config.Plan.ShowStatisticsSummary {
+		statsData, err := f.createStatisticsSummaryDataV2(summary)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create statistics summary data: %w", err)
+		}
+		statsTable, err := output.NewTableContent(fmt.Sprintf("Summary for %s", summary.PlanFile), statsData,
+			output.WithKeys("Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"))
+		if err == nil {
+			builder = builder.AddContent(statsTable)
+		}
 	}
 	builder = f.addGroupedResourceChangesWithCollapsibleSections(builder, groups)
 	return builder.Build(), nil
