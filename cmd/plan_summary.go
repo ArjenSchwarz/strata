@@ -211,7 +211,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return formatter.OutputSummary(summary, outputConfig, showDetails)
+	return formatter.OutputSummary(summary, outputConfig, cfg.Plan.ShowDetails)
 }
 
 func init() {
