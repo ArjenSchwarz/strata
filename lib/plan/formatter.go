@@ -1311,11 +1311,11 @@ func (f *Formatter) createOutputChangesData(summary *PlanSummary) ([]map[string]
 
 // formatOutputValue formats an output value for display (requirements 2.3, 2.4)
 func formatOutputValue(value any, sensitive bool, isUnknown bool) string {
+	if isUnknown {
+		return knownAfterApply // requirement 2.3 - unknown takes precedence over sensitive
+	}
 	if sensitive {
 		return "(sensitive value)" // requirement 2.4
-	}
-	if isUnknown {
-		return knownAfterApply // requirement 2.3
 	}
 	if value == nil {
 		return "-"
