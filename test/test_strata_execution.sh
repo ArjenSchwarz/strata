@@ -149,8 +149,8 @@ while [[ $# -gt 0 ]]; do
         --output) output_format="$2"; shift; shift ;;
         --file) json_file="$2"; shift; shift ;;
         --file-format) file_format="$2"; shift; shift ;;
-        --details) show_details="true"; shift ;;
-        --expand-all) expand_all="true"; shift ;;
+        --details|--details=*) show_details="true"; shift ;;
+        --expand-all|--expand-all=*) expand_all="true"; shift ;;
         --config) config_file="$2"; shift; shift ;;
         --version) echo "strata version 1.4.0"; exit 0 ;;
         plan|summary) shift ;;

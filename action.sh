@@ -333,7 +333,7 @@ run_analysis() {
   cmd+=("--file" "$json_file" "--file-format" "json")
 
   [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd+=("--details=true") || cmd+=("--details=false")
-  [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd+=("--expand-all")
+  [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd+=("--expand-all=true") || cmd+=("--expand-all=false")
   [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd+=("--config" "$INPUT_CONFIG_FILE")
 
   cmd+=("--" "$INPUT_PLAN_FILE")
