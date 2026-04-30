@@ -1030,9 +1030,10 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 		}
 	}
 
-	// Detect no-op outputs from Terraform action metadata only.
-	// Replace/create/update actions can still have equal before/after values.
-	isNoOp := changeType == ChangeTypeNoOp
+	// Detect no-op outputs: explicit no-op action OR update with identical before/after values.
+	// Replace actions with equal values are intentionally excluded (not treated as no-op).
+	isNoOp := changeType == ChangeTypeNoOp ||
+		(changeType == ChangeTypeUpdate && reflect.DeepEqual(change.Before, change.After))
 
 	outputChange := &OutputChange{
 		Name:       name,

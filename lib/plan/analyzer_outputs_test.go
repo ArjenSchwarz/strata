@@ -642,6 +642,25 @@ func TestAnalyzeOutputChangeReplaceWithEqualValuesIsNotNoOp(t *testing.T) {
 	assert.False(t, result.IsNoOp, "replace actions must not be treated as no-op")
 }
 
+func TestAnalyzeOutputChangeUpdateWithEqualValuesIsNoOp(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	result, err := analyzer.analyzeOutputChange("unchanged_output", &tfjson.Change{
+		Actions: []tfjson.Action{tfjson.ActionUpdate},
+		Before:  "same-value",
+		After:   "same-value",
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	if result == nil {
+		return
+	}
+
+	assert.Equal(t, ChangeTypeUpdate, result.ChangeType)
+	assert.True(t, result.IsNoOp, "update actions with identical before/after should be treated as no-op")
+}
+
 // TestGetOutputActionAndIndicator tests the output action and indicator mapping function (Task 7.1)
 func TestGetOutputActionAndIndicator(t *testing.T) {
 	analyzer := &Analyzer{}
