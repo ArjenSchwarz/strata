@@ -160,6 +160,48 @@ func TestFormatter_createStatisticsSummaryDataV2(t *testing.T) {
 	}
 }
 
+func TestFormatter_createStatisticsSummaryDataV2_Vertical(t *testing.T) {
+	cfg := config.GetDefaultConfig()
+	cfg.Plan.StatisticsSummaryFormat = "vertical"
+	formatter := NewFormatter(cfg)
+
+	summary := &PlanSummary{
+		PlanFile: "test.tfplan",
+		Statistics: ChangeStatistics{
+			Total:        10,
+			ToAdd:        3,
+			ToChange:     4,
+			ToDestroy:    2,
+			Replacements: 1,
+			HighRisk:     1,
+			Unmodified:   0,
+		},
+	}
+
+	data, err := formatter.createStatisticsSummaryDataV2(summary)
+	if err != nil {
+		t.Fatalf("createStatisticsSummaryDataV2() error = %v", err)
+	}
+
+	if len(data) != 7 {
+		t.Fatalf("Expected 7 rows for vertical format, got %d", len(data))
+	}
+
+	// Verify first and second rows
+	if data[0]["Metric"] != "Total Changes" || data[0]["Value"] != 10 {
+		t.Errorf("Row 0: got Metric=%v Value=%v, want Total Changes/10", data[0]["Metric"], data[0]["Value"])
+	}
+	if data[1]["Metric"] != "Added" || data[1]["Value"] != 3 {
+		t.Errorf("Row 1: got Metric=%v Value=%v, want Added/3", data[1]["Metric"], data[1]["Value"])
+	}
+
+	// Verify keys helper returns vertical keys
+	keys := formatter.statisticsKeys()
+	if len(keys) != 2 || keys[0] != "Metric" || keys[1] != "Value" {
+		t.Errorf("statisticsKeys() = %v, want [Metric Value]", keys)
+	}
+}
+
 func TestFormatter_getFormatFromConfig(t *testing.T) {
 	cfg := &config.Config{}
 	formatter := NewFormatter(cfg)
