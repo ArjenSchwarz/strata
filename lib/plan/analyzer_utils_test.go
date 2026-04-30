@@ -1016,10 +1016,9 @@ func TestCompareObjectsEnhanced(t *testing.T) {
 
 // TestEnforcePropertyLimits tests the performance limit enforcement
 func TestEnforcePropertyLimits(t *testing.T) {
-	analyzer := &Analyzer{}
-
 	tests := []struct {
 		name              string
+		config            *config.Config
 		initialChanges    []PropertyChange
 		expectedCount     int
 		expectedTruncated bool
@@ -1027,7 +1026,8 @@ func TestEnforcePropertyLimits(t *testing.T) {
 		testType          string
 	}{
 		{
-			name: "under limits should not truncate",
+			name:   "under limits should not truncate",
+			config: nil, // uses defaults
 			initialChanges: []PropertyChange{
 				{Name: "prop1", Before: "small", After: "value", Action: "update"},
 				{Name: "prop2", Before: "another", After: "small", Action: "update"},
@@ -1037,7 +1037,8 @@ func TestEnforcePropertyLimits(t *testing.T) {
 			testType:          "normal",
 		},
 		{
-			name: "property count limit should truncate",
+			name:   "property count limit should truncate at default",
+			config: nil, // uses defaults
 			initialChanges: func() []PropertyChange {
 				changes := make([]PropertyChange, MaxPropertiesPerResource+5)
 				for i := range changes {
@@ -1054,10 +1055,36 @@ func TestEnforcePropertyLimits(t *testing.T) {
 			expectedTruncated: true,
 			testType:          "count_limit",
 		},
+		{
+			name: "custom config limit should be respected",
+			config: &config.Config{
+				Plan: config.PlanConfig{
+					PerformanceLimits: config.PerformanceLimitsConfig{
+						MaxPropertiesPerResource: 5,
+					},
+				},
+			},
+			initialChanges: func() []PropertyChange {
+				changes := make([]PropertyChange, 10)
+				for i := range changes {
+					changes[i] = PropertyChange{
+						Name:   fmt.Sprintf("prop%d", i),
+						Before: "value",
+						After:  "new",
+						Action: "update",
+					}
+				}
+				return changes
+			}(),
+			expectedCount:     5,
+			expectedTruncated: true,
+			testType:          "custom_config_limit",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			analyzer := &Analyzer{config: tt.config}
 			analysis := PropertyChangeAnalysis{
 				Changes: tt.initialChanges,
 			}
