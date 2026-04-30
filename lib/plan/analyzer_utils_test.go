@@ -1080,6 +1080,21 @@ func TestEnforcePropertyLimits(t *testing.T) {
 			expectedTruncated: true,
 			testType:          "custom_config_limit",
 		},
+		{
+			name: "large before and after should cap each value individually",
+			initialChanges: []PropertyChange{
+				{
+					Name:   "prop1",
+					Before: string(make([]byte, MaxPropertyValueSize+100)),
+					After:  string(make([]byte, MaxPropertyValueSize+100)),
+					Action: "update",
+				},
+			},
+			expectedCount:     1,
+			expectedTruncated: false,
+			expectedTotalSize: MaxPropertyValueSize * 2,
+			testType:          "size_cap",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1098,6 +1113,10 @@ func TestEnforcePropertyLimits(t *testing.T) {
 			// Verify all remaining changes have Size set
 			for i, change := range analysis.Changes {
 				assert.GreaterOrEqual(t, change.Size, 0, "Change %d should have non-negative size", i)
+			}
+
+			if tt.testType == "size_cap" {
+				assert.Equal(t, tt.expectedTotalSize, analysis.TotalSize, "Total size should reflect individually capped values")
 			}
 		})
 	}

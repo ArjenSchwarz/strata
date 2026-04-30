@@ -695,9 +695,9 @@ func (a *Analyzer) enforcePropertyLimits(analysis *PropertyChangeAnalysis) {
 	// Calculate total size and enforce memory limits
 	totalSize := 0
 	for i, change := range analysis.Changes {
-		size := min(a.estimateValueSize(change.Before)+a.estimateValueSize(change.After),
-			// Cap individual property size
-			limits.MaxPropertySize)
+		// Cap each value individually to avoid understating memory usage
+		size := min(a.estimateValueSize(change.Before), limits.MaxPropertySize) +
+			min(a.estimateValueSize(change.After), limits.MaxPropertySize)
 		analysis.Changes[i].Size = size
 
 		if int64(totalSize+size) > limits.MaxTotalMemory {
