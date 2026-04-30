@@ -833,47 +833,52 @@ func TestEvaluateResourceDanger(t *testing.T) {
 	analyzer := &Analyzer{config: cfg}
 
 	testCases := []struct {
-		name           string
-		change         *tfjson.ResourceChange
-		changeType     ChangeType
-		expectedDanger bool
-		expectedReason string
+		name              string
+		change            *tfjson.ResourceChange
+		changeType        ChangeType
+		expectedDanger    bool
+		expectedReason    string
+		expectedDangerProps []string
 	}{
 		{
 			name: "Regular deletion should be dangerous",
 			change: &tfjson.ResourceChange{
 				Type: "aws_s3_bucket",
 			},
-			changeType:     ChangeTypeDelete,
-			expectedDanger: true,
-			expectedReason: "Resource deletion",
+			changeType:        ChangeTypeDelete,
+			expectedDanger:    true,
+			expectedReason:    "Resource deletion",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "Sensitive resource deletion should be dangerous with specific reason",
 			change: &tfjson.ResourceChange{
 				Type: "aws_rds_instance",
 			},
-			changeType:     ChangeTypeDelete,
-			expectedDanger: true,
-			expectedReason: "Sensitive resource deletion",
+			changeType:        ChangeTypeDelete,
+			expectedDanger:    true,
+			expectedReason:    "Sensitive resource deletion",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "Sensitive resource replacement should be dangerous",
 			change: &tfjson.ResourceChange{
 				Type: "aws_rds_instance",
 			},
-			changeType:     ChangeTypeReplace,
-			expectedDanger: true,
-			expectedReason: "Database replacement",
+			changeType:        ChangeTypeReplace,
+			expectedDanger:    true,
+			expectedReason:    "Database replacement",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "EC2 instance replacement should have specific reason",
 			change: &tfjson.ResourceChange{
 				Type: "aws_ec2_instance",
 			},
-			changeType:     ChangeTypeReplace,
-			expectedDanger: true,
-			expectedReason: "Compute instance replacement",
+			changeType:        ChangeTypeReplace,
+			expectedDanger:    true,
+			expectedReason:    "Compute instance replacement",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "Non-sensitive resource update should not be dangerous",
@@ -888,9 +893,10 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:     ChangeTypeUpdate,
-			expectedDanger: false,
-			expectedReason: "",
+			changeType:        ChangeTypeUpdate,
+			expectedDanger:    false,
+			expectedReason:    "",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "Sensitive property change should be dangerous",
@@ -905,18 +911,20 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:     ChangeTypeUpdate,
-			expectedDanger: true,
-			expectedReason: "User data modification",
+			changeType:        ChangeTypeUpdate,
+			expectedDanger:    true,
+			expectedReason:    "User data modification",
+			expectedDangerProps: []string{"user_data"},
 		},
 		{
 			name: "Non-sensitive resource creation should not be dangerous",
 			change: &tfjson.ResourceChange{
 				Type: "aws_s3_bucket",
 			},
-			changeType:     ChangeTypeCreate,
-			expectedDanger: false,
-			expectedReason: "",
+			changeType:        ChangeTypeCreate,
+			expectedDanger:    false,
+			expectedReason:    "",
+			expectedDangerProps: nil,
 		},
 		{
 			name: "Multiple danger reasons should be combined",
@@ -931,20 +939,42 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:     ChangeTypeDelete,
-			expectedDanger: true,
-			expectedReason: "Sensitive resource deletion and User data modification",
+			changeType:        ChangeTypeDelete,
+			expectedDanger:    true,
+			expectedReason:    "Sensitive resource deletion and User data modification",
+			expectedDangerProps: []string{"user_data"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dangerous, reason := analyzer.evaluateResourceDanger(tc.change, tc.changeType)
+			dangerous, reason, dangerProps := analyzer.evaluateResourceDanger(tc.change, tc.changeType)
 			if dangerous != tc.expectedDanger {
 				t.Errorf("evaluateResourceDanger() dangerous = %v, want %v", dangerous, tc.expectedDanger)
 			}
 			if reason != tc.expectedReason {
 				t.Errorf("evaluateResourceDanger() reason = %q, want %q", reason, tc.expectedReason)
+			}
+			if tc.expectedDangerProps == nil {
+				if len(dangerProps) != 0 {
+					t.Errorf("evaluateResourceDanger() dangerProps = %v, want nil/empty", dangerProps)
+				}
+			} else {
+				if len(dangerProps) != len(tc.expectedDangerProps) {
+					t.Errorf("evaluateResourceDanger() dangerProps = %v, want %v", dangerProps, tc.expectedDangerProps)
+				}
+				for _, expected := range tc.expectedDangerProps {
+					found := false
+					for _, actual := range dangerProps {
+						if actual == expected {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("evaluateResourceDanger() dangerProps missing %q, got %v", expected, dangerProps)
+					}
+				}
 			}
 		})
 	}
@@ -962,7 +992,7 @@ func TestEvaluateResourceDangerHighlightDangersDisabled(t *testing.T) {
 	analyzer := &Analyzer{config: cfg}
 
 	// Even a sensitive resource deletion should not be flagged when HighlightDangers is false
-	dangerous, reason := analyzer.evaluateResourceDanger(&tfjson.ResourceChange{
+	dangerous, reason, props := analyzer.evaluateResourceDanger(&tfjson.ResourceChange{
 		Type: "aws_rds_instance",
 	}, ChangeTypeDelete)
 
@@ -971,6 +1001,9 @@ func TestEvaluateResourceDangerHighlightDangersDisabled(t *testing.T) {
 	}
 	if reason != "" {
 		t.Errorf("evaluateResourceDanger() reason should be empty when HighlightDangers is disabled, got %q", reason)
+	}
+	if len(props) != 0 {
+		t.Errorf("evaluateResourceDanger() props should be nil when HighlightDangers is disabled, got %v", props)
 	}
 }
 
