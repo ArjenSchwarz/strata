@@ -160,8 +160,19 @@ fmt:
 vet:
 	go vet ./...
 
-# Run linter (requires golangci-lint)
+# Run linter (requires golangci-lint v2+)
 lint:
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "Error: golangci-lint is not installed."; \
+		echo "Install v2: https://golangci-lint.run/welcome/install/"; \
+		exit 1; \
+	fi
+	@LINT_MAJOR=$$(golangci-lint version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d. -f1); \
+	if [ "$$LINT_MAJOR" != "2" ]; then \
+		echo "Error: golangci-lint v2 is required (.golangci.yml declares version: \"2\"), but v$$LINT_MAJOR is installed."; \
+		echo "Upgrade: https://golangci-lint.run/welcome/install/"; \
+		exit 1; \
+	fi
 	golangci-lint run
 
 # Run full validation suite
@@ -237,7 +248,7 @@ help:
 	@echo "Code quality targets:"
 	@echo "  fmt                   - Format Go code"
 	@echo "  vet                   - Run go vet for static analysis"
-	@echo "  lint                  - Run linter (requires golangci-lint)"
+	@echo "  lint                  - Run linter (requires golangci-lint v2+)"
 	@echo "  check                 - Run full validation suite (fmt, vet, lint, test)"
 	@echo "  security-scan         - Run security analysis (requires gosec)"
 	@echo ""
