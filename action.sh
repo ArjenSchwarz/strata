@@ -518,6 +518,7 @@ ${footer}"
         break
       fi
 
+
       # Check if we got an empty page (no more comments)
       local count
       count=$(echo "$comments" | jq 'length' 2>/dev/null || echo "0")
@@ -541,8 +542,6 @@ ${footer}"
       fi
       page=$((page + 1))
     done
-      fi
-    fi
   fi
 
   # Create new comment
