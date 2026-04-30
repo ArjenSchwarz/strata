@@ -133,7 +133,7 @@ source_script() {
         # Copy everything except the main execution guard and readonly TEMP_DIR
         sed -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
             -e 's/^readonly TEMP_DIR$/# readonly TEMP_DIR/' \
-            -e '/^TEMP_DIR=$(mktemp -d)$/d' \
+            -e '/^TEMP_DIR=.*/d' \
             action_simplified.sh > "$temp_script"
 
         # Add a test-safe TEMP_DIR assignment

@@ -224,7 +224,7 @@ source_script() {
 
         # Copy script but remove problematic readonly declarations and main execution
         sed -e "/^readonly TEMP_DIR$/d" \
-            -e "/^TEMP_DIR=\$(mktemp -d)$/d" \
+            -e "/^TEMP_DIR=.*/d" \
             -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
             -e '/\[\[ -d "\$TEMP_DIR" \]\]/s/.*/    # TEMP_DIR cleanup removed for testing/' \
             action.sh > "$temp_script"
@@ -731,8 +731,8 @@ test_trap_cleanup_comprehensive() {
 #!/bin/bash
 set -euo pipefail
 
+TEMP_DIR=$(mktemp -d) || { echo "Failed to create temp dir"; exit 1; }
 readonly TEMP_DIR
-TEMP_DIR=$(mktemp -d)
 CLEANUP_MARKER="/tmp/cleanup_test_normal"
 
 cleanup() {
@@ -770,8 +770,8 @@ EOF
 #!/bin/bash
 set -euo pipefail
 
+TEMP_DIR=$(mktemp -d) || { echo "Failed to create temp dir"; exit 1; }
 readonly TEMP_DIR
-TEMP_DIR=$(mktemp -d)
 CLEANUP_MARKER="/tmp/cleanup_test_error"
 
 cleanup() {
@@ -813,8 +813,8 @@ EOF
 #!/bin/bash
 set -euo pipefail
 
+TEMP_DIR=$(mktemp -d) || { echo "Failed to create temp dir"; exit 1; }
 readonly TEMP_DIR
-TEMP_DIR=$(mktemp -d)
 CLEANUP_MARKER="/tmp/cleanup_test_signal"
 
 cleanup() {
@@ -924,8 +924,8 @@ test_simple_directory_structure() {
 #!/bin/bash
 set -euo pipefail
 
+TEMP_DIR=$(mktemp -d) || { echo "Failed to create temp dir"; exit 1; }
 readonly TEMP_DIR
-TEMP_DIR=$(mktemp -d)
 DIR_STRUCTURE_LOG="/tmp/dir_structure_test.log"
 
 cleanup() {
