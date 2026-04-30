@@ -130,7 +130,12 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
+	if err := viper.ReadInConfig(); err != nil {
+		if cfgFile != "" {
+			// When --config is explicitly provided, surface the error immediately
+			cobra.CheckErr(fmt.Errorf("failed to read config file %s: %w", cfgFile, err))
+		}
+	} else {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 }
