@@ -130,8 +130,8 @@ validate_file_exists() {
 validate_output_format() {
   local format="$1"
 
-  if [[ ! "$format" =~ ^(table|json|markdown|html)$ ]]; then
-    log_error "Invalid output format: $format. Must be one of: table, json, markdown, html" 2
+  if [[ ! "$format" =~ ^(table|json|markdown|html|csv)$ ]]; then
+    log_error "Invalid output format: $format. Must be one of: table, json, markdown, html, csv" 2
   fi
 }
 

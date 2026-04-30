@@ -10,7 +10,7 @@ inputs:
     description: 'Path to Terraform plan file'
     required: true
   output-format:
-    description: 'Output format (table, json, markdown)'
+    description: 'Output format (table, json, markdown, html, csv)'
     required: false
     default: 'markdown'
   config-file:
