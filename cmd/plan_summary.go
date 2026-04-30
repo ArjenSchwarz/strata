@@ -138,13 +138,13 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 
 	// Create config for analyzer with defaults
 	cfg := config.GetDefaultConfig()
-	cfg.Plan.ShowDetails = showDetails
-	cfg.Plan.HighlightDangers = highlightDangers
-	cfg.Plan.ShowStatisticsSummary = showStatisticsSummary
-	cfg.Plan.StatisticsSummaryFormat = statisticsSummaryFormat
-	cfg.Plan.ShowNoOps = showNoOps
 
-	// Read expand-all configuration from Viper (includes CLI flag override)
+	// Read values from Viper which handles precedence: CLI flag > config file > default
+	cfg.Plan.ShowDetails = viper.GetBool("plan.show-details")
+	cfg.Plan.HighlightDangers = viper.GetBool("plan.highlight-dangers")
+	cfg.Plan.ShowStatisticsSummary = viper.GetBool("plan.show-statistics-summary")
+	cfg.Plan.StatisticsSummaryFormat = viper.GetString("plan.statistics-summary-format")
+	cfg.Plan.ShowNoOps = viper.GetBool("plan.show-no-ops")
 	cfg.ExpandAll = viper.GetBool("expand_all")
 
 	// Load expandable sections configuration from config file if it exists
@@ -211,7 +211,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return formatter.OutputSummary(summary, outputConfig, showDetails)
+	return formatter.OutputSummary(summary, outputConfig, cfg.Plan.ShowDetails)
 }
 
 func init() {

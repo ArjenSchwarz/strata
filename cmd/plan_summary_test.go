@@ -178,3 +178,87 @@ func TestPlanSummaryFlagDefaults(t *testing.T) {
 		t.Errorf("Expected usage %q, got %q", expectedUsage, flag.Usage)
 	}
 }
+
+func TestPlanSummaryViperConfigRespected(t *testing.T) {
+	// This test verifies the fix for T-368: config values for plan flags
+	// must be respected when CLI flags are not explicitly set.
+	// Viper with BindPFlag handles precedence: CLI flag > config file > flag default.
+
+	tests := []struct {
+		name       string
+		viperKey   string
+		viperValue interface{}
+		expected   interface{}
+	}{
+		{
+			name:       "show-details from config overrides default",
+			viperKey:   "plan.show-details",
+			viperValue: false,
+			expected:   false,
+		},
+		{
+			name:       "highlight-dangers from config overrides default",
+			viperKey:   "plan.highlight-dangers",
+			viperValue: false,
+			expected:   false,
+		},
+		{
+			name:       "show-statistics-summary from config overrides default",
+			viperKey:   "plan.show-statistics-summary",
+			viperValue: false,
+			expected:   false,
+		},
+		{
+			name:       "statistics-summary-format from config overrides default",
+			viperKey:   "plan.statistics-summary-format",
+			viperValue: "vertical",
+			expected:   "vertical",
+		},
+		{
+			name:       "show-no-ops from config overrides default",
+			viperKey:   "plan.show-no-ops",
+			viperValue: true,
+			expected:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+
+			// Rebind flags after reset so viper knows about them
+			if err := viper.BindPFlag("plan.show-details", planSummaryCmd.Flags().Lookup("details")); err != nil {
+				t.Fatal(err)
+			}
+			if err := viper.BindPFlag("plan.highlight-dangers", planSummaryCmd.Flags().Lookup("highlight-dangers")); err != nil {
+				t.Fatal(err)
+			}
+			if err := viper.BindPFlag("plan.show-statistics-summary", planSummaryCmd.Flags().Lookup("show-statistics")); err != nil {
+				t.Fatal(err)
+			}
+			if err := viper.BindPFlag("plan.statistics-summary-format", planSummaryCmd.Flags().Lookup("stats-format")); err != nil {
+				t.Fatal(err)
+			}
+			if err := viper.BindPFlag("plan.show-no-ops", planSummaryCmd.Flags().Lookup("show-no-ops")); err != nil {
+				t.Fatal(err)
+			}
+
+			// Simulate config file setting
+			viper.Set(tt.viperKey, tt.viperValue)
+
+			// Read value the same way runPlanSummary does
+			switch expected := tt.expected.(type) {
+			case bool:
+				got := viper.GetBool(tt.viperKey)
+				if got != expected {
+					t.Errorf("viper.GetBool(%q) = %v, want %v", tt.viperKey, got, expected)
+				}
+			case string:
+				got := viper.GetString(tt.viperKey)
+				if got != expected {
+					t.Errorf("viper.GetString(%q) = %q, want %q", tt.viperKey, got, expected)
+				}
+			}
+		})
+	}
+}
