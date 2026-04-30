@@ -104,7 +104,28 @@ func (f *Formatter) OutputSummary(summary *PlanSummary, outputConfig *config.Out
 			output.WithWriter(output.NewStdoutWriter()),
 		}
 		stdoutOut := output.NewOutput(stdoutOptions...)
-		return stdoutOut.Render(ctx, doc)
+		if err := stdoutOut.Render(ctx, doc); err != nil {
+			return fmt.Errorf("failed to render to stdout: %w", err)
+		}
+
+		// Render to file if configured (same as main code path)
+		if outputConfig.OutputFile != "" {
+			fileWriter, err := output.NewFileWriterWithOptions(".", outputConfig.OutputFile, output.WithAbsolutePaths())
+			if err != nil {
+				return fmt.Errorf("failed to create file writer: %w", err)
+			}
+			fileFormat := f.getFormatFromConfig(outputConfig.OutputFileFormat)
+			fileOptions := []output.OutputOption{
+				output.WithFormat(fileFormat),
+				output.WithWriter(fileWriter),
+			}
+			fileOut := output.NewOutput(fileOptions...)
+			if err := fileOut.Render(ctx, doc); err != nil {
+				return fmt.Errorf("failed to render to file: %w", err)
+			}
+		}
+
+		return nil
 	}
 
 	// Build the document using v2 builder pattern
