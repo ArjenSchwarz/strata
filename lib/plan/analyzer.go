@@ -964,7 +964,7 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 		}
 
 		// Enhanced danger reason logic
-		change.IsDangerous, change.DangerReason = a.evaluateResourceDanger(rc, changeType)
+		change.IsDangerous, change.DangerReason, change.DangerProperties = a.evaluateResourceDanger(rc, changeType)
 
 		changes = append(changes, change)
 	}
@@ -1440,14 +1440,15 @@ func (a *Analyzer) formatReplacePath(path any) string {
 
 // evaluateResourceDanger determines if a resource change is dangerous and provides a descriptive reason.
 // When HighlightDangers is disabled in config, danger detection is suppressed entirely.
-func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeType ChangeType) (bool, string) {
+func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeType ChangeType) (bool, string, []string) {
 	// Honor the highlight-dangers flag: when false, suppress all danger detection
 	if a.config != nil && !a.config.Plan.HighlightDangers {
-		return false, ""
+		return false, "", nil
 	}
 
 	isDangerous := false
 	reasonParts := make([]string, 0)
+	var dangerProps []string
 
 	// All deletion operations are considered risky by default
 	if changeType == ChangeTypeDelete {
@@ -1467,7 +1468,7 @@ func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeT
 
 	// Check for sensitive property changes (only if we have the necessary data)
 	if change.Change != nil {
-		dangerProps := a.checkSensitiveProperties(change)
+		dangerProps = a.checkSensitiveProperties(change)
 		if len(dangerProps) > 0 {
 			isDangerous = true
 			reasonParts = append(reasonParts, a.getSensitivePropertyReason(dangerProps))
@@ -1480,7 +1481,8 @@ func (a *Analyzer) evaluateResourceDanger(change *tfjson.ResourceChange, changeT
 		reason = strings.Join(reasonParts, " and ")
 	}
 
-	return isDangerous, reason
+	sort.Strings(dangerProps)
+	return isDangerous, reason, dangerProps
 }
 
 // getSensitiveResourceReason returns a descriptive reason for sensitive resource changes
