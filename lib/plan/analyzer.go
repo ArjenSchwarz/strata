@@ -1009,7 +1009,7 @@ func (a *Analyzer) analyzeOutputChange(name string, change *tfjson.Change) (*Out
 
 	// Check if the output value is unknown using after_unknown logic
 	if change.AfterUnknown != nil {
-		if unknown, ok := change.AfterUnknown.(bool); ok && unknown {
+		if a.hasAnyUnknown(change.AfterUnknown) {
 			isUnknown = true
 			displayAfter = a.getUnknownValueDisplay()
 		}
@@ -1874,6 +1874,28 @@ func (a *Analyzer) groupByProvider(changes []ResourceChange) map[string][]Resour
 	}
 
 	return groups
+}
+
+// hasAnyUnknown recursively checks whether an AfterUnknown value contains any true entries.
+// AfterUnknown can be a bool, a map[string]any, or a []any.
+func (a *Analyzer) hasAnyUnknown(v any) bool {
+	switch val := v.(type) {
+	case bool:
+		return val
+	case map[string]any:
+		for _, child := range val {
+			if a.hasAnyUnknown(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range val {
+			if a.hasAnyUnknown(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isValueUnknown checks if a property at the given path is marked as unknown in after_unknown
