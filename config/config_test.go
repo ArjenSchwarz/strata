@@ -579,26 +579,35 @@ func TestGetString_ReturnsBoundFlagDefaults(t *testing.T) {
 
 func TestNewOutputConfiguration_UseColorsOnlyForTable(t *testing.T) {
 	tests := []struct {
-		format    string
-		wantColor bool
+		name       string
+		format     string
+		fileFormat string
+		wantColor  bool
 	}{
-		{"table", true},
-		{"json", false},
-		{"markdown", false},
-		{"html", false},
-		{"csv", false},
+		{"stdout table", "table", "", true},
+		{"stdout json", "json", "", false},
+		{"stdout markdown", "markdown", "", false},
+		{"stdout html", "html", "", false},
+		{"stdout csv", "csv", "", false},
+		{"json stdout, table file", "json", "table", true},
+		{"table stdout, json file", "table", "json", true},
+		{"json stdout, markdown file", "json", "markdown", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.format, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			viper.Reset()
 			viper.Set("output", tt.format)
+			if tt.fileFormat != "" {
+				viper.Set("output-file-format", tt.fileFormat)
+				viper.Set("output-file", "dummy.out")
+			}
 
 			cfg := GetDefaultConfig()
 			outputConfig := cfg.NewOutputConfiguration()
 
 			if outputConfig.UseColors != tt.wantColor {
-				t.Errorf("UseColors for format %q = %v, want %v", tt.format, outputConfig.UseColors, tt.wantColor)
+				t.Errorf("UseColors for stdout=%q file=%q = %v, want %v", tt.format, tt.fileFormat, outputConfig.UseColors, tt.wantColor)
 			}
 
 			viper.Reset()
