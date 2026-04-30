@@ -277,7 +277,7 @@ run_analysis() {
   cmd="$cmd --output $output_format"
   cmd="$cmd --file $json_file --file-format json"
 
-  [[ "$show_details" == "true" ]] && cmd="$cmd --show-details"
+  [[ "$show_details" == "true" ]] && cmd="$cmd --details"
   [[ "$expand_all" == "true" ]] && cmd="$cmd --expand-all"
   [[ -n "$config_file" ]] && cmd="$cmd --config $config_file"
 
