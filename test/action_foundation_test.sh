@@ -226,7 +226,7 @@ source_script() {
         sed -e "/^readonly TEMP_DIR$/d" \
             -e "/^TEMP_DIR=\$(mktemp -d)$/d" \
             -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
-            -e "/\[\[ -d \"\$TEMP_DIR\" \]\]/c\\    # TEMP_DIR cleanup removed for testing" \
+            -e '/\[\[ -d "\$TEMP_DIR" \]\]/s/.*/    # TEMP_DIR cleanup removed for testing/' \
             action.sh > "$temp_script"
 
         # Source the modified script
