@@ -145,6 +145,7 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 	cfg.Plan.ShowStatisticsSummary = viper.GetBool("plan.show-statistics-summary")
 	cfg.Plan.StatisticsSummaryFormat = viper.GetString("plan.statistics-summary-format")
 	cfg.Plan.ShowNoOps = viper.GetBool("plan.show-no-ops")
+	cfg.Plan.AlwaysShowSensitive = viper.GetBool("plan.always-show-sensitive")
 	cfg.ExpandAll = viper.GetBool("expand_all")
 	cfg.UseEmoji = viper.GetBool("use_emoji")
 
