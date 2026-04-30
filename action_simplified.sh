@@ -327,17 +327,18 @@ extract_outputs() {
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    local delim="ghadelim_$(date +%s)_${RANDOM}"
     {
       echo "has-changes=$([[ $total -gt 0 ]] && echo true || echo false)"
       echo "has-dangers=$([[ $dangers -gt 0 ]] && echo true || echo false)"
       echo "change-count=$total"
       echo "danger-count=$dangers"
-      echo "summary<<EOF"
+      echo "summary<<${delim}"
       echo "$display_output"
-      echo "EOF"
-      echo "json-summary<<EOF"
+      echo "${delim}"
+      echo "json-summary<<${delim}"
       cat "$json_file"
-      echo "EOF"
+      echo "${delim}"
     } >> "$GITHUB_OUTPUT"
   fi
 
