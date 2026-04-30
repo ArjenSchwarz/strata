@@ -45,20 +45,46 @@ func (fv *FileValidator) ValidateFileOutput(config *OutputConfiguration) error {
 // sanitizeFilePath cleans and validates a file path for security.
 // Returns the cleaned absolute path or a structured error for security violations.
 func (fv *FileValidator) sanitizeFilePath(path string) (string, error) {
-	// Check for path traversal attempts before cleaning
-	if strings.Contains(path, "..") {
-		return "", &FileOutputError{
-			Type:    "validation",
-			Code:    "PATH_TRAVERSAL",
-			Path:    path,
-			Message: "path traversal not allowed",
+	traversalErr := &FileOutputError{
+		Type:    "validation",
+		Code:    "PATH_TRAVERSAL",
+		Path:    path,
+		Message: "path traversal not allowed",
+	}
+
+	// Reject URL-encoded traversal attempts (e.g. "..%2F", "..%252F")
+	if strings.Contains(path, "%") {
+		return "", traversalErr
+	}
+
+	// Normalize: treat both / and \ as separators for cross-platform safety.
+	// This allows legitimate filenames like "report..json" while blocking
+	// directory traversal like "../secret" or "..\secret".
+	replacer := strings.NewReplacer("\\", "/")
+	normalized := replacer.Replace(path)
+	for _, part := range strings.Split(normalized, "/") {
+		if part == ".." {
+			return "", traversalErr
 		}
 	}
 
-	// Clean path and resolve any relative components
+	// Clean path and resolve any relative components.
+	// Re-check after cleaning since Clean collapses patterns like "....//".
 	clean := filepath.Clean(path)
+	cleanNorm := replacer.Replace(filepath.ToSlash(clean))
+	for _, part := range strings.Split(cleanNorm, "/") {
+		if part == ".." {
+			return "", traversalErr
+		}
+		// Reject components that are only dots (3+), as these can be
+		// obfuscated traversal attempts (e.g. "....//").
+		if len(part) > 2 && strings.Trim(part, ".") == "" {
+			return "", traversalErr
+		}
+	}
 
-	// Convert to absolute path for consistency
+	// Catch obfuscated traversal patterns (e.g. "....//") that survive cleaning
+	// by checking if the cleaned path escapes the working directory.
 	abs, err := filepath.Abs(clean)
 	if err != nil {
 		return "", &FileOutputError{
@@ -67,6 +93,15 @@ func (fv *FileValidator) sanitizeFilePath(path string) (string, error) {
 			Path:    path,
 			Message: "invalid file path",
 			Cause:   err,
+		}
+	}
+
+	// If the original path was relative, ensure the resolved path stays
+	// under the working directory (blocks obfuscated traversal like "....//").
+	if !filepath.IsAbs(path) {
+		wd, wdErr := os.Getwd()
+		if wdErr == nil && !strings.HasPrefix(abs, wd) {
+			return "", traversalErr
 		}
 	}
 
