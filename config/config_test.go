@@ -539,3 +539,40 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Errorf("Default config should be valid, got error: %v", err)
 	}
 }
+
+func TestGetString_ReturnsBoundFlagDefaults(t *testing.T) {
+	// Reset viper to simulate fresh state
+	viper.Reset()
+
+	// Simulate flag binding with a default value (as done in root.go)
+	// When a flag is bound but not explicitly set by the user,
+	// viper.IsSet() returns false but viper.GetString() returns the default.
+	viper.SetDefault("output", "table")
+	viper.SetDefault("table.style", "default")
+	viper.SetDefault("table.max-column-width", 50)
+
+	config := GetDefaultConfig()
+
+	// These should return the defaults, not empty/zero
+	if got := config.GetLCString("output"); got != "table" {
+		t.Errorf("GetLCString(\"output\") = %q, want %q", got, "table")
+	}
+	if got := config.GetString("table.style"); got != "default" {
+		t.Errorf("GetString(\"table.style\") = %q, want %q", got, "default")
+	}
+	if got := config.GetInt("table.max-column-width"); got != 50 {
+		t.Errorf("GetInt(\"table.max-column-width\") = %d, want %d", got, 50)
+	}
+
+	// NewOutputConfiguration should also reflect these defaults
+	outputConfig := config.NewOutputConfiguration()
+	if outputConfig.Format != "table" {
+		t.Errorf("OutputConfiguration.Format = %q, want %q", outputConfig.Format, "table")
+	}
+	if outputConfig.MaxColumnWidth != 50 {
+		t.Errorf("OutputConfiguration.MaxColumnWidth = %d, want %d", outputConfig.MaxColumnWidth, 50)
+	}
+
+	// Clean up
+	viper.Reset()
+}
