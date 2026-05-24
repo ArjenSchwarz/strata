@@ -23,7 +23,8 @@ plan:
   always-show-sensitive: true  # Always show sensitive resources even when details are disabled
 ```
 
-You can also enable it via command-line flags (if implemented):
+You can also control it via command-line flags. The `--always-show-sensitive`
+flag (default `true`) overrides the configuration file value:
 
 ```bash
 strata plan summary --details=false --always-show-sensitive=true terraform.tfplan

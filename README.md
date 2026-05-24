@@ -82,7 +82,7 @@ File paths support placeholders for dynamic naming:
 Examples:
   strata plan summary terraform.tfplan
   strata plan summary --output json terraform.tfplan
-  strata plan summary --show-details terraform.tfplan
+  strata plan summary --details terraform.tfplan
   strata plan summary --expand-all terraform.tfplan
   strata plan summary --file output.json --file-format json terraform.tfplan
   strata plan summary --file "report-$TIMESTAMP-$AWS_REGION.md" --file-format markdown terraform.tfplan
@@ -91,12 +91,14 @@ Usage:
   strata plan summary [flags] PLAN_FILE
 
 Flags:
-  -e, --expand-all             Expand all collapsible sections
-  -h, --help                   help for summary
-      --highlight-dangers      Highlight potentially dangerous changes (default true)
-      --show-details           Show detailed resource changes (default true)
-      --show-statistics        Show statistics summary table (default true)
-      --stats-format string    Statistics summary format (horizontal, vertical) (default "horizontal")
+      --always-show-sensitive   Show sensitive resource changes even when details are disabled (default true)
+      --details                 Show detailed change information (default true)
+  -e, --expand-all              Expand all collapsible sections
+  -h, --help                    help for summary
+      --highlight-dangers       Highlight potentially destructive changes (default true)
+      --show-no-ops             Show no-op resources in the summary
+      --show-statistics         Show statistics summary table (default true)
+      --stats-format string     Statistics summary format (horizontal, vertical) (default "horizontal")
 
 Global Flags:
       --config string          config file (default is ./strata.yaml or ~/.strata.yaml)
