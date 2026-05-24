@@ -339,7 +339,10 @@ func TestEmptyTableSuppressionLogic(t *testing.T) {
 	}
 }
 
-// TestRiskBasedSortingBehavior tests the risk-based sorting behavior
+// TestRiskBasedSortingBehavior verifies that the production sorting logic
+// (Formatter.sortResourcesByPriority) orders real plan resources by risk:
+// dangerous resources come first, then by action priority
+// (delete > replace > update > create > no-op), then alphabetically by address.
 func TestRiskBasedSortingBehavior(t *testing.T) {
 	// Load danger sample which should have dangerous resources
 	parser := NewParser("../../samples/danger-sample.json")
@@ -362,7 +365,8 @@ func TestRiskBasedSortingBehavior(t *testing.T) {
 		t.Fatal("Failed to generate summary")
 	}
 
-	// Categorize resources by danger and action type
+	// Categorize resources by danger so we can assert the sort interleaves them
+	// correctly. No-ops are excluded because they are filtered before display.
 	dangerousChanges := make([]ResourceChange, 0)
 	nonDangerousChanges := make([]ResourceChange, 0)
 
@@ -378,10 +382,90 @@ func TestRiskBasedSortingBehavior(t *testing.T) {
 		}
 	}
 
+	// The danger sample is the basis for this test; if it ever stops producing
+	// both categories the test is no longer exercising the intended behaviour.
 	if len(dangerousChanges) == 0 {
-		t.Log("Note: No dangerous changes identified in test data")
+		t.Fatal("danger-sample.json should produce at least one dangerous change; sorting behaviour cannot be validated")
+	}
+	if len(nonDangerousChanges) == 0 {
+		t.Fatal("danger-sample.json should produce at least one non-dangerous change; sorting behaviour cannot be validated")
 	}
 
+	// Exercise the real risk-based sorting used by the formatter.
+	formatter := NewFormatter(cfg)
+	sorted := formatter.sortResourcesByPriority(summary.ResourceChanges)
+
+	// Drop no-ops from the sorted output to compare against the categorized data.
+	sortedNonNoOp := make([]ResourceChange, 0, len(sorted))
+	for _, change := range sorted {
+		if change.ChangeType == ChangeTypeNoOp {
+			continue
+		}
+		sortedNonNoOp = append(sortedNonNoOp, change)
+	}
+
+	if len(sortedNonNoOp) != len(dangerousChanges)+len(nonDangerousChanges) {
+		t.Fatalf("sorted output has %d non-no-op resources, expected %d (dangerous %d + non-dangerous %d)",
+			len(sortedNonNoOp), len(dangerousChanges)+len(nonDangerousChanges),
+			len(dangerousChanges), len(nonDangerousChanges))
+	}
+
+	// Assertion 1: every dangerous resource sorts ahead of every non-dangerous one.
+	// The first len(dangerousChanges) entries must all be dangerous.
+	for i, change := range sortedNonNoOp {
+		shouldBeDangerous := i < len(dangerousChanges)
+		if change.IsDangerous != shouldBeDangerous {
+			t.Errorf("position %d (%s): IsDangerous=%v, expected %v — dangerous resources must sort first",
+				i, change.Address, change.IsDangerous, shouldBeDangerous)
+		}
+	}
+
+	// Once a non-dangerous resource appears, no dangerous resource may follow it.
+	seenNonDangerous := false
+	for i, change := range sortedNonNoOp {
+		if !change.IsDangerous {
+			seenNonDangerous = true
+		} else if seenNonDangerous {
+			t.Errorf("position %d (%s): dangerous resource appears after a non-dangerous one", i, change.Address)
+		}
+	}
+
+	// Assertion 2: within each danger group, ordering follows action priority then
+	// alphabetical address. Verify each adjacent pair sharing the same danger flag.
+	for i := 1; i < len(sortedNonNoOp); i++ {
+		prev, cur := sortedNonNoOp[i-1], sortedNonNoOp[i]
+		if prev.IsDangerous != cur.IsDangerous {
+			continue // boundary between danger groups already validated above
+		}
+
+		prevPriority := changeTypePriority(prev.ChangeType)
+		curPriority := changeTypePriority(cur.ChangeType)
+		if prevPriority > curPriority {
+			t.Errorf("position %d: %s (%s) sorted after %s (%s); higher-priority action must come first",
+				i, cur.Address, cur.ChangeType, prev.Address, prev.ChangeType)
+		}
+		if prevPriority == curPriority && prev.Address > cur.Address {
+			t.Errorf("position %d: %s sorted after %s; equal-priority resources must be alphabetical",
+				i, cur.Address, prev.Address)
+		}
+	}
+}
+
+// changeTypePriority mirrors the action ordering in Formatter.sortResourcesByPriority
+// (delete > replace > update > create > no-op). Lower numbers sort first.
+func changeTypePriority(ct ChangeType) int {
+	switch ct {
+	case ChangeTypeDelete:
+		return 0
+	case ChangeTypeReplace:
+		return 1
+	case ChangeTypeUpdate:
+		return 2
+	case ChangeTypeCreate:
+		return 3
+	default:
+		return 4
+	}
 }
 
 // TestBackwardCompatibility tests that output structure remains consistent
