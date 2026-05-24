@@ -67,19 +67,31 @@ log_perf() {
     fi
 }
 
-# Measure execution time for a command
+# Measure execution time for a command.
+#
+# Usage: duration=$(measure_time <log_file> command [args...])
+#
+# The first argument is the log file that receives the timed command's
+# stdout and stderr. Redirecting inside measure_time (instead of on the
+# command substitution) keeps the printed duration on measure_time's own
+# stdout so the caller can capture it. Wrapping the call site redirection
+# around measure_time would send the duration into the log instead, leaving
+# the caller with an empty value (see T-1228).
 measure_time() {
+    local log_file="$1"
+    shift
+
     local start_time end_time duration
     start_time=$(date +%s)
 
-    # Execute the command passed as arguments
-    "$@"
+    # Execute the command passed as arguments, routing its output to the log.
+    "$@" > "$log_file" 2>&1
     local exit_code=$?
 
     end_time=$(date +%s)
     duration=$((end_time - start_time))
 
-    echo $duration
+    echo "$duration"
     return $exit_code
 }
 
@@ -153,12 +165,12 @@ test_binary_download_performance() {
 
     # Measure total execution time (which includes download)
     local duration
-    if duration=$(measure_time timeout 60 ./action.sh > "$action_log" 2>&1); then
-        log_perf $duration "Binary download + execution" $BINARY_DOWNLOAD_THRESHOLD
+    if duration=$(measure_time "$action_log" timeout 60 ./action.sh); then
+        log_perf "$duration" "Binary download + execution" "$BINARY_DOWNLOAD_THRESHOLD"
 
         # Since we can't easily separate download time from execution time in the current implementation,
         # we measure the total time and ensure it's reasonable for a fresh download
-        if [ $duration -le $BINARY_DOWNLOAD_THRESHOLD ]; then
+        if [ "$duration" -le "$BINARY_DOWNLOAD_THRESHOLD" ]; then
             log_pass "Binary download performance - Within acceptable time"
         else
             # Check if the action actually succeeded
@@ -213,8 +225,8 @@ test_analysis_startup_performance() {
     export GITHUB_OUTPUT="$github_output"
 
     local duration
-    if duration=$(measure_time timeout 30 ./action.sh > "$action_log" 2>&1); then
-        log_perf $duration "Analysis startup (cached)" $ANALYSIS_STARTUP_THRESHOLD
+    if duration=$(measure_time "$action_log" timeout 30 ./action.sh); then
+        log_perf "$duration" "Analysis startup (cached)" "$ANALYSIS_STARTUP_THRESHOLD"
 
         # Verify execution was successful
         if [ -f "$github_output" ] && grep -q "summary=" "$github_output"; then
@@ -258,10 +270,10 @@ test_total_execution_performance() {
         export GITHUB_OUTPUT="$github_output"
 
         local duration
-        if duration=$(measure_time timeout 60 ./action.sh > "$action_log" 2>&1); then
-            log_perf $duration "Total execution ($sample_name)" $TOTAL_EXECUTION_THRESHOLD
+        if duration=$(measure_time "$action_log" timeout 60 ./action.sh); then
+            log_perf "$duration" "Total execution ($sample_name)" "$TOTAL_EXECUTION_THRESHOLD"
 
-            if [ $duration -le $TOTAL_EXECUTION_THRESHOLD ]; then
+            if [ "$duration" -le "$TOTAL_EXECUTION_THRESHOLD" ]; then
                 passed_count=$((passed_count + 1))
             fi
 
@@ -316,9 +328,9 @@ test_performance_baseline_comparison() {
         export GITHUB_OUTPUT="$github_output"
 
         local duration
-        if duration=$(measure_time ./action.sh > "$action_log" 2>&1); then
-            durations+=($duration)
-            log_perf $duration "Baseline iteration $iteration"
+        if duration=$(measure_time "$action_log" ./action.sh); then
+            durations+=("$duration")
+            log_perf "$duration" "Baseline iteration $iteration"
         else
             log_fail "Performance baseline - Iteration $iteration failed"
             unset INPUT_PLAN_FILE INPUT_OUTPUT_FORMAT INPUT_COMMENT_ON_PR GITHUB_STEP_SUMMARY GITHUB_OUTPUT
