@@ -64,10 +64,12 @@ run_test_suite() {
         echo -e "${GREEN}✅ Test Suite PASSED: $suite_name${NC}"
         echo -e "${GREEN}   Duration: ${duration}s${NC}"
         
-        # Extract test statistics from log
-        local suite_tests=$(grep -o "Tests run:" "$log_file" | tail -1 | sed 's/Tests run: *//' || echo "0")
-        local suite_passed=$(grep -o "Tests passed:" "$log_file" | tail -1 | sed 's/Tests passed: *//' | sed 's/\x1b\[[0-9;]*m//g' || echo "0")
-        local suite_failed=$(grep -o "Tests failed:" "$log_file" | tail -1 | sed 's/Tests failed: *//' | sed 's/\x1b\[[0-9;]*m//g' || echo "0")
+        # Extract test statistics from log. Match the whole line (not grep -o,
+        # which would return only the label and drop the numeric value) so the
+        # sed pipeline below can pull the number out.
+        local suite_tests=$(grep "Tests run:" "$log_file" | tail -1 | sed 's/Tests run: *//' || echo "0")
+        local suite_passed=$(grep "Tests passed:" "$log_file" | tail -1 | sed 's/Tests passed: *//' | sed 's/\x1b\[[0-9;]*m//g' || echo "0")
+        local suite_failed=$(grep "Tests failed:" "$log_file" | tail -1 | sed 's/Tests failed: *//' | sed 's/\x1b\[[0-9;]*m//g' || echo "0")
         
         # Clean up ANSI color codes from numbers
         suite_tests=$(echo "$suite_tests" | sed 's/[^0-9]//g')
@@ -105,10 +107,11 @@ run_test_suite() {
         echo -e "${RED}   Error output:${NC}"
         tail -10 "$log_file" | sed 's/^/     /'
         
-        # Try to extract partial statistics even from failed runs
-        local suite_tests=$(grep -o "Tests run:" "$log_file" | tail -1 | sed 's/Tests run: *//' | sed 's/[^0-9]//g' || echo "0")
-        local suite_passed=$(grep -o "Tests passed:" "$log_file" | tail -1 | sed 's/Tests passed: *//' | sed 's/\x1b\[[0-9;]*m//g' | sed 's/[^0-9]//g' || echo "0")
-        local suite_failed=$(grep -o "Tests failed:" "$log_file" | tail -1 | sed 's/Tests failed: *//' | sed 's/\x1b\[[0-9;]*m//g' | sed 's/[^0-9]//g' || echo "0")
+        # Try to extract partial statistics even from failed runs. Match the
+        # whole line (not grep -o) so the numeric value is preserved.
+        local suite_tests=$(grep "Tests run:" "$log_file" | tail -1 | sed 's/Tests run: *//' | sed 's/[^0-9]//g' || echo "0")
+        local suite_passed=$(grep "Tests passed:" "$log_file" | tail -1 | sed 's/Tests passed: *//' | sed 's/\x1b\[[0-9;]*m//g' | sed 's/[^0-9]//g' || echo "0")
+        local suite_failed=$(grep "Tests failed:" "$log_file" | tail -1 | sed 's/Tests failed: *//' | sed 's/\x1b\[[0-9;]*m//g' | sed 's/[^0-9]//g' || echo "0")
         
         suite_tests=${suite_tests:-0}
         suite_passed=${suite_passed:-0}
