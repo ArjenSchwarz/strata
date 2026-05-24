@@ -24,6 +24,10 @@ inputs:
     description: 'Expand all collapsible sections in the output'
     required: false
     default: 'false'
+  highlight-dangers:
+    description: 'Highlight potentially dangerous changes'
+    required: false
+    default: 'true'
   github-token:
     description: 'GitHub token for PR comments'
     required: false
@@ -90,6 +94,7 @@ runs:
         INPUT_CONFIG_FILE: ${{ inputs.config-file }}
         INPUT_SHOW_DETAILS: ${{ inputs.show-details }}
         INPUT_EXPAND_ALL: ${{ inputs.expand-all }}
+        INPUT_HIGHLIGHT_DANGERS: ${{ inputs.highlight-dangers }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
         INPUT_UPDATE_COMMENT: ${{ inputs.update-comment }}

@@ -613,6 +613,7 @@ while [[ $# -gt 0 ]]; do
     --file) json_file="$2"; shift 2 ;;
     --file-format) shift 2 ;;
     --details|--details=*|--expand-all|--expand-all=*) shift ;;
+    --highlight-dangers|--highlight-dangers=*) shift ;;
     --config) config_file="$2"; shift 2 ;;
     --) saw_separator="true"; shift; plan_file="$1"; shift ;;
     *) echo "unexpected-arg:$1" >&2; exit 99 ;;
@@ -671,6 +672,114 @@ EOF
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
         echo -e "${RED}[FAIL]${NC} run_analysis should handle plan paths that start with '-'"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+}
+
+# Regression test for T-1202: the documented `highlight-dangers` action input
+# must reach strata. run_analysis must forward --highlight-dangers=true|false
+# based on INPUT_HIGHLIGHT_DANGERS, defaulting to true when the input is unset
+# so danger highlighting stays on by default.
+test_run_analysis_highlight_dangers_wiring() {
+    log_test "run_analysis highlight-dangers wiring (T-1202)"
+
+    local run_dir="$TEST_DIR/run_analysis_highlight_dangers"
+    local temp_dir="$run_dir/temp"
+    local harness="$run_dir/highlight_dangers_harness.sh"
+    mkdir -p "$temp_dir"
+
+    # The harness sources run_analysis from action.sh with a mock strata that
+    # records the --highlight-dangers value it received, then asserts it matches
+    # the expected value derived from INPUT_HIGHLIGHT_DANGERS.
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+ACTION_PATH="$1"
+TEST_TEMP_DIR="$2"
+INPUT_VALUE="$3"
+EXPECTED_FLAG="$4"
+
+cat > "$TEST_TEMP_DIR/strata" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+
+json_file=""
+highlight_flag="<unset>"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    plan|summary) shift ;;
+    --output) shift 2 ;;
+    --file) json_file="$2"; shift 2 ;;
+    --file-format) shift 2 ;;
+    --details|--details=*|--expand-all|--expand-all=*) shift ;;
+    --highlight-dangers=*) highlight_flag="${1#--highlight-dangers=}"; shift ;;
+    --highlight-dangers) highlight_flag="$2"; shift 2 ;;
+    --config) shift 2 ;;
+    --) shift; shift ;;
+    *) echo "unexpected-arg:$1" >&2; exit 99 ;;
+  esac
+done
+
+[[ "$highlight_flag" == "$EXPECTED_FLAG" ]] || {
+  echo "highlight-dangers mismatch: got '$highlight_flag', expected '$EXPECTED_FLAG'" >&2
+  exit 95
+}
+
+cat > "$json_file" <<'JSON'
+{"statistics":{"total_changes":1,"dangerous_changes":0}}
+JSON
+echo "ok"
+MOCK
+chmod +x "$TEST_TEMP_DIR/strata"
+
+export EXPECTED_FLAG
+TEMP_DIR="$TEST_TEMP_DIR"
+STRATA_BIN="$TEST_TEMP_DIR/strata"
+INPUT_PLAN_FILE="$TEST_TEMP_DIR/plan.tfplan"
+echo "plan" > "$INPUT_PLAN_FILE"
+INPUT_OUTPUT_FORMAT="markdown"
+INPUT_SHOW_DETAILS="false"
+INPUT_EXPAND_ALL="false"
+INPUT_CONFIG_FILE=""
+if [[ "$INPUT_VALUE" != "<unset>" ]]; then
+  INPUT_HIGHLIGHT_DANGERS="$INPUT_VALUE"
+fi
+
+extract_outputs() { :; }
+set_default_outputs() { :; }
+
+eval "$(sed -n '/^run_analysis()/,/^}/p' "$ACTION_PATH")"
+run_analysis
+EOF
+    chmod +x "$harness"
+
+    # Default (input unset) must keep highlighting on.
+    if bash "$harness" "action.sh" "$temp_dir" "<unset>" "true" >/dev/null 2>&1; then
+        echo -e "${GREEN}[PASS]${NC} run_analysis defaults highlight-dangers to true"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} run_analysis defaults highlight-dangers to true"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+
+    # Explicit true must forward --highlight-dangers=true.
+    if bash "$harness" "action.sh" "$temp_dir" "true" "true" >/dev/null 2>&1; then
+        echo -e "${GREEN}[PASS]${NC} run_analysis forwards highlight-dangers=true"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} run_analysis forwards highlight-dangers=true"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+
+    # Explicit false must forward --highlight-dangers=false so danger
+    # highlighting can be disabled via the documented input.
+    if bash "$harness" "action.sh" "$temp_dir" "false" "false" >/dev/null 2>&1; then
+        echo -e "${GREEN}[PASS]${NC} run_analysis forwards highlight-dangers=false"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} run_analysis forwards highlight-dangers=false"
         TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
 }
@@ -945,6 +1054,7 @@ test_environment_variables
 test_github_context
 test_dual_output_functions
 test_run_analysis_argument_safety
+test_run_analysis_highlight_dangers_wiring
 test_latest_cache_version_validation
 test_extract_outputs_go_output_array
 test_script_shebangs
