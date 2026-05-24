@@ -675,6 +675,39 @@ EOF
     fi
 }
 
+# Regression test for T-1226: test scripts must start with a valid shebang.
+# A corrupted shebang (e.g. "#\!/bin/bash" with an escaped bang) makes the
+# kernel reject direct execution with "exec format error" on Linux, even
+# though "bash <script>" still works and hides the problem.
+test_script_shebangs() {
+    log_test "test scripts have a valid shebang"
+
+    local test_scripts_dir
+    test_scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+    local script
+    local bad_scripts=()
+    for script in "$test_scripts_dir"/*.sh; do
+        [ -f "$script" ] || continue
+        # First two bytes must be the "#!" magic. Reject anything else,
+        # including the escaped-bang corruption "#\".
+        local magic
+        magic=$(head -c 2 "$script")
+        if [ "$magic" != "#!" ]; then
+            bad_scripts+=("$(basename "$script"): '$magic'")
+        fi
+    done
+
+    if [ ${#bad_scripts[@]} -eq 0 ]; then
+        echo -e "${GREEN}[PASS]${NC} all test scripts start with a valid '#!' shebang"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} test scripts with invalid shebang found:"
+        printf '  %s\n' "${bad_scripts[@]}"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+}
+
 # Run all tests
 echo "Running GitHub Action Unit Tests..."
 echo "=================================="
@@ -690,6 +723,7 @@ test_environment_variables
 test_github_context
 test_dual_output_functions
 test_run_analysis_argument_safety
+test_script_shebangs
 
 # Print test summary
 echo ""
