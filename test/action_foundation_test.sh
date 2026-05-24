@@ -191,24 +191,24 @@ assert_exit_code() {
     fi
 }
 
-# Run a function and capture its output and exit code
+# Run a function and capture its output and exit code.
+# The action's validators terminate via `exit` (through log_error), so the
+# function must run in a subshell whose own exit status is captured. Capturing
+# the subshell status works whether the function returns or exits.
 run_function() {
     local func="$1"
     shift
     local output_file="$TEST_OUTPUT_DIR/output.txt"
     local error_file="$TEST_OUTPUT_DIR/error.txt"
 
-    # Run the function and capture output in a subshell to avoid exit
     local exit_code=0
-    (
+    if (
         set +e
         "$func" "$@" >"$output_file" 2>"$error_file"
-        echo $? > "$TEST_OUTPUT_DIR/exit_code"
-    ) || true
-
-    if [[ -f "$TEST_OUTPUT_DIR/exit_code" ]]; then
-        exit_code=$(cat "$TEST_OUTPUT_DIR/exit_code")
-        rm -f "$TEST_OUTPUT_DIR/exit_code"
+    ); then
+        exit_code=0
+    else
+        exit_code=$?
     fi
 
     # Return the exit code
@@ -222,12 +222,16 @@ source_script() {
         # Create a temporary copy that doesn't execute main and handles readonly vars
         local temp_script="$TEST_OUTPUT_DIR/action_temp.sh"
 
-        # Copy script but remove problematic readonly declarations and main execution
+        # Copy script but remove problematic readonly declarations, the main
+        # execution guard, and the EXIT trap. The cleanup trap re-exits with a
+        # non-zero status, which would propagate out of command substitutions
+        # (e.g. capturing log_error output) and abort the test under set -e.
         sed -e "/^readonly TEMP_DIR$/d" \
             -e "/^TEMP_DIR=.*/d" \
+            -e '/^trap cleanup EXIT$/d' \
             -e '/^if \[\[ "${BASH_SOURCE\[0\]}" == "${0}" \]\]; then$/,/^fi$/d' \
             -e '/\[\[ -d "\$TEMP_DIR" \]\]/s/.*/    # TEMP_DIR cleanup removed for testing/' \
-            action.sh > "$temp_script"
+            action_simplified.sh > "$temp_script"
 
         # Source the modified script
         source "$temp_script"
@@ -249,7 +253,7 @@ test_error_handling_framework() {
     # Create a test script with error handling
     cat > "$TEST_OUTPUT_DIR/test_error.sh" <<'EOF'
 #!/bin/bash
-source action.sh 2>/dev/null || true
+source action_simplified.sh 2>/dev/null || true
 
 # Test undefined variable handling
 test_undefined() {
@@ -349,7 +353,7 @@ test_exit_codes() {
     # Test that functions use correct exit codes
     cat > "$TEST_OUTPUT_DIR/test_exit_codes.sh" <<'EOF'
 #!/bin/bash
-source action.sh 2>/dev/null || true
+source action_simplified.sh 2>/dev/null || true
 
 # Override log_error to capture exit codes
 log_error() {
@@ -531,7 +535,7 @@ test_required_input_validation() {
     # Create a test script to properly test the function
     cat > "$TEST_OUTPUT_DIR/test_validation.sh" <<'EOF'
 #!/bin/bash
-source action.sh 2>/dev/null || true
+source action_simplified.sh 2>/dev/null || true
 
 # Test with INPUT_PLAN_FILE unset
 unset INPUT_PLAN_FILE
@@ -594,15 +598,15 @@ test_output_format_validation() {
 
     source_script
 
-    # Test valid formats
-    for format in table json markdown html; do
+    # Test valid formats (csv is supported, see action.yml output-format)
+    for format in table json markdown html csv; do
         local exit_code
         exit_code=$(run_function validate_output_format "$format")
         assert_equals "0" "$exit_code" "Should accept valid format: $format"
     done
 
     # Test invalid formats
-    for format in xml yaml csv text; do
+    for format in xml yaml text; do
         local exit_code
         exit_code=$(run_function validate_output_format "$format")
         assert_not_equals "0" "$exit_code" "Should reject invalid format: $format"
@@ -672,8 +676,11 @@ test_logging_functions() {
     success_output=$(log_success "Test" 2>&1)
     assert_contains "$success_output" "✅" "log_success should have checkmark emoji"
 
+    # log_error calls exit, which terminates the command-substitution subshell
+    # before an inner `|| true` could run; place `|| true` on the assignment so
+    # the non-zero status does not abort the test under set -e.
     local error_output
-    error_output=$(log_error "Test" 2>&1 || true)
+    error_output=$(log_error "Test" 2>&1) || true
     assert_contains "$error_output" "❌" "log_error should have X emoji"
 
     local warning_output
@@ -956,7 +963,8 @@ EOF
 
     if [[ -f "$log_file" ]]; then
         local dir_count
-        dir_count=$(cat "$log_file")
+        # wc -l pads with leading whitespace on BSD/macOS; normalise to an integer.
+        dir_count=$(( $(cat "$log_file") ))
         # Should only have the TEMP_DIR itself (1 directory)
         assert_equals "1" "$dir_count" "Should only create single temp directory, no subdirectories"
     fi
@@ -999,9 +1007,9 @@ run_tests() {
     echo "Strata GitHub Action Foundation Tests"
     echo "================================================"
 
-    # Check if action.sh exists
-    if [[ ! -f "action.sh" ]]; then
-        echo -e "${RED}Error: action.sh not found${NC}"
+    # Check if action_simplified.sh exists
+    if [[ ! -f "action_simplified.sh" ]]; then
+        echo -e "${RED}Error: action_simplified.sh not found${NC}"
         echo "Please run this test from the project root directory"
         exit 1
     fi
