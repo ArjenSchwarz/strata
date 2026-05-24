@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Action Argument Safety Regression Tests**: Added unit test coverage for `run_analysis` to validate safe argument handling for plan/config paths containing spaces and for plan files starting with `-`.
 
 ### Fixed
+- **Version Command Default Output Format**: Treat an empty output format as the default (`table`) in the `version` command so it renders table output when invoked without an explicit `--output` flag, instead of returning an "unsupported output format" error.
 - **Property Change Analysis**: Fixed typed nil slice values being classified as "update" instead of "remove" in change analysis, ensuring list property removals are correctly detected regardless of Go nil representation.
 - **Action Command Construction Safety**: Updated `run_analysis` in `action.sh` to build and execute the Strata command as a Bash array (`"${cmd[@]}"`) and pass `--` before the plan file path, preventing argument splitting issues and option ambiguity for user-supplied paths.
 - Corrected output no-op detection so Terraform output `replace` actions are no longer misclassified as no-op when `before` and `after` values are equal.
