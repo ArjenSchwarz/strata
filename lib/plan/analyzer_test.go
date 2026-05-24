@@ -157,6 +157,77 @@ func TestCheckSensitiveProperties(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
+// TestCheckSensitivePropertiesRemoval is a regression test for T-1287.
+// A sensitive property that exists only in Before (i.e. removed during an
+// update) must still be flagged. Previously the detection loop only iterated
+// over keys in After, so removals of configured sensitive properties were
+// silently missed.
+func TestCheckSensitivePropertiesRemoval(t *testing.T) {
+	cfg := &config.Config{
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_ec2_instance", Property: "user_data"},
+		},
+	}
+
+	analyzer := &Analyzer{
+		config: cfg,
+	}
+
+	// user_data is present in Before but omitted in After: it is being removed.
+	resourceChange := &tfjson.ResourceChange{
+		Type: "aws_ec2_instance",
+		Change: &tfjson.Change{
+			Before: map[string]any{
+				"user_data":     "old-data",
+				"instance_type": "t2.micro",
+			},
+			After: map[string]any{
+				"instance_type": "t2.micro",
+			},
+		},
+	}
+
+	result := analyzer.checkSensitiveProperties(resourceChange)
+
+	// Expected: the removal of the sensitive property is detected.
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "user_data")
+}
+
+// TestCheckSensitivePropertiesAddition verifies that adding a configured
+// sensitive property (present only in After) is also flagged. Together with
+// the removal and modification cases this confirms the union-of-keys behaviour.
+func TestCheckSensitivePropertiesAddition(t *testing.T) {
+	cfg := &config.Config{
+		SensitiveProperties: []config.SensitiveProperty{
+			{ResourceType: "aws_ec2_instance", Property: "user_data"},
+		},
+	}
+
+	analyzer := &Analyzer{
+		config: cfg,
+	}
+
+	// user_data is absent in Before but present in After: it is being added.
+	resourceChange := &tfjson.ResourceChange{
+		Type: "aws_ec2_instance",
+		Change: &tfjson.Change{
+			Before: map[string]any{
+				"instance_type": "t2.micro",
+			},
+			After: map[string]any{
+				"user_data":     "new-data",
+				"instance_type": "t2.micro",
+			},
+		},
+	}
+
+	result := analyzer.checkSensitiveProperties(resourceChange)
+
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "user_data")
+}
+
 func TestAnalyzeReplacementNecessity(t *testing.T) {
 	analyzer := &Analyzer{}
 
@@ -834,11 +905,11 @@ func TestEvaluateResourceDanger(t *testing.T) {
 	analyzer := &Analyzer{config: cfg}
 
 	testCases := []struct {
-		name              string
-		change            *tfjson.ResourceChange
-		changeType        ChangeType
-		expectedDanger    bool
-		expectedReason    string
+		name                string
+		change              *tfjson.ResourceChange
+		changeType          ChangeType
+		expectedDanger      bool
+		expectedReason      string
 		expectedDangerProps []string
 	}{
 		{
@@ -846,9 +917,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_s3_bucket",
 			},
-			changeType:        ChangeTypeDelete,
-			expectedDanger:    true,
-			expectedReason:    "Resource deletion",
+			changeType:          ChangeTypeDelete,
+			expectedDanger:      true,
+			expectedReason:      "Resource deletion",
 			expectedDangerProps: nil,
 		},
 		{
@@ -856,9 +927,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_rds_instance",
 			},
-			changeType:        ChangeTypeDelete,
-			expectedDanger:    true,
-			expectedReason:    "Sensitive resource deletion",
+			changeType:          ChangeTypeDelete,
+			expectedDanger:      true,
+			expectedReason:      "Sensitive resource deletion",
 			expectedDangerProps: nil,
 		},
 		{
@@ -866,9 +937,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_rds_instance",
 			},
-			changeType:        ChangeTypeReplace,
-			expectedDanger:    true,
-			expectedReason:    "Database replacement",
+			changeType:          ChangeTypeReplace,
+			expectedDanger:      true,
+			expectedReason:      "Database replacement",
 			expectedDangerProps: nil,
 		},
 		{
@@ -876,9 +947,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_ec2_instance",
 			},
-			changeType:        ChangeTypeReplace,
-			expectedDanger:    true,
-			expectedReason:    "Compute instance replacement",
+			changeType:          ChangeTypeReplace,
+			expectedDanger:      true,
+			expectedReason:      "Compute instance replacement",
 			expectedDangerProps: nil,
 		},
 		{
@@ -894,9 +965,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:        ChangeTypeUpdate,
-			expectedDanger:    false,
-			expectedReason:    "",
+			changeType:          ChangeTypeUpdate,
+			expectedDanger:      false,
+			expectedReason:      "",
 			expectedDangerProps: nil,
 		},
 		{
@@ -912,9 +983,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:        ChangeTypeUpdate,
-			expectedDanger:    true,
-			expectedReason:    "User data modification",
+			changeType:          ChangeTypeUpdate,
+			expectedDanger:      true,
+			expectedReason:      "User data modification",
 			expectedDangerProps: []string{"user_data"},
 		},
 		{
@@ -922,9 +993,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 			change: &tfjson.ResourceChange{
 				Type: "aws_s3_bucket",
 			},
-			changeType:        ChangeTypeCreate,
-			expectedDanger:    false,
-			expectedReason:    "",
+			changeType:          ChangeTypeCreate,
+			expectedDanger:      false,
+			expectedReason:      "",
 			expectedDangerProps: nil,
 		},
 		{
@@ -940,9 +1011,9 @@ func TestEvaluateResourceDanger(t *testing.T) {
 					},
 				},
 			},
-			changeType:        ChangeTypeDelete,
-			expectedDanger:    true,
-			expectedReason:    "Sensitive resource deletion and User data modification",
+			changeType:          ChangeTypeDelete,
+			expectedDanger:      true,
+			expectedReason:      "Sensitive resource deletion and User data modification",
 			expectedDangerProps: []string{"user_data"},
 		},
 		{

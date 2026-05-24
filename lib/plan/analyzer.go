@@ -1352,21 +1352,31 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 		return sensitiveProps
 	}
 
-	// Check each property to see if it's changed and if it's sensitive
-	for propName := range afterMap {
-		// Skip if property doesn't exist in before (new property)
-		beforeVal, exists := beforeMap[propName]
-		if !exists {
-			continue
-		}
+	// Check each property across the union of before and after keys so that
+	// additions, modifications, and removals of sensitive properties are all
+	// detected. Iterating over only the after keys would miss properties that
+	// exist solely in before (i.e. removed during an update).
+	seen := make(map[string]struct{}, len(beforeMap)+len(afterMap))
+	collect := func(m map[string]any) {
+		for propName := range m {
+			if _, alreadySeen := seen[propName]; alreadySeen {
+				continue
+			}
+			seen[propName] = struct{}{}
 
-		afterVal := afterMap[propName]
+			beforeVal := beforeMap[propName]
+			afterVal := afterMap[propName]
 
-		// If property has changed and is sensitive, add to list
-		if !reflect.DeepEqual(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
-			sensitiveProps = append(sensitiveProps, propName)
+			// If property has changed and is sensitive, add to list. A missing
+			// key on either side reads as nil, so additions and removals of a
+			// sensitive property are treated as changes.
+			if !reflect.DeepEqual(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
+				sensitiveProps = append(sensitiveProps, propName)
+			}
 		}
 	}
+	collect(beforeMap)
+	collect(afterMap)
 
 	return sensitiveProps
 }
