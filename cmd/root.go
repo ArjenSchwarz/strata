@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -127,6 +128,12 @@ func initConfig() {
 		viper.SetConfigName("strata")
 	}
 
+	// Map nested config keys to conventional environment variable names.
+	// Without this replacer, AutomaticEnv only matches keys verbatim, so a
+	// nested key like "plan.highlight-dangers" would require the impractical
+	// env var "PLAN.HIGHLIGHT-DANGERS". Translating "." and "-" to "_" lets
+	// the conventional "PLAN_HIGHLIGHT_DANGERS" override it.
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
