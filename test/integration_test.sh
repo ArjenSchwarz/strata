@@ -249,8 +249,9 @@ test_action_scenario() {
         
         # Validate outputs
         if [ -f "$GITHUB_OUTPUT" ]; then
-            # Check that required outputs are present
-            if grep -q "summary=" "$GITHUB_OUTPUT" && \
+            # Check that required outputs are present. The "summary" output is
+            # written as a heredoc (summary<<delim), so match "=" or "<<".
+            if grep -Eq "^summary(=|<<)" "$GITHUB_OUTPUT" && \
                grep -q "has-changes=" "$GITHUB_OUTPUT" && \
                grep -q "has-dangers=" "$GITHUB_OUTPUT" && \
                grep -q "change-count=" "$GITHUB_OUTPUT" && \
@@ -258,6 +259,19 @@ test_action_scenario() {
                 log_pass "$test_name - All required outputs present"
             else
                 log_fail "$test_name - Missing required outputs"
+                echo "Output file contents:"
+                cat "$GITHUB_OUTPUT"
+            fi
+
+            # T-1118: every integration scenario plans real resource changes, so
+            # change-count must be > 0. Before the fix the action parsed the wrong
+            # JSON schema and reported change-count=0 here.
+            local change_count
+            change_count=$(grep -E "^change-count=" "$GITHUB_OUTPUT" | head -1 | cut -d= -f2)
+            if [ -n "$change_count" ] && [ "$change_count" -gt 0 ] 2>/dev/null; then
+                log_pass "$test_name - change-count is non-zero ($change_count)"
+            else
+                log_fail "$test_name - change-count should be non-zero for a changed plan (got '${change_count:-unset}')"
                 echo "Output file contents:"
                 cat "$GITHUB_OUTPUT"
             fi
