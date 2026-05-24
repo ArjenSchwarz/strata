@@ -373,6 +373,9 @@ run_analysis() {
 
   [[ "${INPUT_SHOW_DETAILS:-false}" == "true" ]] && cmd+=("--details=true") || cmd+=("--details=false")
   [[ "${INPUT_EXPAND_ALL:-false}" == "true" ]] && cmd+=("--expand-all=true") || cmd+=("--expand-all=false")
+  # strata's --highlight-dangers flag defaults to true; only forward false when the
+  # documented action input explicitly disables danger highlighting.
+  [[ "${INPUT_HIGHLIGHT_DANGERS:-true}" == "false" ]] && cmd+=("--highlight-dangers=false") || cmd+=("--highlight-dangers=true")
   [[ -n "${INPUT_CONFIG_FILE:-}" ]] && cmd+=("--config" "$INPUT_CONFIG_FILE")
 
   cmd+=("--" "$INPUT_PLAN_FILE")

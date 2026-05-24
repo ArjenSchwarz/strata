@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Action `highlight-dangers` Input**: Added the documented `highlight-dangers` input to the GitHub Action (`action.yml`) with the matching `INPUT_HIGHLIGHT_DANGERS` env mapping, plus a unit test asserting `run_analysis` forwards `--highlight-dangers=true|false` (defaulting to `true`).
 - **Action Argument Safety Regression Tests**: Added unit test coverage for `run_analysis` to validate safe argument handling for plan/config paths containing spaces and for plan files starting with `-`.
 - **Action Output Extraction Regression Tests**: Added unit test coverage for `extract_outputs` that exercises the actual go-output document shapes (horizontal statistics, vertical statistics, no-changes text object, and multi-line property details), plus an integration assertion that changed plans report a non-zero `change-count`.
 
 ### Fixed
+- **Action Ignored Documented `highlight-dangers` Input**: The GitHub Action advertised a `highlight-dangers` input in the README and `docs/github-action.md`, but `action.yml` defined no such input and `action.sh` never forwarded it, so workflows could not disable danger highlighting. `run_analysis` now forwards `--highlight-dangers=true|false` from `INPUT_HIGHLIGHT_DANGERS`, keeping highlighting on by default.
 - **Action Zero-Change Outputs**: Fixed `extract_outputs` in `action.sh` and `action_simplified.sh` reading the metadata file with the wrong schema (`.statistics.total`). The file written by `strata plan summary --file-format json` is go-output's rendered document (a "Summary Statistics" section), not the internal `PlanSummary` object, so changed plans wrongly reported `has-changes=false`, `change-count=0`, `has-dangers=false`, and `danger-count=0`. The action now parses the `Summary Statistics` section (horizontal and vertical layouts), reads the file directly with jq instead of round-tripping through a shell variable, and guards against non-numeric results.
 - **Action Integration Output Validation**: Corrected the integration test's required-output check to match the heredoc-style `summary<<` output and to assert that changed scenarios produce a non-zero `change-count`.
 - **Version Command Default Output Format**: Treat an empty output format as the default (`table`) in the `version` command so it renders table output when invoked without an explicit `--output` flag, instead of returning an "unsupported output format" error.
