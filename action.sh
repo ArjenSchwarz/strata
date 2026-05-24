@@ -429,17 +429,42 @@ extract_outputs() {
     return
   fi
 
-  local json
-  if ! json=$(cat "$json_file" 2>/dev/null); then
+  if [[ ! -r "$json_file" ]]; then
     echo "⚠️ Failed to read JSON file, setting default outputs"
     set_default_outputs
     return
   fi
 
-  # Extract statistics safely (current schema keys with fallback to legacy keys)
+  # The file written by `strata plan summary --file ... --file-format json` is
+  # go-output's rendered document, NOT the internal PlanSummary schema. It is
+  # either:
+  #   - an array of table sections; the "Summary Statistics" section carries the
+  #     counts as data[0] keyed "Total Changes"/"High Risk" (horizontal layout)
+  #     or as {Metric,Value} rows (vertical layout), or
+  #   - a single text object {"content":"No changes detected","type":"text"}.
+  # Read the "Summary Statistics" section, supporting both layouts, and default
+  # to 0 when no statistics section is present (e.g. the no-changes document).
+  #
+  # jq reads the file directly rather than via `echo "$var"`: round-tripping the
+  # payload through a shell variable is fragile with shells whose `echo`
+  # interprets backslash escapes (the file contains multi-line, escaped property
+  # "details" strings), and passing the path straight to jq avoids that risk.
+  # shellcheck disable=SC2016  # $m and jq fields are jq variables, not shell.
+  local stats_metric='
+    if type=="array" then
+      ((map(select(.title=="Summary Statistics"))[0].data) // [])
+      | (if (length>0 and (.[0]|has("Metric")))
+        then (map(select(.Metric==$m))[0].Value)
+        else .[0][$m]
+        end) // 0
+    else 0 end'
   local total_changes danger_changes
-  total_changes=$(echo "$json" | jq -r '.statistics.total // .statistics.total_changes // 0' 2>/dev/null || echo "0")
-  danger_changes=$(echo "$json" | jq -r '.statistics.high_risk // .statistics.dangerous_changes // 0' 2>/dev/null || echo "0")
+  total_changes=$(jq -r --arg m "Total Changes" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
+  danger_changes=$(jq -r --arg m "High Risk" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
+
+  # Guard against null/empty/non-numeric results before integer comparison.
+  [[ "$total_changes" =~ ^[0-9]+$ ]] || total_changes=0
+  [[ "$danger_changes" =~ ^[0-9]+$ ]] || danger_changes=0
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

@@ -316,14 +316,33 @@ extract_outputs() {
     return 1
   fi
 
-  local json
-  json=$(cat "$json_file")
-
-  # Extract statistics using jq (pre-installed on GitHub runners)
+  # The file written by `strata plan summary --file ... --file-format json` is
+  # go-output's rendered document, NOT the internal PlanSummary schema. It is
+  # either an array of table sections (the "Summary Statistics" section carries
+  # the counts keyed "Total Changes"/"High Risk" horizontally, or as {Metric,
+  # Value} rows when vertical), or a single text object for no changes. Read the
+  # "Summary Statistics" section supporting both layouts; default to 0.
+  #
+  # jq reads the file directly rather than via `echo "$var"`: passing the path
+  # straight to jq avoids fragile shell round-tripping of the escaped, multi-line
+  # property "details" strings the file can contain.
+  # shellcheck disable=SC2016  # $m and jq fields are jq variables, not shell.
+  local stats_metric='
+    if type=="array" then
+      ((map(select(.title=="Summary Statistics"))[0].data) // [])
+      | (if (length>0 and (.[0]|has("Metric")))
+        then (map(select(.Metric==$m))[0].Value)
+        else .[0][$m]
+        end) // 0
+    else 0 end'
   local total
   local dangers
-  total=$(echo "$json" | jq -r '.statistics.total_changes // 0')
-  dangers=$(echo "$json" | jq -r '.statistics.dangerous_changes // 0')
+  total=$(jq -r --arg m "Total Changes" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
+  dangers=$(jq -r --arg m "High Risk" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
+
+  # Guard against null/empty/non-numeric results before integer comparison.
+  [[ "$total" =~ ^[0-9]+$ ]] || total=0
+  [[ "$dangers" =~ ^[0-9]+$ ]] || dangers=0
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

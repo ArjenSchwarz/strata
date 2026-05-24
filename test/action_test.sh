@@ -780,6 +780,123 @@ EOF
     fi
 }
 
+# Regression test for T-1118: extract_outputs must read the go-output document
+# that `strata plan summary --file ... --file-format json` actually produces.
+# That file is a rendered table-document ARRAY (a "Summary Statistics" section),
+# NOT the internal PlanSummary schema with a top-level `.statistics` object.
+# The old code parsed `.statistics.total`, which fails on an array and silently
+# falls back to 0 — so a plan WITH changes wrongly reported change-count=0.
+test_extract_outputs_go_output_array() {
+    log_test "extract_outputs parses go-output document (T-1118)"
+
+    local run_dir="$TEST_DIR/extract_outputs_go_output"
+    local harness="$run_dir/harness.sh"
+    mkdir -p "$run_dir"
+
+    # The harness sources the real extract_outputs + set_default_outputs from
+    # action.sh, then runs extract_outputs against a JSON file matching the
+    # actual go-output shape passed as $2. It echoes the resulting GITHUB_OUTPUT.
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -uo pipefail
+
+ACTION_PATH="$1"
+JSON_FILE="$2"
+
+GITHUB_OUTPUT="$(mktemp)"
+export GITHUB_OUTPUT
+DISPLAY_OUTPUT="display"
+OUTPUTS_WRITTEN=false
+
+eval "$(sed -n '/^set_default_outputs()/,/^}/p' "$ACTION_PATH")"
+eval "$(sed -n '/^extract_outputs()/,/^}/p' "$ACTION_PATH")"
+
+extract_outputs "$JSON_FILE"
+grep -E '^(has-changes|has-dangers|change-count|danger-count)=' "$GITHUB_OUTPUT"
+rm -f "$GITHUB_OUTPUT"
+EOF
+    chmod +x "$harness"
+
+    # Case 1: plan WITH changes, horizontal (default) statistics layout.
+    # This is the real go-output array shape; old code reported 0.
+    local horizontal_json="$run_dir/horizontal.json"
+    cat > "$horizontal_json" <<'EOF'
+[
+  {
+    "title": "Plan Information",
+    "data": [{"Plan File": "samples/web-sample.json", "Version": "1.6.2"}]
+  },
+  {
+    "title": "Summary Statistics",
+    "data": [{"Total Changes": 7, "Added": 2, "Removed": 1, "Modified": 2, "Replacements": 2, "High Risk": 2, "Unmodified": 0}]
+  },
+  {
+    "title": "Resource Changes",
+    "data": []
+  }
+]
+EOF
+    local result
+    result=$(bash "$harness" "action.sh" "$horizontal_json")
+    assert_equals "true" "$(echo "$result" | grep '^has-changes=' | cut -d= -f2)" "horizontal: has-changes=true for changed plan"
+    assert_equals "7" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "horizontal: change-count=7"
+    assert_equals "true" "$(echo "$result" | grep '^has-dangers=' | cut -d= -f2)" "horizontal: has-dangers=true"
+    assert_equals "2" "$(echo "$result" | grep '^danger-count=' | cut -d= -f2)" "horizontal: danger-count=2"
+
+    # Case 2: vertical statistics layout ({Metric, Value} rows).
+    local vertical_json="$run_dir/vertical.json"
+    cat > "$vertical_json" <<'EOF'
+[
+  {
+    "title": "Summary Statistics",
+    "data": [
+      {"Metric": "Total Changes", "Value": 4},
+      {"Metric": "Added", "Value": 1},
+      {"Metric": "High Risk", "Value": 3},
+      {"Metric": "Unmodified", "Value": 0}
+    ]
+  }
+]
+EOF
+    result=$(bash "$harness" "action.sh" "$vertical_json")
+    assert_equals "4" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "vertical: change-count=4"
+    assert_equals "3" "$(echo "$result" | grep '^danger-count=' | cut -d= -f2)" "vertical: danger-count=3"
+
+    # Case 3: no-changes document is a single text object, not an array.
+    local nochange_json="$run_dir/nochange.json"
+    cat > "$nochange_json" <<'EOF'
+{"content": "No changes detected", "type": "text"}
+EOF
+    result=$(bash "$harness" "action.sh" "$nochange_json")
+    assert_equals "false" "$(echo "$result" | grep '^has-changes=' | cut -d= -f2)" "no-changes: has-changes=false"
+    assert_equals "0" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "no-changes: change-count=0"
+    assert_equals "0" "$(echo "$result" | grep '^danger-count=' | cut -d= -f2)" "no-changes: danger-count=0"
+
+    # Case 4: --details=true embeds multi-line, escaped "details" strings in the
+    # Resource Changes section. extract_outputs must still find the statistics
+    # counts and not choke on that content (it reads the file directly rather
+    # than round-tripping the payload through a shell variable).
+    local details_json="$run_dir/details.json"
+    cat > "$details_json" <<'EOF'
+[
+  {
+    "title": "Summary Statistics",
+    "data": [{"Total Changes": 4, "High Risk": 2, "Added": 1, "Removed": 0, "Modified": 2, "Replacements": 1, "Unmodified": 0}]
+  },
+  {
+    "title": "Resource Changes",
+    "data": [
+      {"Address": "aws_db_instance.main", "details": "  ~ tags {\n    ~ Environment = \"staging\" -> \"production\"\n  }\n  ~ username = \"a\" -> \"b\""}
+    ]
+  }
+]
+EOF
+    result=$(bash "$harness" "action.sh" "$details_json")
+    assert_equals "true" "$(echo "$result" | grep '^has-changes=' | cut -d= -f2)" "details: has-changes=true despite multi-line details"
+    assert_equals "4" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "details: change-count=4"
+    assert_equals "2" "$(echo "$result" | grep '^danger-count=' | cut -d= -f2)" "details: danger-count=2"
+}
+
 # Regression test for T-1226: test scripts must start with a valid shebang.
 # A corrupted shebang (e.g. "#\!/bin/bash" with an escaped bang) makes the
 # kernel reject direct execution with "exec format error" on Linux, even
@@ -829,6 +946,7 @@ test_github_context
 test_dual_output_functions
 test_run_analysis_argument_safety
 test_latest_cache_version_validation
+test_extract_outputs_go_output_array
 test_script_shebangs
 
 # Print test summary
