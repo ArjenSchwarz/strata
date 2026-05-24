@@ -105,9 +105,27 @@ download_strata() {
     local cached_version
     cached_version="$("$STRATA_BIN" --version 2>/dev/null || echo "")"
     if [[ "$version" == "latest" ]]; then
-      echo "✅ Using cached Strata binary"
-      echo "🔍 Strata version: ${cached_version:-unknown}"
-      return 0
+      # The cache key in action.yml uses loose restore-keys, so a "latest" run
+      # can be hydrated from an older pinned-version cache. Resolve the current
+      # latest release tag and only reuse the cached binary when it matches,
+      # otherwise re-download to avoid running a stale binary.
+      local latest_tag
+      if latest_tag=$(get_version_tag "latest"); then
+        if [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${latest_tag#v}"; then
+          echo "✅ Using cached Strata binary (matches latest release $latest_tag)"
+          echo "🔍 Strata version: $cached_version"
+          return 0
+        else
+          echo "⚠️ Cached binary (${cached_version:-unknown}) does not match latest release $latest_tag, re-downloading"
+          rm -f "$STRATA_BIN"
+        fi
+      else
+        # Could not resolve the latest tag (offline / API failure). Fall back to
+        # reusing the cached binary as a best effort rather than failing.
+        echo "⚠️ Could not resolve latest release tag, using cached Strata binary"
+        echo "🔍 Strata version: ${cached_version:-unknown}"
+        return 0
+      fi
     elif [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${version#v}"; then
       echo "✅ Using cached Strata binary (matches requested $version)"
       echo "🔍 Strata version: $cached_version"
