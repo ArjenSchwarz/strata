@@ -102,6 +102,10 @@ func TestOutputRefinements_ComprehensiveWorkflow(t *testing.T) {
 				Plan: config.PlanConfig{
 					ShowDetails: true,
 					ShowContext: true,
+					// Danger detection is suppressed when HighlightDangers is
+					// false; enable it so sensitive/destructive resources get
+					// flagged for the dangerous-count assertions below.
+					HighlightDangers: true,
 				},
 			}
 			if tc.configOverride != nil {

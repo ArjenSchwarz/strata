@@ -356,32 +356,19 @@ func getMapKeys(m map[string][]ResourceChange) []string {
 	return keys
 }
 
-// Helper function to create test configuration
+// Helper function to create test configuration.
+// Start from the production defaults (which enable HighlightDangers) and only
+// override the fields the integration tests care about. Hand-constructing a
+// config left HighlightDangers at Go's zero value (false), which silently
+// disabled danger detection in evaluateResourceDanger.
 func getTestConfig() *config.Config {
-	return &config.Config{
-		ExpandAll: false,
-		Plan: config.PlanConfig{
-			ExpandableSections: config.ExpandableSectionsConfig{
-				Enabled:             true,
-				AutoExpandDangerous: true,
-			},
-			Grouping: config.GroupingConfig{
-				Enabled:   true,
-				Threshold: 10,
-			},
-			PerformanceLimits: config.PerformanceLimitsConfig{
-				MaxPropertiesPerResource: 100,
-				MaxPropertySize:          1024 * 1024,       // 1MB
-				MaxTotalMemory:           100 * 1024 * 1024, // 100MB
-				MaxDependencyDepth:       10,
-			},
-		},
-		SensitiveResources: []config.SensitiveResource{
-			{ResourceType: "aws_db_instance"},
-			{ResourceType: "aws_rds_db_instance"},
-		},
-		SensitiveProperties: []config.SensitiveProperty{
-			{ResourceType: "aws_instance", Property: "user_data"},
-		},
+	cfg := config.GetDefaultConfig()
+	cfg.SensitiveResources = []config.SensitiveResource{
+		{ResourceType: "aws_db_instance"},
+		{ResourceType: "aws_rds_db_instance"},
 	}
+	cfg.SensitiveProperties = []config.SensitiveProperty{
+		{ResourceType: "aws_instance", Property: "user_data"},
+	}
+	return cfg
 }
