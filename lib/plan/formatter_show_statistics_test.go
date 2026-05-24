@@ -16,10 +16,10 @@ func testSummaryWithStats() *PlanSummary {
 		Backend:          BackendInfo{Type: "local", Location: "terraform.tfstate"},
 		CreatedAt:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Statistics: ChangeStatistics{
-			Total:     2,
-			ToAdd:     1,
-			ToChange:  1,
-			HighRisk:  0,
+			Total:    2,
+			ToAdd:    1,
+			ToChange: 1,
+			HighRisk: 0,
 		},
 		ResourceChanges: []ResourceChange{
 			{
