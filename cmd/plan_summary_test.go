@@ -264,6 +264,78 @@ func TestPlanSummaryViperConfigRespected(t *testing.T) {
 	}
 }
 
+func TestAlwaysShowSensitiveFlagRegistered(t *testing.T) {
+	// Regression test for T-1182: docs/implementation/always-show-sensitive.md
+	// documents `--always-show-sensitive=true`, but the flag was never registered.
+	flag := planSummaryCmd.Flags().Lookup("always-show-sensitive")
+	if flag == nil {
+		t.Fatal("always-show-sensitive flag not found")
+	}
+
+	// Default must match GetDefaultConfig (true) so the flag does not change
+	// behaviour when omitted.
+	if flag.DefValue != "true" {
+		t.Errorf("Expected default value to be 'true', got %q", flag.DefValue)
+	}
+
+	expectedUsage := "Show sensitive resource changes even when details are disabled"
+	if flag.Usage != expectedUsage {
+		t.Errorf("Expected usage %q, got %q", expectedUsage, flag.Usage)
+	}
+}
+
+func TestDocumentedFlagsParse(t *testing.T) {
+	// Regression test for T-1182: the exact CLI invocations from the docs must
+	// parse without an "unknown flag" error.
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "details flag (README CLI example)",
+			args: []string{"--details", "terraform.tfplan"},
+		},
+		{
+			name: "always-show-sensitive flag (always-show-sensitive.md example)",
+			args: []string{"--details=false", "--always-show-sensitive=true", "terraform.tfplan"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := planSummaryCmd.ParseFlags(tt.args); err != nil {
+				t.Errorf("ParseFlags(%v) returned error: %v", tt.args, err)
+			}
+		})
+	}
+}
+
+func TestAlwaysShowSensitiveFlagBinding(t *testing.T) {
+	// Regression test for T-1182: when the --always-show-sensitive flag is set
+	// explicitly, the bound viper key must reflect it so runPlanSummary picks it up.
+	defer func() {
+		viper.Reset()
+		// Restore default flag state for other tests.
+		_ = planSummaryCmd.Flags().Set("always-show-sensitive", "true")
+	}()
+
+	viper.Reset()
+	if err := viper.BindPFlag("plan.always-show-sensitive", planSummaryCmd.Flags().Lookup("always-show-sensitive")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := planSummaryCmd.ParseFlags([]string{"--always-show-sensitive=false"}); err != nil {
+		t.Fatalf("Failed to parse flags: %v", err)
+	}
+
+	if !viper.IsSet("plan.always-show-sensitive") {
+		t.Fatal("expected plan.always-show-sensitive to be set after explicit flag")
+	}
+	if viper.GetBool("plan.always-show-sensitive") {
+		t.Error("expected plan.always-show-sensitive to be false after --always-show-sensitive=false")
+	}
+}
+
 func TestAlwaysShowSensitiveDefaultPreserved(t *testing.T) {
 	// Verify that when plan.always-show-sensitive is NOT set in viper,
 	// the default value (true) from GetDefaultConfig is preserved.

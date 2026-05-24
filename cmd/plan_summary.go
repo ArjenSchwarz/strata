@@ -119,6 +119,7 @@ var (
 	showStatisticsSummary   bool
 	statisticsSummaryFormat string
 	showNoOps               bool
+	alwaysShowSensitive     bool
 )
 
 func runPlanSummary(cmd *cobra.Command, args []string) error {
@@ -253,6 +254,14 @@ func init() {
 	planSummaryCmd.Flags().BoolVar(&showNoOps, "show-no-ops", false,
 		"Show no-op resources in the summary")
 	if err := viper.BindPFlag("plan.show-no-ops", planSummaryCmd.Flags().Lookup("show-no-ops")); err != nil {
+		panic(err)
+	}
+
+	// Always show sensitive flag. The default matches GetDefaultConfig so that
+	// omitting the flag preserves the configured/default behaviour.
+	planSummaryCmd.Flags().BoolVar(&alwaysShowSensitive, "always-show-sensitive", true,
+		"Show sensitive resource changes even when details are disabled")
+	if err := viper.BindPFlag("plan.always-show-sensitive", planSummaryCmd.Flags().Lookup("always-show-sensitive")); err != nil {
 		panic(err)
 	}
 }
