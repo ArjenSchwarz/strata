@@ -124,6 +124,52 @@ func TestPerformanceLimitsWithLargePlans(t *testing.T) {
 	}
 }
 
+// TestMemoryLimitsTriggerTruncation verifies that the per-resource memory limit
+// (MaxTotalMemory) causes property analysis to truncate when property values are
+// large. It exercises the truncation path in Analyzer.enforcePropertyLimits using
+// a plan built from large property values.
+func TestMemoryLimitsTriggerTruncation(t *testing.T) {
+	skipIfIntegrationTestsDisabled(t)
+
+	// Generous property-count and per-property size limits so that the total
+	// memory limit is the constraint that triggers truncation.
+	cfg := &config.Config{
+		Plan: config.PlanConfig{
+			PerformanceLimits: config.PerformanceLimitsConfig{
+				MaxPropertiesPerResource: 1000,  // High - should not be the limiting factor
+				MaxPropertySize:          4096,  // 4KB per property value
+				MaxTotalMemory:           10240, // 10KB total - low enough to trigger truncation
+			},
+		},
+	}
+
+	// 1 resource with 10 properties, each value ~2KB. Combined before+after size
+	// per property (~4KB) quickly exceeds the 10KB total memory limit.
+	plan := generatePlanWithLargeProperties(1, 10, 2048)
+
+	analyzer := NewAnalyzer(plan, cfg)
+
+	analysis := analyzer.analyzePropertyChanges(plan.ResourceChanges[0])
+
+	if !analysis.Truncated {
+		t.Errorf("Expected truncation when total property memory exceeds %d bytes, but Truncated was false (count=%d, totalSize=%d)",
+			cfg.Plan.PerformanceLimits.MaxTotalMemory, analysis.Count, analysis.TotalSize)
+	}
+
+	// After truncation, fewer than all 10 properties should remain.
+	if analysis.Count >= 10 {
+		t.Errorf("Expected fewer than 10 properties after truncation, got %d", analysis.Count)
+	}
+
+	// Reported total size must stay within the configured memory limit.
+	if int64(analysis.TotalSize) > cfg.Plan.PerformanceLimits.MaxTotalMemory {
+		t.Errorf("Total size %d exceeds memory limit %d", analysis.TotalSize, cfg.Plan.PerformanceLimits.MaxTotalMemory)
+	}
+
+	t.Logf("Truncated to %d properties, total size %d bytes (limit %d)",
+		analysis.Count, analysis.TotalSize, cfg.Plan.PerformanceLimits.MaxTotalMemory)
+}
+
 // TestFormatterPerformanceWithLargePlans tests formatter performance with large datasets
 func TestFormatterPerformanceWithLargePlans(t *testing.T) {
 	skipIfIntegrationTestsDisabled(t)
@@ -280,60 +326,6 @@ func generatePlanWithLargeProperties(numResources, propertiesPerResource, proper
 			Name:    generateResourceName(i),
 			Change: &tfjson.Change{
 				Actions: []tfjson.Action{tfjson.ActionUpdate},
-				Before:  before,
-				After:   after,
-			},
-		}
-	}
-
-	return plan
-}
-
-func generateMixedActionPlan(numResources int) *tfjson.Plan {
-	actions := []tfjson.Action{
-		tfjson.ActionCreate,
-		tfjson.ActionUpdate,
-		tfjson.ActionDelete,
-		[]tfjson.Action{tfjson.ActionDelete, tfjson.ActionCreate}[0], // Replace
-	}
-
-	plan := &tfjson.Plan{
-		FormatVersion:    "1.2",
-		TerraformVersion: "1.8.5",
-		ResourceChanges:  make([]*tfjson.ResourceChange, numResources),
-	}
-
-	for i := range numResources {
-		action := actions[i%len(actions)]
-
-		var before, after any
-		var changeActions []tfjson.Action
-
-		switch action {
-		case tfjson.ActionCreate:
-			before = nil
-			after = map[string]any{"prop": "value"}
-			changeActions = []tfjson.Action{tfjson.ActionCreate}
-		case tfjson.ActionDelete:
-			before = map[string]any{"prop": "value"}
-			after = nil
-			changeActions = []tfjson.Action{tfjson.ActionDelete}
-		case tfjson.ActionUpdate:
-			before = map[string]any{"prop": "old_value"}
-			after = map[string]any{"prop": "new_value"}
-			changeActions = []tfjson.Action{tfjson.ActionUpdate}
-		default: // Replace
-			before = map[string]any{"prop": "old_value"}
-			after = map[string]any{"prop": "new_value"}
-			changeActions = []tfjson.Action{tfjson.ActionDelete, tfjson.ActionCreate}
-		}
-
-		plan.ResourceChanges[i] = &tfjson.ResourceChange{
-			Address: generateResourceAddress(i),
-			Type:    generateResourceType(i),
-			Name:    generateResourceName(i),
-			Change: &tfjson.Change{
-				Actions: changeActions,
 				Before:  before,
 				After:   after,
 			},
