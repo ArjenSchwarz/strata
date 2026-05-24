@@ -74,9 +74,11 @@ runs:
       with:
         path: ~/.cache/strata
         key: strata-binary-${{ runner.os }}-${{ runner.arch }}-${{ inputs.strata-version }}
+        # Scope restore-keys to the exact version segment so a "latest" run does
+        # not restore an unrelated pinned-version cache (and vice versa). action.sh
+        # still validates a restored "latest" binary against the current release.
         restore-keys: |
-          strata-binary-${{ runner.os }}-${{ runner.arch }}-
-          strata-binary-${{ runner.os }}-
+          strata-binary-${{ runner.os }}-${{ runner.arch }}-${{ inputs.strata-version }}
     
     - name: Run Strata Analysis
       id: strata-analysis

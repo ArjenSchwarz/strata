@@ -675,6 +675,111 @@ EOF
     fi
 }
 
+# Regression test for T-1096: a "latest" run must not reuse a stale cached
+# binary. download_strata must resolve the current latest release tag and only
+# reuse the cached binary when its --version matches that tag. If the cached
+# version is older, the binary must be re-downloaded rather than silently used.
+test_latest_cache_version_validation() {
+    log_test "latest cache validation (T-1096)"
+
+    local run_dir="$TEST_DIR/latest_cache_validation"
+    local harness="$run_dir/latest_cache_harness.sh"
+    mkdir -p "$run_dir"
+
+    # The harness sources download_strata + get_version_tag from action.sh,
+    # then overrides get_version_tag, detect_platform and curl so the network is
+    # never touched. CACHED_VERSION and LATEST_TAG are supplied per scenario.
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -uo pipefail
+
+ACTION_PATH="$1"
+CACHE_DIR="$2"
+CACHED_VERSION="$3"
+LATEST_TAG="$4"
+
+mkdir -p "$CACHE_DIR"
+STRATA_BIN="$CACHE_DIR/strata"
+
+# Mock cached binary reporting CACHED_VERSION.
+cat > "$STRATA_BIN" <<MOCK
+#!/bin/bash
+echo "strata version $CACHED_VERSION"
+MOCK
+chmod +x "$STRATA_BIN"
+
+INPUT_STRATA_VERSION="latest"
+GITHUB_API_URL="https://example.invalid"
+
+# Override platform detection to avoid depending on the host.
+detect_platform() { OS="linux"; ARCH="amd64"; }
+
+# Override version resolution to return the controlled latest tag.
+get_version_tag() {
+  if [[ -n "$LATEST_TAG" ]]; then
+    echo "$LATEST_TAG"
+    return 0
+  fi
+  return 1
+}
+
+# Stub curl so any re-download attempt fails fast (no network).
+curl() { return 1; }
+
+# Stub sleep so retry loops do not slow the test down.
+sleep() { :; }
+
+export OS ARCH STRATA_BIN CACHE_DIR INPUT_STRATA_VERSION GITHUB_API_URL
+
+eval "$(sed -n '/^download_strata()/,/^}/p' "$ACTION_PATH")"
+
+download_strata
+EOF
+    chmod +x "$harness"
+
+    # Scenario 1: cached binary is stale relative to the resolved latest tag.
+    # The function must NOT reuse it. With curl stubbed to fail, a re-download
+    # attempt means the function exits non-zero rather than returning 0 with
+    # "Using cached Strata binary".
+    local stale_cache="$run_dir/stale"
+    local stale_output
+    # download_strata exits non-zero once the (stubbed) re-download fails; that
+    # non-zero exit is itself proof the stale cache was rejected. Guard the
+    # assignment so the surrounding `set -e` does not abort the test run.
+    stale_output=$(bash "$harness" "action.sh" "$stale_cache" "v0.0.1" "v1.5.0" 2>&1) || true
+    if echo "$stale_output" | grep -q "Using cached Strata binary"; then
+        echo -e "${RED}[FAIL]${NC} latest run must not reuse a stale cached binary"
+        echo "  Output: $stale_output"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} latest run must not reuse a stale cached binary"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    fi
+
+    # Scenario 2: cached binary matches the resolved latest tag. The function
+    # must reuse it without attempting a download.
+    local match_cache="$run_dir/match"
+    if bash "$harness" "action.sh" "$match_cache" "v1.5.0" "v1.5.0" 2>&1 | grep -q "Using cached Strata binary"; then
+        echo -e "${GREEN}[PASS]${NC} latest run reuses cached binary matching the latest tag"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} latest run reuses cached binary matching the latest tag"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+
+    # Scenario 3: latest tag cannot be resolved (offline / API failure). The
+    # function should fall back to reusing the cached binary as a best effort
+    # rather than failing the whole action.
+    local offline_cache="$run_dir/offline"
+    if bash "$harness" "action.sh" "$offline_cache" "v0.0.1" "" 2>&1 | grep -qi "cached Strata binary"; then
+        echo -e "${GREEN}[PASS]${NC} latest run reuses cached binary when latest tag cannot be resolved"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} latest run reuses cached binary when latest tag cannot be resolved"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+}
+
 # Regression test for T-1226: test scripts must start with a valid shebang.
 # A corrupted shebang (e.g. "#\!/bin/bash" with an escaped bang) makes the
 # kernel reject direct execution with "exec format error" on Linux, even
@@ -723,6 +828,7 @@ test_environment_variables
 test_github_context
 test_dual_output_functions
 test_run_analysis_argument_safety
+test_latest_cache_version_validation
 test_script_shebangs
 
 # Print test summary
