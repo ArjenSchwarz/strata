@@ -87,13 +87,21 @@ This command shows the current version of Strata, along with build information
 when available. Use this to verify which version you're running or for
 troubleshooting purposes.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if versionOutputFormat != "table" && versionOutputFormat != "json" {
-			return fmt.Errorf("unsupported output format %q: supported formats are table, json", versionOutputFormat)
+		// Treat an empty output format as the default (table). The Cobra flag
+		// default is "table", but the backing variable can be empty when the
+		// command is invoked programmatically without the flag being set.
+		outputFormat := versionOutputFormat
+		if outputFormat == "" {
+			outputFormat = "table"
+		}
+
+		if outputFormat != "table" && outputFormat != "json" {
+			return fmt.Errorf("unsupported output format %q: supported formats are table, json", outputFormat)
 		}
 
 		versionInfo := GetVersionInfo()
 
-		switch versionOutputFormat {
+		switch outputFormat {
 		case "json":
 			jsonData, err := json.MarshalIndent(versionInfo, "", "  ")
 			if err != nil {
