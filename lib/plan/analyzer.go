@@ -61,6 +61,35 @@ func (a *Analyzer) maskSensitiveValue(value any, isSensitive bool) any {
 	return sensitiveValue // "(sensitive value)" constant already defined
 }
 
+// sensitiveSubtreeHasMarker reports whether a Terraform sensitivity subtree
+// contains any sensitive marker. Terraform may express sensitivity as a single
+// bool at a path, or as a structure (slice/map) with per-element bool markers.
+// The path-based isSensitive helper only returns true for a bool at the path,
+// so aggregate slice/map handling must use this to detect per-element
+// sensitivity (e.g. before_sensitive: {"secrets": [true, true]}).
+func sensitiveSubtreeHasMarker(sensitiveValues any) bool {
+	switch v := sensitiveValues.(type) {
+	case bool:
+		return v
+	case []any:
+		for _, child := range v {
+			if sensitiveSubtreeHasMarker(child) {
+				return true
+			}
+		}
+		return false
+	case map[string]any:
+		for _, child := range v {
+			if sensitiveSubtreeHasMarker(child) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
+}
+
 // compareObjects performs deep object comparison for property change extraction with optional replacement path checking
 func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, afterSensitive any, afterUnknown any, replacePathStrings []string, analysis *PropertyChangeAnalysis) {
 	// Check if this property is unknown and handle it first (requirement 1.6)
@@ -373,7 +402,18 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				return
 			}
 
-			displayAfter := after
+			// Aggregate slice changes carry the whole slice in a single
+			// PropertyChange, so per-element sensitivity markers at the parent
+			// path must be honoured here (isSensitive only sees a bool at the
+			// path). Treat any sensitive child marker as making the aggregate
+			// sensitive, and mask the aggregate before/after value (T-1348).
+			aggregateSensitive := isSensitive ||
+				sensitiveSubtreeHasMarker(beforeSensitive) ||
+				sensitiveSubtreeHasMarker(afterSensitive)
+			aggregateBefore := a.maskSensitiveValue(before, aggregateSensitive)
+			aggregateAfter := a.maskSensitiveValue(after, aggregateSensitive)
+
+			displayAfter := aggregateAfter
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
@@ -383,11 +423,11 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
-				Before:              before,
+				Before:              aggregateBefore,
 				After:               displayAfter,
 				Action:              action,
 				TriggersReplacement: triggersReplacement,
-				Sensitive:           isSensitive,
+				Sensitive:           aggregateSensitive,
 				IsUnknown:           isUnknown,
 				UnknownType:         unknownType,
 			})
@@ -402,8 +442,19 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 				triggersReplacement = a.pathMatchesReplacePathString(propertyPath, replacePathStrings)
 			}
 
+			// Aggregate slice changes carry the whole slice in a single
+			// PropertyChange, so per-element sensitivity markers at the parent
+			// path must be honoured here (isSensitive only sees a bool at the
+			// path). Treat any sensitive child marker as making the aggregate
+			// sensitive, and mask both sides before appending (T-1355).
+			aggregateSensitive := isSensitive ||
+				sensitiveSubtreeHasMarker(beforeSensitive) ||
+				sensitiveSubtreeHasMarker(afterSensitive)
+			aggregateBefore := a.maskSensitiveValue(before, aggregateSensitive)
+			aggregateAfter := a.maskSensitiveValue(after, aggregateSensitive)
+
 			// Handle unknown values for array size changes (requirement 1.6)
-			displayAfter := after
+			displayAfter := aggregateAfter
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
@@ -413,10 +464,11 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
-				Before:              before,
+				Before:              aggregateBefore,
 				After:               displayAfter,
 				Action:              "update",
 				TriggersReplacement: triggersReplacement,
+				Sensitive:           aggregateSensitive,
 				IsUnknown:           isUnknown,
 				UnknownType:         unknownType,
 			})
