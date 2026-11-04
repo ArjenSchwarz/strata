@@ -1188,6 +1188,10 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange, outputs []Outpu
 			stats.Replacements++
 		case ChangeTypeNoOp:
 			stats.Unmodified++
+		case ChangeTypeForget:
+			stats.Forgotten++
+		case ChangeTypeRead:
+			stats.Read++
 		}
 
 		// Count high-risk changes (any resource with the dangerous flag set)
@@ -1203,7 +1207,8 @@ func (a *Analyzer) calculateStatistics(changes []ResourceChange, outputs []Outpu
 		}
 	}
 
-	stats.Total = stats.ToAdd + stats.ToChange + stats.ToDestroy + stats.Replacements + stats.Unmodified
+	stats.Total = stats.ToAdd + stats.ToChange + stats.ToDestroy + stats.Replacements +
+		stats.Forgotten + stats.Read + stats.Unmodified
 	return stats
 }
 
@@ -1661,6 +1666,14 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 	}
 
 	if change.Change == nil {
+		return analysis
+	}
+
+	// Read and forget do not change infrastructure attributes: a read fetches
+	// data source values and a forget only drops the object from state. Diffing
+	// before/after would wrongly present these as attribute additions/removals.
+	switch FromTerraformAction(change.Change.Actions) {
+	case ChangeTypeRead, ChangeTypeForget:
 		return analysis
 	}
 

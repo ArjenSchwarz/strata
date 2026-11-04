@@ -19,6 +19,8 @@ const (
 	formatMarkdown      = "markdown"
 	noPropertiesChanged = "No properties changed"
 	truncatedIndicator  = " [truncated]"
+	forgetDetail        = "Removed from state only; infrastructure is not destroyed"
+	readDetail          = "Data source read during apply; no infrastructure change"
 	// Unicode En space (U+2002) constants for consistent indentation across output formats
 	indent       = "\u2002\u2002"             // 2 En spaces - basic indentation level
 	nestedIndent = "\u2002\u2002\u2002\u2002" // 4 En spaces - nested indentation level
@@ -28,6 +30,8 @@ const (
 	tableActionReplace = "Replace"
 	tableActionModify  = "Modify"
 	tableActionAdd     = "Add"
+	tableActionForget  = "Forget"
+	tableActionRead    = "Read"
 
 	// Known after apply constant
 	knownAfterApply = "(known after apply)"
@@ -333,6 +337,8 @@ func (f *Formatter) createStatisticsSummaryDataV2(summary *PlanSummary) ([]map[s
 			"Removed":       summary.Statistics.ToDestroy,
 			"Modified":      summary.Statistics.ToChange,
 			"Replacements":  summary.Statistics.Replacements,
+			"Forgotten":     summary.Statistics.Forgotten,
+			"Read":          summary.Statistics.Read,
 			"High Risk":     summary.Statistics.HighRisk,
 			"Unmodified":    summary.Statistics.Unmodified,
 		},
@@ -349,6 +355,8 @@ func (f *Formatter) createVerticalStatisticsData(summary *PlanSummary) []map[str
 		{"Metric": "Removed", "Value": summary.Statistics.ToDestroy},
 		{"Metric": "Modified", "Value": summary.Statistics.ToChange},
 		{"Metric": "Replacements", "Value": summary.Statistics.Replacements},
+		{"Metric": "Forgotten", "Value": summary.Statistics.Forgotten},
+		{"Metric": "Read", "Value": summary.Statistics.Read},
 		{"Metric": "High Risk", "Value": summary.Statistics.HighRisk},
 		{"Metric": "Unmodified", "Value": summary.Statistics.Unmodified},
 	}
@@ -359,7 +367,7 @@ func (f *Formatter) statisticsKeys() []string {
 	if f.config.Plan.StatisticsSummaryFormat == "vertical" {
 		return []string{"Metric", "Value"}
 	}
-	return []string{"Total Changes", "Added", "Removed", "Modified", "Replacements", "High Risk", "Unmodified"}
+	return []string{"Total Changes", "Added", "Removed", "Modified", "Replacements", "Forgotten", "Read", "High Risk", "Unmodified"}
 }
 
 // createSensitiveResourceChangesDataV2 creates data for sensitive resource changes only for v2 API
@@ -430,6 +438,10 @@ func getActionDisplay(changeType ChangeType) string {
 		return tableActionRemove
 	case ChangeTypeReplace:
 		return tableActionReplace
+	case ChangeTypeForget:
+		return tableActionForget
+	case ChangeTypeRead:
+		return tableActionRead
 	default:
 		return "No-op"
 	}
@@ -459,7 +471,7 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 			return val
 		}
 		if propAnalysis.Count == 0 {
-			return noPropertiesChanged
+			return noPropertyChangesText(val)
 		}
 
 		// Create summary
@@ -490,6 +502,20 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 			output.WithExpanded(shouldExpand),
 			output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 	}
+}
+
+// noPropertyChangesText describes a resource without property changes. Read and
+// forget actions get an explanation of what happens instead of "No properties changed".
+func noPropertyChangesText(val any) string {
+	if dataMap, ok := val.(map[string]any); ok {
+		switch dataMap["change_type"] {
+		case ChangeTypeForget:
+			return forgetDetail
+		case ChangeTypeRead:
+			return readDetail
+		}
+	}
+	return noPropertiesChanged
 }
 
 // extractPropertyAnalysis extracts PropertyChangeAnalysis from either a map-based or direct value
@@ -875,7 +901,9 @@ func (f *Formatter) getDisplayID(change ResourceChange) string {
 
 // getReplacementDisplay returns the replacement display string
 func (f *Formatter) getReplacementDisplay(change ResourceChange) string {
-	if change.ChangeType == ChangeTypeDelete {
+	// Replacement is not applicable to resources leaving state or data source reads
+	switch change.ChangeType {
+	case ChangeTypeDelete, ChangeTypeForget, ChangeTypeRead:
 		return notApplicable
 	}
 	return string(change.ReplacementType)
@@ -1465,13 +1493,15 @@ func (f *Formatter) sortResourcesByPriority(resources []ResourceChange) []Resour
 			return ri.IsDangerous // Dangerous first
 		}
 
-		// Second: Sort by action type: delete > replace > update > create (Requirement 2.2)
+		// Second: Sort by action type: delete > replace > forget > update > create > read (Requirement 2.2)
 		actionPriority := map[ChangeType]int{
 			ChangeTypeDelete:  0, // Highest priority
 			ChangeTypeReplace: 1,
-			ChangeTypeUpdate:  2,
-			ChangeTypeCreate:  3,
-			ChangeTypeNoOp:    4, // Lowest priority
+			ChangeTypeForget:  2,
+			ChangeTypeUpdate:  3,
+			ChangeTypeCreate:  4,
+			ChangeTypeRead:    5,
+			ChangeTypeNoOp:    6, // Lowest priority
 		}
 
 		pi, pj := actionPriority[ri.ChangeType], actionPriority[rj.ChangeType]
@@ -1534,12 +1564,16 @@ func getActionPriority(action string) int {
 		return 0
 	case tableActionReplace:
 		return 1
-	case tableActionModify:
+	case tableActionForget:
 		return 2
-	case tableActionAdd:
+	case tableActionModify:
 		return 3
-	default:
+	case tableActionAdd:
 		return 4
+	case tableActionRead:
+		return 5
+	default:
+		return 6
 	}
 }
 

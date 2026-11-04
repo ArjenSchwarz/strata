@@ -101,11 +101,13 @@ func TestGetActionPriority(t *testing.T) {
 	}{
 		{"Remove", 0},
 		{"Replace", 1},
-		{"Modify", 2},
-		{"Add", 3},
-		{"Unknown", 4},
-		{"", 4},
-		{"Invalid", 4},
+		{"Forget", 2},
+		{"Modify", 3},
+		{"Add", 4},
+		{"Read", 5},
+		{"Unknown", 6},
+		{"", 6},
+		{"Invalid", 6},
 	}
 
 	for _, tt := range tests {
