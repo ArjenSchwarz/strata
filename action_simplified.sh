@@ -250,11 +250,9 @@ download_strata() {
     [[ $attempt -lt 3 ]] && sleep 2
   done
 
-  # If specific version failed and we're not already using latest, try fallback
+  # Pinned versions must not silently fall back to latest (T-1547).
   if [[ "$version" != "latest" ]]; then
-    log_warning "Version $version not found, falling back to latest"
-    download_strata "latest"
-    return $?
+    log_error "Failed to download requested Strata version $version (no fallback to latest for pinned versions)" 3
   fi
 
   log_error "Failed to download Strata from: $binary_url" 3
@@ -340,9 +338,19 @@ extract_outputs() {
   total=$(jq -r --arg m "Total Changes" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
   dangers=$(jq -r --arg m "High Risk" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
 
+  # "Total Changes" only counts resources; add non-no-op "Output Changes" rows
+  # so output-only plans report changes (T-1469).
+  local outputs
+  outputs=$(jq -r '
+    if type=="array" then
+      [.[] | select(.title=="Output Changes") | (.data // [])[] | select(.Action != "No-op")] | length
+    else 0 end' "$json_file" 2>/dev/null || echo "0")
+
   # Guard against null/empty/non-numeric results before integer comparison.
   [[ "$total" =~ ^[0-9]+$ ]] || total=0
   [[ "$dangers" =~ ^[0-9]+$ ]] || dangers=0
+  [[ "$outputs" =~ ^[0-9]+$ ]] || outputs=0
+  total=$((total + outputs))
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

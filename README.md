@@ -429,6 +429,8 @@ The action now supports specifying which version of Strata to use, making it eas
     strata-version: v1.5.0-beta.1
 ```
 
+If a pinned version (anything other than `latest`) cannot be downloaded, the action fails rather than running a different release. A cached binary is only reused when its version exactly matches the requested one.
+
 ### Required Permissions
 
 **IMPORTANT:** For the GitHub Action to post comments on pull requests, you must configure the proper permissions in your workflow:
@@ -481,11 +483,11 @@ jobs:
 |-------|-------------|----------|----------|
 | `plan-file` | Path to Terraform plan file | Yes | |
 | `output-format` | Output format (table, json, markdown) | No | `markdown` |
-| `config-file` | Path to custom Strata config file | No | |
+| `config-file` | Path to custom Strata config file. The action fails if the path does not exist or is not readable | No | |
 | `highlight-dangers` | Highlight potentially dangerous changes | No | `true` |
 | `show-details` | Show detailed change information | No | `false` |
 | `expand-all` | Expand all collapsible sections | No | `false` |
-| `strata-version` | Specific Strata version to use (e.g., `v1.4.0`, `v1.5.0-beta.1`, `latest`) | No | `latest` |
+| `strata-version` | Specific Strata version to use (e.g., `v1.4.0`, `v1.5.0-beta.1`, `latest`). A pinned version that cannot be downloaded fails the action instead of falling back to `latest` | No | `latest` |
 | `github-token` | GitHub token for PR comments | No | `${{ github.token }}` |
 | `comment-on-pr` | Whether to comment on PR | No | `true` |
 | `update-comment` | Whether to update existing comment | No | `true` |
@@ -496,10 +498,10 @@ jobs:
 | Output | Description |
 |--------|-------------|
 | `summary` | Plan summary text |
-| `has-changes` | Whether the plan contains changes |
+| `has-changes` | Whether the plan contains resource or output changes |
 | `has-dangers` | Whether dangerous changes were detected |
 | `json-summary` | Full summary in JSON format |
-| `change-count` | Total number of changes |
+| `change-count` | Total number of changes (Total Changes from the summary statistics plus non-no-op output changes) |
 | `danger-count` | Number of dangerous changes |
 
 ### Features

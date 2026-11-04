@@ -570,52 +570,28 @@ test_version_fallback_not_triggered_on_latest() {
 }
 
 test_version_fallback_from_specific_to_latest() {
-    log_test "Version fallback from specific version to latest"
-    MOCK_OS="Linux"
-    MOCK_ARCH="x86_64"
-    MOCK_CHECKSUM_VALID=true
+    log_test "Pinned version does not fall back to latest (T-1547)"
 
-    # Create a modified download_strata function that can handle version-specific failures
-    download_strata_with_fallback() {
+    # Mirrors the action contract: a pinned version that fails to download
+    # must fail (exit 3) instead of installing latest. The real action.sh path
+    # is covered by test_pinned_version_no_latest_fallback in action_test.sh.
+    download_strata_pinned() {
         local version="${1:-latest}"
-        local temp_dir="${2:-$TEST_OUTPUT_DIR}"
-
-        # Fail for specific version but succeed for latest
         if [[ "$version" != "latest" ]]; then
-            echo "⬇️ Downloading Strata ${version} for linux/amd64"
-            echo "❌ Failed to download from: https://github.com/ArjenSchwarz/strata/releases/download/${version}/strata-linux-amd64.tar.gz"
-            echo "⚠️ Version $version not found, falling back to latest"
-
-            # Recursive call to latest
-            download_strata_with_fallback "latest" "$temp_dir"
-            return $?
-        else
-            # Success for latest
-            echo "⬇️ Downloading Strata latest for linux/amd64"
-
-            # Create mock files for latest
-            mkdir -p "$temp_dir/mock_binary"
-            echo "#!/bin/bash" > "$temp_dir/mock_binary/strata"
-            echo "echo 'Strata v1.4.0'" >> "$temp_dir/mock_binary/strata"
-            chmod +x "$temp_dir/mock_binary/strata"
-            tar -czf "$temp_dir/strata.tar.gz" -C "$temp_dir" mock_binary/strata 2>/dev/null
-
-            echo "abc123def456  strata-linux-amd64.tar.gz" > "$temp_dir/checksums.txt"
-
-            # Extract
-            tar -xzf "$temp_dir/strata.tar.gz" -C "$temp_dir"
-            echo "✅ Download and verification successful"
-            return 0
+            echo "❌ Failed to download requested Strata version $version (no fallback to latest for pinned versions)"
+            return 3
         fi
+        return 0
     }
 
-    local output
-    output=$(download_strata_with_fallback "v99.99.99" "$TEST_OUTPUT_DIR" 2>&1)
+    local output exit_code
+    set +e
+    output=$(download_strata_pinned "v99.99.99" 2>&1)
+    exit_code=$?
+    set -e
 
-    assert_contains "$output" "Version v99.99.99 not found" "Should show version not found"
-    assert_contains "$output" "falling back to latest" "Should show fallback message"
-    assert_contains "$output" "Download and verification successful" "Should succeed with latest"
-    assert_file_exists "$TEST_OUTPUT_DIR/mock_binary/strata" "Should create binary after fallback"
+    assert_equals "3" "$exit_code" "Should fail for unavailable pinned version"
+    assert_contains "$output" "no fallback to latest" "Should explain that no fallback happens"
 }
 
 test_download_creates_temp_files() {
