@@ -14,7 +14,7 @@ inputs:
     required: false
     default: 'markdown'
   config-file:
-    description: 'Path to custom Strata config file'
+    description: 'Path to custom Strata config file. The action fails if a non-empty path does not exist or is not readable.'
     required: false
   show-details:
     description: 'Show detailed change information'
@@ -45,7 +45,7 @@ inputs:
     required: false
     default: '🏗️ Terraform Plan Summary'
   strata-version:
-    description: 'Specific Strata version to use (default: latest)'
+    description: 'Specific Strata version to use (default: latest). A pinned version that cannot be downloaded fails the action; it never falls back to latest.'
     required: false
     default: 'latest'
 
@@ -54,7 +54,7 @@ outputs:
     description: 'Plan summary text'
     value: ${{ steps.strata-analysis.outputs.summary }}
   has-changes:
-    description: 'Whether the plan contains changes'
+    description: 'Whether the plan contains resource or output changes'
     value: ${{ steps.strata-analysis.outputs.has-changes }}
   has-dangers:
     description: 'Whether dangerous changes were detected'
@@ -63,7 +63,7 @@ outputs:
     description: 'Full summary in JSON format'
     value: ${{ steps.strata-analysis.outputs.json-summary }}
   change-count:
-    description: 'Total number of changes'
+    description: 'Total number of changes (Total Changes from the summary statistics plus non-no-op output changes)'
     value: ${{ steps.strata-analysis.outputs.change-count }}
   danger-count:
     description: 'Number of dangerous changes'

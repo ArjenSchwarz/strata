@@ -266,40 +266,12 @@ download_strata() {
     [[ $attempt -lt 3 ]] && sleep 2
   done
 
-  # Fallback to latest if specific version fails
+  # A pinned version must never silently fall back to a different release
+  # (T-1547): running another binary breaks reproducibility and hides missing
+  # release assets. Fail with a clear error instead.
   if [[ "$version" != "latest" ]]; then
-    echo "⚠️ Version $version not found, trying latest"
-    local fallback_tag
-    if fallback_tag=$(get_version_tag "latest"); then
-      local fallback_filename="strata-${fallback_tag}-${OS}-${ARCH}.tar.gz"
-      local fallback_url="$base_url/latest/download/$fallback_filename"
-
-      echo "⚠️ Trying fallback: $fallback_filename"
-      if curl -fsSL "$fallback_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
-        tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/fallback.tar.gz"
-        chmod +x "$STRATA_BIN"
-        echo "✅ Fallback to latest successful"
-        return 0
-      fi
-    else
-      # Tag lookup failed — try asset listing as last resort
-      echo "⚠️ Could not resolve latest tag, trying asset listing"
-      local assets_json
-      if assets_json=$(curl -fsSL "$GITHUB_API_URL/repos/ArjenSchwarz/strata/releases/latest" 2>/dev/null); then
-        local asset_url
-        asset_url=$(echo "$assets_json" | jq -r ".assets[] | select(.name | test(\"strata-.*-${OS}-${ARCH}\\\\.tar\\\\.gz$\")) | .browser_download_url" 2>/dev/null | head -1)
-        if [[ -n "$asset_url" ]]; then
-          if curl -fsSL "$asset_url" -o "$TEMP_DIR/fallback.tar.gz" 2>/dev/null; then
-            tar -xz -C "$CACHE_DIR" -f "$TEMP_DIR/fallback.tar.gz"
-            chmod +x "$STRATA_BIN"
-            echo "✅ Fallback to latest successful"
-            return 0
-          fi
-        fi
-      fi
-    fi
+    echo "❌ Failed to download requested Strata version $version (no fallback to latest for pinned versions)"
   fi
-
   echo "❌ Failed to download from: $binary_url"
   exit 3
 }
@@ -350,12 +322,15 @@ validate_inputs() {
       echo "❌ Path traversal detected in config file path"
       exit 2
     fi
+    # An explicitly requested config must exist and be readable (T-1647);
+    # silently falling back to defaults would drop the intended danger rules.
+    # This matches the CLI, which errors on an unreadable --config.
     if [[ ! -f "$INPUT_CONFIG_FILE" ]]; then
-      echo "⚠️ Config file not found: $INPUT_CONFIG_FILE (using defaults)"
-      INPUT_CONFIG_FILE=""
+      echo "❌ Config file not found: $INPUT_CONFIG_FILE"
+      exit 2
     elif [[ ! -r "$INPUT_CONFIG_FILE" ]]; then
-      echo "⚠️ Config file not readable: $INPUT_CONFIG_FILE (using defaults)"
-      INPUT_CONFIG_FILE=""
+      echo "❌ Config file not readable: $INPUT_CONFIG_FILE"
+      exit 2
     fi
   fi
 
@@ -465,9 +440,20 @@ extract_outputs() {
   total_changes=$(jq -r --arg m "Total Changes" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
   danger_changes=$(jq -r --arg m "High Risk" "$stats_metric" "$json_file" 2>/dev/null || echo "0")
 
+  # "Total Changes" only counts resources. Output-only plans render an "Output
+  # Changes" section instead (T-1469), so count its rows too, skipping "No-op"
+  # rows that only appear with --show-no-ops.
+  local output_changes
+  output_changes=$(jq -r '
+    if type=="array" then
+      [.[] | select(.title=="Output Changes") | (.data // [])[] | select(.Action != "No-op")] | length
+    else 0 end' "$json_file" 2>/dev/null || echo "0")
+
   # Guard against null/empty/non-numeric results before integer comparison.
   [[ "$total_changes" =~ ^[0-9]+$ ]] || total_changes=0
   [[ "$danger_changes" =~ ^[0-9]+$ ]] || danger_changes=0
+  [[ "$output_changes" =~ ^[0-9]+$ ]] || output_changes=0
+  total_changes=$((total_changes + output_changes))
 
   # Set GitHub Action outputs
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

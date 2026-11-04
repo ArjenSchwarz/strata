@@ -47,7 +47,7 @@ Add the following step to your workflow:
 |-------|-------------|----------|---------|---------|
 | `plan-file` | Path to Terraform plan file | ✅ | | `terraform.tfplan` |
 | `output-format` | Output format for analysis | ❌ | `markdown` | `table`, `json`, `markdown` |
-| `config-file` | Path to custom Strata config | ❌ | | `.strata.yaml` |
+| `config-file` | Path to custom Strata config (the action fails if it does not exist or is not readable) | ❌ | | `.strata.yaml` |
 | `highlight-dangers` | Highlight potentially dangerous changes | ❌ | `true` | `true`, `false` |
 | `show-details` | Show detailed change info | ❌ | `false` | `true`, `false` |
 | `github-token` | GitHub token for API access | ❌ | `${{ github.token }}` | `${{ secrets.GITHUB_TOKEN }}` |
@@ -60,10 +60,10 @@ Add the following step to your workflow:
 | Output | Description | Type | Example |
 |--------|-------------|------|---------|
 | `summary` | Plan summary text | String | `"Plan contains 3 changes..."` |
-| `has-changes` | Whether plan has changes | Boolean | `true` |
+| `has-changes` | Whether plan has resource or output changes | Boolean | `true` |
 | `has-dangers` | Whether dangerous changes detected | Boolean | `false` |
 | `json-summary` | Full summary in JSON format | String | `{"totalChanges": 3, ...}` |
-| `change-count` | Total number of changes | Number | `3` |
+| `change-count` | Total Changes from the summary statistics plus non-no-op output changes | Number | `3` |
 | `danger-count` | Number of dangerous changes | Number | `0` |
 
 ## Usage Examples

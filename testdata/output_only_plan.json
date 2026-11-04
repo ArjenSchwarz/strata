@@ -1,0 +1,10 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.8.5",
+  "planned_values": {"outputs": {"service_url": {"sensitive": false, "value": "https://example.com"}}, "root_module": {}},
+  "resource_changes": [],
+  "output_changes": {
+    "service_url": {"actions": ["create"], "before": null, "after": "https://example.com", "after_unknown": false, "before_sensitive": false, "after_sensitive": false}
+  },
+  "configuration": {"root_module": {"outputs": {"service_url": {"expression": {"constant_value": "https://example.com"}}}}}
+}

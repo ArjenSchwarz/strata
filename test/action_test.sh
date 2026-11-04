@@ -1006,6 +1006,220 @@ EOF
     assert_equals "2" "$(echo "$result" | grep '^danger-count=' | cut -d= -f2)" "details: danger-count=2"
 }
 
+# Regression test for T-1469: output-only plans must not report no changes.
+# "Total Changes" counts resources only, so extract_outputs must also count the
+# non-no-op rows of the "Output Changes" section.
+test_extract_outputs_output_changes() {
+    log_test "extract_outputs counts output changes (T-1469)"
+
+    local run_dir="$TEST_DIR/extract_outputs_output_changes"
+    local harness="$run_dir/harness.sh"
+    mkdir -p "$run_dir"
+
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+set -uo pipefail
+ACTION_PATH="$1"
+JSON_FILE="$2"
+GITHUB_OUTPUT="$(mktemp)"
+export GITHUB_OUTPUT
+DISPLAY_OUTPUT="display"
+OUTPUTS_WRITTEN=false
+eval "$(sed -n '/^set_default_outputs()/,/^}/p' "$ACTION_PATH")"
+eval "$(sed -n '/^extract_outputs()/,/^}/p' "$ACTION_PATH")"
+log_warning() { echo "$1"; }
+# action_simplified.sh takes the display text as a second argument.
+extract_outputs "$JSON_FILE" "$DISPLAY_OUTPUT"
+grep -E '^(has-changes|change-count)=' "$GITHUB_OUTPUT"
+rm -f "$GITHUB_OUTPUT"
+EOF
+    chmod +x "$harness"
+
+    # Output-only plan: the real CLI document shape from the ticket.
+    local output_only="$run_dir/output_only.json"
+    cat > "$output_only" <<'EOF'
+[
+  {"title":"Summary Statistics","data":[{"Total Changes":0,"Added":0,"Removed":0,"Modified":0,"Replacements":0,"High Risk":0,"Unmodified":0}]},
+  {"content":"All resources are unchanged.","type":"text"},
+  {"title":"Output Changes","data":[{"Name":"service_url","Action":"Add","Current":"-","Planned":"\"https://example.com\"","Sensitive":""}]}
+]
+EOF
+    local script result
+    for script in action.sh action_simplified.sh; do
+        result=$(bash "$harness" "$script" "$output_only")
+        assert_equals "true" "$(echo "$result" | grep '^has-changes=' | cut -d= -f2)" "$script output-only: has-changes=true"
+        assert_equals "1" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "$script output-only: change-count=1"
+    done
+
+    # Resource and output changes are summed.
+    local mixed="$run_dir/mixed.json"
+    cat > "$mixed" <<'EOF'
+[
+  {"title":"Summary Statistics","data":[{"Total Changes":2,"High Risk":0}]},
+  {"title":"Output Changes","data":[
+    {"Name":"a","Action":"Modify"},
+    {"Name":"b","Action":"Remove"},
+    {"Name":"c","Action":"No-op"}
+  ]}
+]
+EOF
+    result=$(bash "$harness" "action.sh" "$mixed")
+    assert_equals "4" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "mixed: change-count=resources+non-no-op outputs"
+
+    # Only no-op outputs (shown with --show-no-ops) are not changes.
+    local noop="$run_dir/noop.json"
+    cat > "$noop" <<'EOF'
+[
+  {"title":"Summary Statistics","data":[{"Total Changes":0,"High Risk":0}]},
+  {"title":"Output Changes","data":[{"Name":"c","Action":"No-op"}]}
+]
+EOF
+    result=$(bash "$harness" "action.sh" "$noop")
+    assert_equals "false" "$(echo "$result" | grep '^has-changes=' | cut -d= -f2)" "no-op outputs only: has-changes=false"
+    assert_equals "0" "$(echo "$result" | grep '^change-count=' | cut -d= -f2)" "no-op outputs only: change-count=0"
+}
+
+# End-to-end regression for T-1469: build the real CLI and run the action's
+# run_analysis against an output-only Terraform plan.
+test_run_analysis_output_only_plan() {
+    log_test "run_analysis reports changes for output-only plan (T-1469)"
+
+    if ! command -v go >/dev/null 2>&1; then
+        echo -e "${YELLOW}[SKIP]${NC} go not available"
+        return 0
+    fi
+
+    local run_dir="$TEST_DIR/output_only_e2e"
+    mkdir -p "$run_dir/home/.cache/strata"
+    if ! go build -o "$run_dir/home/.cache/strata/strata" . >/dev/null 2>&1; then
+        echo -e "${RED}[FAIL]${NC} failed to build strata"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        return 0
+    fi
+
+    local gh_output="$run_dir/github_output"
+    : > "$gh_output"
+    # The action's STRATA_BIN is $HOME/.cache/strata/strata.
+    (
+        HOME="$run_dir/home" GITHUB_OUTPUT="$gh_output" \
+        INPUT_PLAN_FILE="testdata/output_only_plan.json" INPUT_OUTPUT_FORMAT="markdown" \
+        bash -c 'source ./action.sh; validate_inputs; run_analysis' >/dev/null 2>&1
+    ) || true
+
+    assert_equals "true" "$(grep '^has-changes=' "$gh_output" | cut -d= -f2)" "e2e output-only: has-changes=true"
+    assert_equals "1" "$(grep '^change-count=' "$gh_output" | cut -d= -f2)" "e2e output-only: change-count=1"
+}
+
+# Regression test for T-1647: an explicit config-file that cannot be read must
+# fail validation instead of silently falling back to defaults.
+test_validate_inputs_config_file() {
+    log_test "validate_inputs rejects missing config-file (T-1647)"
+
+    local run_dir="$TEST_DIR/validate_config"
+    mkdir -p "$run_dir/home"
+    local plan="$run_dir/plan.json"
+    echo '{}' > "$plan"
+    local config="$run_dir/strata.yaml"
+    echo 'plan: {}' > "$config"
+
+    # Run validate_inputs from the real action.sh, then report the config path
+    # that run_analysis would forward.
+    run_validate() {
+        HOME="$run_dir/home" INPUT_PLAN_FILE="$plan" INPUT_OUTPUT_FORMAT="markdown" INPUT_CONFIG_FILE="$1" \
+            bash -c 'source ./action.sh; validate_inputs; echo "config_after=${INPUT_CONFIG_FILE:-}"' 2>&1
+    }
+
+    local output status
+    status=0
+    output=$(run_validate "$run_dir/missing-strata.yaml") || status=$?
+    assert_equals "2" "$status" "missing config-file exits 2"
+    if echo "$output" | grep -q "Config file not found" && ! echo "$output" | grep -q "config_after="; then
+        echo -e "${GREEN}[PASS]${NC} missing config-file reports error and stops"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} missing config-file reports error and stops"
+        echo "  Output: $output"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+
+    # A directory is not a readable config file either.
+    status=0
+    run_validate "$run_dir" >/dev/null || status=$?
+    assert_equals "2" "$status" "directory config-file exits 2"
+
+    status=0
+    output=$(run_validate "$config") || status=$?
+    assert_equals "0" "$status" "existing config-file passes validation"
+    assert_equals "config_after=$config" "$(echo "$output" | grep '^config_after=')" "existing config-file is kept"
+
+    status=0
+    output=$(run_validate "") || status=$?
+    assert_equals "0" "$status" "empty config-file passes validation"
+}
+
+# Regression test for T-1547: a pinned strata-version must fail when its
+# download fails, never silently install the latest release instead.
+test_pinned_version_no_latest_fallback() {
+    log_test "pinned version does not fall back to latest (T-1547)"
+
+    local run_dir="$TEST_DIR/pinned_version"
+    mkdir -p "$run_dir/home" "$run_dir/pkg"
+    printf '#!/bin/bash\necho "strata version v9.9.9"\n' > "$run_dir/pkg/strata"
+    chmod +x "$run_dir/pkg/strata"
+    tar -czf "$run_dir/latest.tar.gz" -C "$run_dir/pkg" strata
+
+    local harness="$run_dir/harness.sh"
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+LATEST_TARBALL="$1"
+source ./action.sh
+detect_platform() { OS="linux"; ARCH="amd64"; }
+sleep() { :; }
+# Pinned-version URLs fail; anything for "latest" succeeds, so the old
+# fallback path would have installed the latest binary and returned 0.
+curl() {
+  local out="" url="" write=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -o) out="$2"; shift ;;
+      -w) write="$2"; shift ;;
+      -*) ;;
+      *) url="$1" ;;
+    esac
+    shift
+  done
+  [[ "$url" == *v1.2.3* ]] && return 1
+  if [[ "$url" == */releases/latest ]]; then
+    echo '{"tag_name":"v9.9.9","assets":[{"name":"strata-v9.9.9-linux-amd64.tar.gz","browser_download_url":"https://example.invalid/latest/strata-v9.9.9-linux-amd64.tar.gz"}]}'
+    return 0
+  fi
+  [[ -n "$out" ]] && cp "$LATEST_TARBALL" "$out"
+  return 0
+}
+INPUT_STRATA_VERSION="v1.2.3"
+download_strata
+EOF
+
+    local output status=0
+    output=$(HOME="$run_dir/home" bash "$harness" "$run_dir/latest.tar.gz" 2>&1) || status=$?
+    assert_equals "3" "$status" "pinned version download failure exits 3"
+    if echo "$output" | grep -q "trying latest\|Fallback to latest successful"; then
+        echo -e "${RED}[FAIL]${NC} pinned version must not attempt latest fallback"
+        echo "  Output: $output"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} pinned version must not attempt latest fallback"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    fi
+    if [[ -e "$run_dir/home/.cache/strata/strata" ]]; then
+        echo -e "${RED}[FAIL]${NC} no binary installed after pinned download failure"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} no binary installed after pinned download failure"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    fi
+}
+
 # Regression test for T-1226: test scripts must start with a valid shebang.
 # A corrupted shebang (e.g. "#\!/bin/bash" with an escaped bang) makes the
 # kernel reject direct execution with "exec format error" on Linux, even
@@ -1057,6 +1271,10 @@ test_run_analysis_argument_safety
 test_run_analysis_highlight_dangers_wiring
 test_latest_cache_version_validation
 test_extract_outputs_go_output_array
+test_extract_outputs_output_changes
+test_run_analysis_output_only_plan
+test_validate_inputs_config_file
+test_pinned_version_no_latest_fallback
 test_script_shebangs
 
 # Print test summary
