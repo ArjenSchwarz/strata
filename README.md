@@ -195,7 +195,7 @@ AZURERM Provider (3 changes)
 ```
 
 - **Smart Thresholds**: Only groups when resource count ≥ 10 and multiple providers present
-- **Provider Identity**: Resources are grouped by the provider that manages them (Terraform's `provider_name`, e.g. `registry.terraform.io/hashicorp/googlebeta` → `GOOGLEBETA`), so `google_*` resources managed by `googlebeta` get their own group. The resource type prefix is only used when the plan has no provider information
+- **Provider Identity**: Resources are grouped by the provider that manages them, using Terraform's full `provider_name` address. `google_*` resources managed by `googlebeta` get their own `GOOGLEBETA` group. Labels use the short provider name unless two providers share it, e.g. `registry.terraform.io/hashicorp/widget` and `registry.terraform.io/acme/widget` are shown as `HASHICORP/WIDGET` and `ACME/WIDGET`. The resource type prefix is only used when the plan has no provider information
 - **Auto-Expansion**: Provider groups with high-risk changes expand automatically
 - **Configurable**: Can be disabled or threshold adjusted in `strata.yaml`
 

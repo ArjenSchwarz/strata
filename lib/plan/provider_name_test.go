@@ -33,21 +33,23 @@ func TestNormalizeProviderName(t *testing.T) {
 	}
 }
 
+func testProviderChange(addr, typ, providerName string) *tfjson.ResourceChange {
+	return &tfjson.ResourceChange{
+		Address:      addr,
+		Type:         typ,
+		Name:         strings.ReplaceAll(addr, ".", "_"),
+		ProviderName: providerName,
+		Change: &tfjson.Change{
+			Actions: tfjson.Actions{tfjson.ActionCreate},
+			After:   map[string]any{"name": addr},
+		},
+	}
+}
+
 // googleBetaPlan builds a plan where google_compute_instance resources are managed
 // by both the google and googlebeta providers, plus resources without provider_name.
 func googleBetaPlan() *tfjson.Plan {
-	rc := func(addr, typ, providerName string) *tfjson.ResourceChange {
-		return &tfjson.ResourceChange{
-			Address:      addr,
-			Type:         typ,
-			Name:         strings.ReplaceAll(addr, ".", "_"),
-			ProviderName: providerName,
-			Change: &tfjson.Change{
-				Actions: tfjson.Actions{tfjson.ActionCreate},
-				After:   map[string]any{"name": addr},
-			},
-		}
-	}
+	rc := testProviderChange
 	return &tfjson.Plan{
 		FormatVersion:    "1.2",
 		TerraformVersion: "1.9.0",
@@ -83,7 +85,11 @@ func TestAnalyzer_ProviderFromProviderName(t *testing.T) {
 	}
 
 	groups := analyzer.groupByProvider(summary.ResourceChanges)
-	wantCounts := map[string]int{"google": 1, "googlebeta": 2, "aws": 1}
+	wantCounts := map[string]int{
+		"registry.terraform.io/hashicorp/google":     1,
+		"registry.terraform.io/hashicorp/googlebeta": 2,
+		"aws": 1, // no provider_name: grouped by type prefix
+	}
 	if len(groups) != len(wantCounts) {
 		t.Fatalf("groupByProvider() returned %d groups, want %d: %v", len(groups), len(wantCounts), getMapKeys(groups))
 	}
@@ -104,6 +110,21 @@ func TestFormatter_GroupsByProviderName(t *testing.T) {
 		t.Fatalf("GenerateSummary() error = %v", err)
 	}
 
+	got := renderMarkdown(t, cfg, summary)
+	for _, want := range []string{
+		"GOOGLEBETA Provider (2 changes)",
+		"GOOGLE Provider (1 changes)",
+		"AWS Provider (1 changes)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q\n%s", want, got)
+		}
+	}
+}
+
+// renderMarkdown renders a summary through Formatter.OutputSummary to a markdown file.
+func renderMarkdown(t *testing.T, cfg *config.Config, summary *PlanSummary) string {
+	t.Helper()
 	outFile := filepath.Join(t.TempDir(), "summary.md")
 	outputConfig := &config.OutputConfiguration{
 		Format:           "markdown",
@@ -113,19 +134,109 @@ func TestFormatter_GroupsByProviderName(t *testing.T) {
 	if err := NewFormatter(cfg).OutputSummary(summary, outputConfig, true); err != nil {
 		t.Fatalf("OutputSummary() error = %v", err)
 	}
-
 	data, err := os.ReadFile(outFile)
 	if err != nil {
 		t.Fatalf("reading output: %v", err)
 	}
-	got := string(data)
+	return string(data)
+}
+
+// TestProviderGrouping_SameTypeDifferentNamespace verifies that providers sharing a
+// type name but from different namespaces are grouped separately and labelled
+// unambiguously, while unambiguous providers keep their short labels.
+func TestProviderGrouping_SameTypeDifferentNamespace(t *testing.T) {
+	rc := testProviderChange
+	tfPlan := &tfjson.Plan{
+		FormatVersion:    "1.2",
+		TerraformVersion: "1.9.0",
+		ResourceChanges: []*tfjson.ResourceChange{
+			rc("widget_thing.official", "widget_thing", "registry.terraform.io/hashicorp/widget"),
+			rc("widget_thing.fork1", "widget_thing", "registry.terraform.io/acme/widget"),
+			rc("widget_thing.fork2", "widget_thing", "registry.terraform.io/acme/widget"),
+			rc("google_compute_instance.ga", "google_compute_instance", "registry.terraform.io/hashicorp/google"),
+			rc("google_compute_instance.beta", "google_compute_instance", "registry.terraform.io/hashicorp/googlebeta"),
+		},
+	}
+	cfg := config.GetDefaultConfig()
+	cfg.Plan.Grouping.Threshold = 2
+	analyzer := NewAnalyzer(tfPlan, cfg)
+	summary, err := analyzer.GenerateSummary("")
+	if err != nil {
+		t.Fatalf("GenerateSummary() error = %v", err)
+	}
+
+	groups := analyzer.groupByProvider(summary.ResourceChanges)
+	wantCounts := map[string]int{
+		"registry.terraform.io/hashicorp/widget":     1,
+		"registry.terraform.io/acme/widget":          2,
+		"registry.terraform.io/hashicorp/google":     1,
+		"registry.terraform.io/hashicorp/googlebeta": 1,
+	}
+	if len(groups) != len(wantCounts) {
+		t.Fatalf("groupByProvider() returned %d groups, want %d: %v", len(groups), len(wantCounts), getMapKeys(groups))
+	}
+	for key, count := range wantCounts {
+		if got := len(groups[key]); got != count {
+			t.Errorf("group %q has %d resources, want %d", key, got, count)
+		}
+	}
+
+	got := renderMarkdown(t, cfg, summary)
 	for _, want := range []string{
-		"GOOGLEBETA Provider (2 changes)",
+		"HASHICORP/WIDGET Provider (1 changes)",
+		"ACME/WIDGET Provider (2 changes)",
 		"GOOGLE Provider (1 changes)",
-		"AWS Provider (1 changes)",
+		"GOOGLEBETA Provider (1 changes)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "REGISTRY.TERRAFORM.IO") {
+		t.Errorf("labels should not include the default registry host\n%s", got)
+	}
+}
+
+func TestProviderGroupLabels(t *testing.T) {
+	tests := map[string]struct {
+		keys []string
+		want map[string]string
+	}{
+		"unambiguous providers use short names": {
+			keys: []string{"registry.terraform.io/hashicorp/aws", "registry.terraform.io/hashicorp/googlebeta", "kubernetes"},
+			want: map[string]string{
+				"registry.terraform.io/hashicorp/aws":        "aws",
+				"registry.terraform.io/hashicorp/googlebeta": "googlebeta",
+				"kubernetes": "kubernetes",
+			},
+		},
+		"colliding namespaces are disambiguated": {
+			keys: []string{"registry.terraform.io/hashicorp/widget", "registry.terraform.io/acme/widget"},
+			want: map[string]string{
+				"registry.terraform.io/hashicorp/widget": "hashicorp/widget",
+				"registry.terraform.io/acme/widget":      "acme/widget",
+			},
+		},
+		"colliding hosts keep the custom host": {
+			keys: []string{"registry.terraform.io/acme/widget", "example.com/acme/widget"},
+			want: map[string]string{
+				"registry.terraform.io/acme/widget": "acme/widget",
+				"example.com/acme/widget":           "example.com/acme/widget",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := providerGroupLabels(tc.keys)
+			if len(got) != len(tc.want) {
+				t.Fatalf("providerGroupLabels() = %v, want %v", got, tc.want)
+			}
+			for key, want := range tc.want {
+				if got[key] != want {
+					t.Errorf("label for %q = %q, want %q", key, got[key], want)
+				}
+			}
+		})
 	}
 }

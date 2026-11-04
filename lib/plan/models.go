@@ -46,7 +46,8 @@ type ResourceChange struct {
 	DangerReason     string   `json:"danger_reason"`     // Reason why this change is dangerous
 	DangerProperties []string `json:"danger_properties"` // List of dangerous property changes
 	// Enhanced summary visualization fields
-	Provider         string                 `json:"provider,omitempty"`          // Provider name extracted from resource type (e.g., "aws", "azurerm")
+	Provider         string                 `json:"provider,omitempty"`          // Short provider name (e.g., "aws", "googlebeta") from provider_name, or the resource type prefix when absent
+	ProviderAddress  string                 `json:"provider_address,omitempty"`  // Full Terraform provider address from provider_name (e.g., "registry.terraform.io/hashicorp/aws"); used as grouping identity
 	TopChanges       []string               `json:"top_changes,omitempty"`       // First 3 changed properties for updates (only shown if show_context=true)
 	ReplacementHints []string               `json:"replacement_hints,omitempty"` // Human-readable replacement reasons (always shown)
 	PropertyChanges  PropertyChangeAnalysis `json:"property_changes"`            // Detailed property change analysis

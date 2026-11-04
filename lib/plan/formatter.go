@@ -983,32 +983,28 @@ func (f *Formatter) formatGroupedWithCollapsibleSections(summary *PlanSummary, g
 // auto-expansion behavior for high-risk changes within provider groups (Requirement 6.4).
 // Provider sections will auto-expand when they contain dangerous deletions or replacements.
 func (f *Formatter) addGroupedResourceChangesWithCollapsibleSections(builder *output.Builder, groups map[string][]ResourceChange) *output.Builder {
-	// Sort provider keys for deterministic output ordering
-	providers := make([]string, 0, len(groups))
-	for provider := range groups {
-		providers = append(providers, provider)
-	}
-	sort.Strings(providers)
+	providers, labels := sortedProviderGroups(groups)
 
 	for _, provider := range providers {
 		resources := groups[provider]
 		if len(resources) == 0 {
 			continue
 		}
+		label := labels[provider]
 
 		sortedResources := f.sortResourcesByPriority(resources)
 		tableData := f.prepareResourceTableData(sortedResources)
 		schema := f.getResourceTableSchema()
 
-		sectionTitle := fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(provider), len(resources))
-		tableName := fmt.Sprintf("%s Resources", strings.ToUpper(provider))
+		sectionTitle := fmt.Sprintf("%s Provider (%d changes)", strings.ToUpper(label), len(resources))
+		tableName := fmt.Sprintf("%s Resources", strings.ToUpper(label))
 
 		addTable := func(b *output.Builder) {
 			providerTable, err := output.NewTableContent(tableName, tableData, output.WithSchema(schema...))
 			if err == nil {
 				b.AddContent(providerTable)
 			} else {
-				fmt.Printf("Warning: Failed to create %s provider table: %v\n", provider, err)
+				fmt.Printf("Warning: Failed to create %s provider table: %v\n", label, err)
 			}
 		}
 
@@ -1132,16 +1128,7 @@ func (f *Formatter) groupResourcesByProvider(changes []ResourceChange) map[strin
 			continue
 		}
 
-		provider := change.Provider
-		if provider == "" {
-			// Extract provider from resource type (e.g., "aws_instance" -> "aws")
-			parts := strings.Split(change.Type, "_")
-			if len(parts) > 0 {
-				provider = parts[0]
-			} else {
-				provider = "unknown"
-			}
-		}
+		provider := providerGroupKey(change)
 		groups[provider] = append(groups[provider], change)
 	}
 	return groups
@@ -1204,14 +1191,9 @@ func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *outp
 	groups := f.groupResourcesByProvider(summary.ResourceChanges)
 	if len(groups) > 1 {
 		// Multiple providers: create provider-grouped sections
-		providerNames := make([]string, 0, len(groups))
-		for name := range groups {
-			providerNames = append(providerNames, name)
-		}
-		sort.Strings(providerNames)
-
-		for _, providerName := range providerNames {
-			f.addProviderGroupTable(providerName, groups[providerName], builder)
+		providerKeys, labels := sortedProviderGroups(groups)
+		for _, key := range providerKeys {
+			f.addProviderGroupTable(labels[key], groups[key], builder)
 		}
 	} else {
 		// Single provider: create standard table
