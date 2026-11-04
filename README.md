@@ -332,6 +332,10 @@ sensitive_properties:
 
 When a sensitive resource is being replaced or a sensitive property is being modified, Strata will highlight it with a warning indicator (⚠️) and provide details about why the change is considered dangerous. The warning system now shows warnings for any destructive changes without requiring threshold configuration.
 
+#### Terraform-Sensitive Values
+
+Independently of the danger configuration above, Strata masks any value Terraform marks as sensitive (`before_sensitive`/`after_sensitive`) as `(sensitive value)` in every output format. Maps and lists that are summarised as a single change (for example `tags`, `metadata`, `labels`, `environment`, `*_config`, or a list that changes size) are masked as a whole when any field or element inside them is sensitive. When a parent object is `(known after apply)`, each nested field is listed individually and only the sensitive ones are masked.
+
 ## Configuration
 
 You can customize Strata's behavior using a configuration file. Strata will look for a file named `strata.yaml` in the current directory or your home directory, or you can specify a custom file using the `--config` flag.
