@@ -15,6 +15,7 @@ func TestFormatOutputValue(t *testing.T) {
 		{"unknown", "anything", false, true, knownAfterApply},
 		{"sensitive", "secret", true, false, "(sensitive value)"},
 		{"nil", nil, false, false, "-"},
+		{"nil_sensitive", nil, true, false, "-"},
 		{"string", "hello", false, false, `"hello"`},
 		{"number", float64(42), false, false, "42"},
 		{"bool", true, false, false, "true"},
