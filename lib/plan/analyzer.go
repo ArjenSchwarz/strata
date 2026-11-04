@@ -1004,7 +1004,8 @@ func (a *Analyzer) analyzeResourceChanges() []ResourceChange {
 			DangerReason:     "",
 			DangerProperties: []string{},
 			// Enhanced summary visualization fields
-			Provider:         a.extractProvider(rc.Type),
+			Provider:         a.resolveProvider(rc.ProviderName, rc.Type),
+			ProviderAddress:  strings.TrimSpace(rc.ProviderName),
 			ReplacementHints: a.extractReplacementHints(rc),
 			TopChanges:       a.getTopChangedProperties(rc, 3),
 			PropertyChanges:  propertyChanges,
@@ -1451,6 +1452,17 @@ func (a *Analyzer) extractProvider(resourceType string) string {
 	// Cache the result
 	a.providerCache.Store(resourceType, provider)
 	return provider
+}
+
+// resolveProvider returns the provider used for display and grouping. It prefers
+// Terraform's explicit provider_name (e.g. "registry.terraform.io/hashicorp/googlebeta"
+// -> "googlebeta") because the resource type prefix is ambiguous, and only falls back
+// to the type prefix when provider metadata is absent.
+func (a *Analyzer) resolveProvider(providerName, resourceType string) string {
+	if name := normalizeProviderName(providerName); name != "" {
+		return name
+	}
+	return a.extractProvider(resourceType)
 }
 
 // extractReplacementHints extracts human-readable reasons for resource replacements
@@ -1959,7 +1971,7 @@ func (a *Analyzer) groupByProvider(changes []ResourceChange) map[string][]Resour
 	// Count providers to check diversity
 	providerCounts := make(map[string]int)
 	for _, change := range changes {
-		provider := a.extractProvider(change.Type)
+		provider := providerGroupKey(change)
 		providerCounts[provider]++
 	}
 
@@ -1970,7 +1982,7 @@ func (a *Analyzer) groupByProvider(changes []ResourceChange) map[string][]Resour
 
 	// Group resources by provider
 	for _, change := range changes {
-		provider := a.extractProvider(change.Type)
+		provider := providerGroupKey(change)
 		groups[provider] = append(groups[provider], change)
 	}
 

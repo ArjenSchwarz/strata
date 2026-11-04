@@ -195,6 +195,7 @@ AZURERM Provider (3 changes)
 ```
 
 - **Smart Thresholds**: Only groups when resource count ≥ 10 and multiple providers present
+- **Provider Identity**: Resources are grouped by the provider that manages them, using Terraform's full `provider_name` address. `google_*` resources managed by `googlebeta` get their own `GOOGLEBETA` group. Labels use the short provider name unless two providers share it, e.g. `registry.terraform.io/hashicorp/widget` and `registry.terraform.io/acme/widget` are shown as `HASHICORP/WIDGET` and `ACME/WIDGET`. The resource type prefix is only used when the plan has no provider information
 - **Auto-Expansion**: Provider groups with high-risk changes expand automatically
 - **Configurable**: Can be disabled or threshold adjusted in `strata.yaml`
 
@@ -360,6 +361,9 @@ plan:
   grouping:
     enabled: true                    # Enable provider grouping (default: true)
     threshold: 10                    # Minimum resources to trigger grouping (default: 10)
+  # Deprecated: plan.group-by-provider and plan.grouping-threshold are still
+  # migrated to plan.grouping (with a warning) when plan.grouping is not set.
+  # If both are present, plan.grouping wins.
 
 # File output configuration
 output-file: "reports/plan-$TIMESTAMP.json"  # Default file output path with placeholder

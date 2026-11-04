@@ -233,17 +233,34 @@ func (config *Config) MigrateDeprecatedConfig() []string {
 		config.Plan.ExpandableSections.MaxDetailLength = 10240 // 10KB default
 	}
 
+	legacyGroupBySet := viper.IsSet("plan.group-by-provider")
+	legacyThresholdSet := viper.IsSet("plan.grouping-threshold")
+
 	if !viper.IsSet("plan.grouping") {
-		// Use existing threshold value if it was migrated, otherwise default to 10
+		// Migrate the legacy fields when present, otherwise use the defaults
+		enabled := true
+		if legacyGroupBySet {
+			enabled = config.Plan.GroupByProvider
+		}
 		threshold := 10
-		if config.Plan.GroupingThreshold > 0 {
+		if legacyThresholdSet && config.Plan.GroupingThreshold > 0 {
 			threshold = config.Plan.GroupingThreshold
 		}
 
 		config.Plan.Grouping = GroupingConfig{
-			Enabled:   true,
+			Enabled:   enabled,
 			Threshold: threshold,
 		}
+
+		if legacyGroupBySet {
+			warnings = append(warnings, "plan.group-by-provider is deprecated, use plan.grouping.enabled instead")
+		}
+		if legacyThresholdSet {
+			warnings = append(warnings, "plan.grouping-threshold is deprecated, use plan.grouping.threshold instead")
+		}
+	} else if legacyGroupBySet || legacyThresholdSet {
+		// The new block takes precedence over the legacy fields
+		warnings = append(warnings, "plan.group-by-provider and plan.grouping-threshold are deprecated and ignored because plan.grouping is set")
 	}
 
 	// Remove the expand_all warning as it's not a deprecated feature but a new one

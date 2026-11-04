@@ -193,8 +193,13 @@ func TestProviderGrouping_Integration(t *testing.T) {
 		t.Errorf("Expected at least 2 provider groups, got %d", len(groups))
 	}
 
-	// Verify specific providers are present
-	expectedProviders := []string{"aws", "azurerm", "google", "kubernetes"}
+	// Verify specific providers are present (groups are keyed by full provider address)
+	expectedProviders := []string{
+		"registry.terraform.io/hashicorp/aws",
+		"registry.terraform.io/hashicorp/azurerm",
+		"registry.terraform.io/hashicorp/google",
+		"registry.terraform.io/hashicorp/kubernetes",
+	}
 	for _, provider := range expectedProviders {
 		if _, exists := groups[provider]; !exists {
 			t.Errorf("Expected provider '%s' to be present in groups, available: %v", provider, getMapKeys(groups))
