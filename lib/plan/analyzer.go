@@ -1387,50 +1387,123 @@ func (a *Analyzer) IsSensitiveProperty(resourceType string, propertyName string)
 	return false
 }
 
-// checkSensitiveProperties checks if any properties in the change match sensitive properties
+// checkSensitiveProperties returns the configured sensitive properties whose
+// value differs between the before and after states of the change.
+//
+// Configured properties may be top-level attribute names (e.g. "user_data") or
+// dot-separated nested paths (e.g. "tags.Secret"). A missing value on either
+// side reads as nil, so additions and removals are treated as changes. This
+// also covers whole-resource creates (Before is nil) and deletes (After is
+// nil): a sensitive property being set on create or removed by a delete is
+// reported like any other change.
 func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []string {
 	var sensitiveProps []string
 
-	// If there's no change or no config, return empty
-	if change.Change.Before == nil || change.Change.After == nil || a.config == nil {
+	if a.config == nil || change.Change == nil {
 		return sensitiveProps
 	}
 
-	// Extract before and after as maps
-	beforeMap, beforeOk := change.Change.Before.(map[string]any)
-	afterMap, afterOk := change.Change.After.(map[string]any)
-
-	if !beforeOk || !afterOk {
+	// Before/After are objects for managed resources; anything else (or nil
+	// for creates/deletes) is treated as an empty object.
+	beforeMap, _ := change.Change.Before.(map[string]any)
+	afterMap, _ := change.Change.After.(map[string]any)
+	if beforeMap == nil && afterMap == nil {
 		return sensitiveProps
 	}
 
-	// Check each property across the union of before and after keys so that
-	// additions, modifications, and removals of sensitive properties are all
-	// detected. Iterating over only the after keys would miss properties that
-	// exist solely in before (i.e. removed during an update).
-	seen := make(map[string]struct{}, len(beforeMap)+len(afterMap))
-	collect := func(m map[string]any) {
-		for propName := range m {
-			if _, alreadySeen := seen[propName]; alreadySeen {
-				continue
-			}
-			seen[propName] = struct{}{}
+	seen := make(map[string]struct{})
+	for _, sp := range a.config.SensitiveProperties {
+		if sp.ResourceType != change.Type || sp.Property == "" {
+			continue
+		}
+		if _, dup := seen[sp.Property]; dup {
+			continue
+		}
+		seen[sp.Property] = struct{}{}
 
-			beforeVal := beforeMap[propName]
-			afterVal := afterMap[propName]
-
-			// If property has changed and is sensitive, add to list. A missing
-			// key on either side reads as nil, so additions and removals of a
-			// sensitive property are treated as changes.
-			if !reflect.DeepEqual(beforeVal, afterVal) && a.IsSensitiveProperty(change.Type, propName) {
-				sensitiveProps = append(sensitiveProps, propName)
-			}
+		beforeVal := lookupPropertyPath(beforeMap, sp.Property)
+		afterVal := lookupPropertyPath(afterMap, sp.Property)
+		// A value that is only known after apply is usually omitted from
+		// After, so it would otherwise compare as nil == nil on a create.
+		// Treat any unknown at, above, or below the configured path as a
+		// potential change.
+		if !reflect.DeepEqual(beforeVal, afterVal) ||
+			a.isSensitivePathUnknown(change.Change.AfterUnknown, sp.Property) {
+			sensitiveProps = append(sensitiveProps, sp.Property)
 		}
 	}
-	collect(beforeMap)
-	collect(afterMap)
 
 	return sensitiveProps
+}
+
+// isSensitivePathUnknown reports whether a configured sensitive property path
+// is (partly) unknown until apply according to an after_unknown structure. It
+// resolves paths the same way as lookupPropertyPath. A true value on an
+// ancestor means the whole subtree is unknown; for an object or list at the
+// configured path, any unknown descendant counts.
+func (a *Analyzer) isSensitivePathUnknown(afterUnknown any, path string) bool {
+	switch v := afterUnknown.(type) {
+	case bool:
+		return v
+	case map[string]any:
+		if val, ok := v[path]; ok {
+			return a.hasAnyUnknown(val)
+		}
+		head, rest, found := strings.Cut(path, ".")
+		if !found {
+			return false
+		}
+		next, ok := v[head]
+		if !ok {
+			return false
+		}
+		return a.isSensitivePathUnknown(next, rest)
+	case []any:
+		head, rest, found := strings.Cut(path, ".")
+		idx, err := strconv.Atoi(head)
+		if err != nil || idx < 0 || idx >= len(v) {
+			return false
+		}
+		if !found {
+			return a.hasAnyUnknown(v[idx])
+		}
+		return a.isSensitivePathUnknown(v[idx], rest)
+	}
+	return false
+}
+
+// lookupPropertyPath resolves a dot-separated property path (e.g. "tags.Secret"
+// or "ebs_block_device.0.volume_size") against a Terraform attribute value.
+// An exact key match on the remaining path is preferred at each level, so keys
+// that themselves contain dots (e.g. "kubernetes.io/role" in tags) still
+// resolve. Numeric segments index into lists. Returns nil when not found.
+func lookupPropertyPath(value any, path string) any {
+	switch v := value.(type) {
+	case map[string]any:
+		if val, ok := v[path]; ok {
+			return val
+		}
+		head, rest, found := strings.Cut(path, ".")
+		if !found {
+			return nil
+		}
+		next, ok := v[head]
+		if !ok {
+			return nil
+		}
+		return lookupPropertyPath(next, rest)
+	case []any:
+		head, rest, found := strings.Cut(path, ".")
+		idx, err := strconv.Atoi(head)
+		if err != nil || idx < 0 || idx >= len(v) {
+			return nil
+		}
+		if !found {
+			return v[idx]
+		}
+		return lookupPropertyPath(v[idx], rest)
+	}
+	return nil
 }
 
 // extractProvider extracts provider from resource type (e.g., "aws" from "aws_s3_bucket")
