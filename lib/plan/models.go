@@ -16,6 +16,8 @@ const (
 	ChangeTypeDelete  ChangeType = "delete"  // Resource is being deleted
 	ChangeTypeReplace ChangeType = "replace" // Resource is being replaced
 	ChangeTypeNoOp    ChangeType = "no-op"   // No operation on resource
+	ChangeTypeRead    ChangeType = "read"    // Data source is read during apply
+	ChangeTypeForget  ChangeType = "forget"  // Resource is removed from state without being destroyed
 )
 
 // ReplacementType represents whether a resource will be replaced
@@ -100,6 +102,8 @@ type ChangeStatistics struct {
 	Replacements int `json:"replacements"` // REPLACEMENTS: Resources to be replaced (definite replacements)
 	HighRisk     int `json:"high_risk"`    // HIGH RISK: Sensitive resources with danger flag
 	Unmodified   int `json:"unmodified"`   // UNMODIFIED: Resources with no changes (no-op)
+	Forgotten    int `json:"forgotten"`    // FORGOTTEN: Resources removed from state without being destroyed
+	Read         int `json:"read"`         // READ: Data sources read during apply
 	Total        int `json:"total"`        // TOTAL: Total number of resource changes across all categories
 	// Output change statistics (excludes no-ops per requirement 4.5)
 	OutputChanges int `json:"output_changes"` // OUTPUT CHANGES: Total number of output changes (excludes no-ops)
@@ -141,6 +145,10 @@ func FromTerraformAction(actions tfjson.Actions) ChangeType {
 		return ChangeTypeUpdate
 	case tfjson.ActionDelete:
 		return ChangeTypeDelete
+	case tfjson.ActionRead:
+		return ChangeTypeRead
+	case tfjson.ActionForget:
+		return ChangeTypeForget
 	case "replace":
 		return ChangeTypeReplace
 	case "no-op":

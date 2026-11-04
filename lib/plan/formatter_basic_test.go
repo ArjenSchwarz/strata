@@ -183,8 +183,8 @@ func TestFormatter_createStatisticsSummaryDataV2_Vertical(t *testing.T) {
 		t.Fatalf("createStatisticsSummaryDataV2() error = %v", err)
 	}
 
-	if len(data) != 7 {
-		t.Fatalf("Expected 7 rows for vertical format, got %d", len(data))
+	if len(data) != 9 {
+		t.Fatalf("Expected 9 rows for vertical format, got %d", len(data))
 	}
 
 	// Verify first and second rows

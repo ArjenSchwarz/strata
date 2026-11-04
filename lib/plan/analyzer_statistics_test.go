@@ -335,3 +335,24 @@ func TestCalculateStatistics_TotalIncludesUnmodifiedResources(t *testing.T) {
 	assert.Equal(t, 3, stats.Total, "Total should include unmodified resources")
 	assert.Equal(t, stats.ToAdd+stats.ToChange+stats.ToDestroy+stats.Replacements+stats.Unmodified, stats.Total)
 }
+
+func TestCalculateStatistics_CountsReadAndForget(t *testing.T) {
+	analyzer := &Analyzer{
+		config: &config.Config{},
+	}
+
+	changes := []ResourceChange{
+		{ChangeType: ChangeTypeRead},
+		{ChangeType: ChangeTypeForget},
+		{ChangeType: ChangeTypeForget},
+		{ChangeType: ChangeTypeNoOp},
+	}
+
+	stats := analyzer.calculateStatistics(changes, []OutputChange{})
+
+	assert.Equal(t, 1, stats.Read)
+	assert.Equal(t, 2, stats.Forgotten)
+	assert.Equal(t, 1, stats.Unmodified, "read and forget must not be counted as unmodified")
+	assert.Equal(t, 0, stats.ToDestroy, "forget must not be counted as a destroy")
+	assert.Equal(t, 4, stats.Total)
+}

@@ -140,9 +140,9 @@ Here's an example of what the output looks like when analyzing a plan with dange
 
 ### Summary Statistics
 
-| Total Changes | Added | Removed | Modified | Replacements | High Risk | Unmodified |
-| --- | --- | --- | --- | --- | --- | --- |
-| 4 | 1 | 0 | 2 | 1 | 2 | 0 |
+| Total Changes | Added | Removed | Modified | Replacements | Forgotten | Read | High Risk | Unmodified |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 1 | 0 | 2 | 1 | 0 | 0 | 2 | 0 |
 
 
 ### Resource Changes
@@ -162,6 +162,10 @@ Here's an example of what the output looks like when analyzing a plan with dange
 | database\_endpoint | Modify | "myapp-db-20240315.c123456789.us-west-2.rds.amazonaws.com:5432" | (known after apply) |  |
 | iam\_profile\_name | Add | - | "myapp-ec2-profile" |  |
 
+
+Besides `Add`, `Modify`, `Remove` and `Replace`, the Action column can show two more Terraform actions, each with its own statistics column:
+- **Forget** (`Forgotten`): the resource is removed from Terraform state but the real infrastructure is left in place (for example via a `removed` block with `destroy = false`). It is not counted as a destroy.
+- **Read** (`Read`): a data source that Terraform has to read during apply because its inputs are not known until then.
 
 This example showcases:
 - **Danger Detection**: The RDS instance replacement and EC2 user data modification are flagged as high-risk

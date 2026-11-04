@@ -119,6 +119,16 @@ func TestFromTerraformAction(t *testing.T) {
 			actions:  tfjson.Actions{tfjson.ActionCreate, tfjson.ActionDelete},
 			expected: ChangeTypeReplace,
 		},
+		{
+			name:     "read action (data source read during apply)",
+			actions:  tfjson.Actions{tfjson.ActionRead},
+			expected: ChangeTypeRead,
+		},
+		{
+			name:     "forget action (removed from state, not destroyed)",
+			actions:  tfjson.Actions{tfjson.ActionForget},
+			expected: ChangeTypeForget,
+		},
 	}
 
 	for _, tt := range tests {
