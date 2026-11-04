@@ -332,7 +332,7 @@ sensitive_properties:
     property: tags.Secret              # Nested paths use dots; list items use indexes (e.g. root_block_device.0.volume_size)
 ```
 
-Sensitive properties are matched against the property's value before and after the change, so they are flagged when the value is modified, added, or removed. This includes resources that are being created (the property is set for the first time) and deleted (the property is removed along with the resource). Nested properties are referenced with dot-separated paths such as `tags.Secret`; only a change at that path triggers the warning, not changes to sibling keys.
+Sensitive properties are matched against the property's value before and after the change, so they are flagged when the value is modified, added, or removed. This includes resources that are being created (the property is set for the first time) and deleted (the property is removed along with the resource). A sensitive property whose value is shown as `(known after apply)` is also treated as changing, because its final value cannot be compared yet. Nested properties are referenced with dot-separated paths such as `tags.Secret`; only a change at that path triggers the warning, not changes to sibling keys.
 
 When a sensitive resource is being replaced or a sensitive property is being modified, Strata will highlight it with a warning indicator (⚠️) and provide details about why the change is considered dangerous. The warning system now shows warnings for any destructive changes without requiring threshold configuration.
 

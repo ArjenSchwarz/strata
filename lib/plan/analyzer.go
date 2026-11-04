@@ -1423,12 +1423,53 @@ func (a *Analyzer) checkSensitiveProperties(change *tfjson.ResourceChange) []str
 
 		beforeVal := lookupPropertyPath(beforeMap, sp.Property)
 		afterVal := lookupPropertyPath(afterMap, sp.Property)
-		if !reflect.DeepEqual(beforeVal, afterVal) {
+		// A value that is only known after apply is usually omitted from
+		// After, so it would otherwise compare as nil == nil on a create.
+		// Treat any unknown at, above, or below the configured path as a
+		// potential change.
+		if !reflect.DeepEqual(beforeVal, afterVal) ||
+			a.isSensitivePathUnknown(change.Change.AfterUnknown, sp.Property) {
 			sensitiveProps = append(sensitiveProps, sp.Property)
 		}
 	}
 
 	return sensitiveProps
+}
+
+// isSensitivePathUnknown reports whether a configured sensitive property path
+// is (partly) unknown until apply according to an after_unknown structure. It
+// resolves paths the same way as lookupPropertyPath. A true value on an
+// ancestor means the whole subtree is unknown; for an object or list at the
+// configured path, any unknown descendant counts.
+func (a *Analyzer) isSensitivePathUnknown(afterUnknown any, path string) bool {
+	switch v := afterUnknown.(type) {
+	case bool:
+		return v
+	case map[string]any:
+		if val, ok := v[path]; ok {
+			return a.hasAnyUnknown(val)
+		}
+		head, rest, found := strings.Cut(path, ".")
+		if !found {
+			return false
+		}
+		next, ok := v[head]
+		if !ok {
+			return false
+		}
+		return a.isSensitivePathUnknown(next, rest)
+	case []any:
+		head, rest, found := strings.Cut(path, ".")
+		idx, err := strconv.Atoi(head)
+		if err != nil || idx < 0 || idx >= len(v) {
+			return false
+		}
+		if !found {
+			return a.hasAnyUnknown(v[idx])
+		}
+		return a.isSensitivePathUnknown(v[idx], rest)
+	}
+	return false
 }
 
 // lookupPropertyPath resolves a dot-separated property path (e.g. "tags.Secret"

@@ -11,16 +11,18 @@ import (
 
 // TestGenerateSummarySensitivePropertyDanger covers T-1633 (nested
 // sensitive_properties paths) and T-1372 (sensitive properties on whole
-// resource creates/deletes) through the public GenerateSummary path.
+// resource creates/deletes, including values only known after apply) through
+// the public GenerateSummary path.
 func TestGenerateSummarySensitivePropertyDanger(t *testing.T) {
 	tests := map[string]struct {
-		actions    tfjson.Actions
-		before     any
-		after      any
-		properties []config.SensitiveProperty
-		wantDanger bool
-		wantProps  []string
-		wantReason string
+		actions      tfjson.Actions
+		before       any
+		after        any
+		afterUnknown any
+		properties   []config.SensitiveProperty
+		wantDanger   bool
+		wantProps    []string
+		wantReason   string
 	}{
 		"T-1633 nested tag value changed": {
 			actions:    tfjson.Actions{tfjson.ActionUpdate},
@@ -109,6 +111,88 @@ func TestGenerateSummarySensitivePropertyDanger(t *testing.T) {
 			wantProps:  []string{"user_data"},
 			wantReason: "Resource deletion and User data modification",
 		},
+		"T-1372 create with sensitive property known after apply": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{"instance_type": "t2.micro"},
+			afterUnknown: map[string]any{"user_data": true},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "user_data"}},
+			wantDanger:   true,
+			wantProps:    []string{"user_data"},
+			wantReason:   "User data modification",
+		},
+		"create with nested sensitive property known after apply": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{"tags": map[string]any{"Name": "web"}},
+			afterUnknown: map[string]any{"tags": map[string]any{"Secret": true}},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "tags.Secret"}},
+			wantDanger:   true,
+			wantProps:    []string{"tags.Secret"},
+		},
+		"create with unknown parent of nested sensitive property": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{},
+			afterUnknown: map[string]any{"tags": true},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "tags.Secret"}},
+			wantDanger:   true,
+			wantProps:    []string{"tags.Secret"},
+		},
+		"create with unknown child of sensitive object": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{"tags": map[string]any{"Name": "web"}},
+			afterUnknown: map[string]any{"tags": map[string]any{"Secret": true}},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "tags"}},
+			wantDanger:   true,
+			wantProps:    []string{"tags"},
+		},
+		"create with unknown list item path": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{"root_block_device": []any{map[string]any{}}},
+			afterUnknown: map[string]any{"root_block_device": []any{map[string]any{"volume_size": true}}},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "root_block_device.0.volume_size"}},
+			wantDanger:   true,
+			wantProps:    []string{"root_block_device.0.volume_size"},
+		},
+		"update adding sensitive property known after apply": {
+			actions:      tfjson.Actions{tfjson.ActionUpdate},
+			before:       map[string]any{"instance_type": "t2.micro"},
+			after:        map[string]any{"instance_type": "t2.micro"},
+			afterUnknown: map[string]any{"user_data": true},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "user_data"}},
+			wantDanger:   true,
+			wantProps:    []string{"user_data"},
+		},
+		"create with only unrelated unknown is not dangerous": {
+			actions:      tfjson.Actions{tfjson.ActionCreate},
+			before:       nil,
+			after:        map[string]any{"instance_type": "t2.micro", "tags": map[string]any{"Name": "web"}},
+			afterUnknown: map[string]any{"id": true, "arn": true, "tags": map[string]any{"Name": false}},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "user_data"}, {ResourceType: "aws_instance", Property: "tags.Secret"}},
+			wantDanger:   false,
+			wantProps:    []string{},
+		},
+		"update with unchanged sensitive property marked known is not dangerous": {
+			actions:      tfjson.Actions{tfjson.ActionUpdate},
+			before:       map[string]any{"user_data": "same", "instance_type": "t2.micro"},
+			after:        map[string]any{"user_data": "same", "instance_type": "t3.micro"},
+			afterUnknown: map[string]any{"user_data": false, "id": true},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "user_data"}},
+			wantDanger:   false,
+			wantProps:    []string{},
+		},
+		"no-op with sensitive property is not dangerous": {
+			actions:      tfjson.Actions{tfjson.ActionNoop},
+			before:       map[string]any{"user_data": "same", "tags": map[string]any{"Secret": "s"}},
+			after:        map[string]any{"user_data": "same", "tags": map[string]any{"Secret": "s"}},
+			afterUnknown: map[string]any{},
+			properties:   []config.SensitiveProperty{{ResourceType: "aws_instance", Property: "user_data"}, {ResourceType: "aws_instance", Property: "tags.Secret"}},
+			wantDanger:   false,
+			wantProps:    []string{},
+		},
 		"other resource type is ignored": {
 			actions:    tfjson.Actions{tfjson.ActionCreate},
 			before:     nil,
@@ -129,9 +213,10 @@ func TestGenerateSummarySensitivePropertyDanger(t *testing.T) {
 					Type:    "aws_instance",
 					Name:    "web",
 					Change: &tfjson.Change{
-						Actions: tc.actions,
-						Before:  tc.before,
-						After:   tc.after,
+						Actions:      tc.actions,
+						Before:       tc.before,
+						After:        tc.after,
+						AfterUnknown: tc.afterUnknown,
 					},
 				}},
 			}
