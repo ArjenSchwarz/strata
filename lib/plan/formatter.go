@@ -1068,6 +1068,18 @@ func (f *Formatter) getResourceTableSchema() []output.Field {
 	}
 }
 
+// resourceTableSchema returns the resource table schema, omitting the Property Changes
+// column when details are disabled.
+func (f *Formatter) resourceTableSchema(showDetails bool) []output.Field {
+	schema := f.getResourceTableSchema()
+	if showDetails {
+		return schema
+	}
+	return slices.DeleteFunc(schema, func(field output.Field) bool {
+		return field.Name == "Property Changes"
+	})
+}
+
 // propertyChangesFormatterDirect creates a collapsible formatter that returns NewCollapsibleValue directly
 //
 // DESIGN DECISION: This "Direct" version was kept during code consolidation because it properly
@@ -1186,21 +1198,22 @@ func (f *Formatter) getRendererConfig() output.RendererConfig {
 }
 
 // addResourceChangesTable handles the creation of resource changes tables with proper grouping logic
-func (f *Formatter) addResourceChangesTable(summary *PlanSummary, builder *output.Builder) {
+// When showDetails is false, the Property Changes column is omitted so that only resource rows are shown.
+func (f *Formatter) addResourceChangesTable(summary *PlanSummary, showDetails bool, builder *output.Builder) {
 	// Check if provider grouping should be used (requirement 1.4: use changed resource count for threshold)
 	changedResourceCount := f.countChangedResources(summary.ResourceChanges)
 	shouldGroup := f.config.Plan.Grouping.Enabled && changedResourceCount >= f.config.Plan.Grouping.Threshold
 
 	switch {
 	case shouldGroup:
-		f.addGroupedResourceTables(summary, builder)
+		f.addGroupedResourceTables(summary, showDetails, builder)
 	default:
-		f.addStandardResourceTable(summary, builder)
+		f.addStandardResourceTable(summary, showDetails, builder)
 	}
 }
 
 // addGroupedResourceTables creates provider-grouped resource tables
-func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *output.Builder) {
+func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, showDetails bool, builder *output.Builder) {
 	groups := f.groupResourcesByProvider(summary.ResourceChanges)
 	if len(groups) > 1 {
 		// Multiple providers: create provider-grouped sections
@@ -1211,16 +1224,16 @@ func (f *Formatter) addGroupedResourceTables(summary *PlanSummary, builder *outp
 		sort.Strings(providerNames)
 
 		for _, providerName := range providerNames {
-			f.addProviderGroupTable(providerName, groups[providerName], builder)
+			f.addProviderGroupTable(providerName, groups[providerName], showDetails, builder)
 		}
 	} else {
 		// Single provider: create standard table
-		f.addStandardResourceTable(summary, builder)
+		f.addStandardResourceTable(summary, showDetails, builder)
 	}
 }
 
 // addProviderGroupTable creates a table for a specific provider group
-func (f *Formatter) addProviderGroupTable(providerName string, resources []ResourceChange, builder *output.Builder) {
+func (f *Formatter) addProviderGroupTable(providerName string, resources []ResourceChange, showDetails bool, builder *output.Builder) {
 	// Apply priority sorting within this provider group (Requirement 2.4)
 	sortedResources := f.sortResourcesByPriority(resources)
 	groupData := f.prepareResourceTableData(sortedResources)
@@ -1229,7 +1242,7 @@ func (f *Formatter) addProviderGroupTable(providerName string, resources []Resou
 		return
 	}
 
-	schema := f.getResourceTableSchema()
+	schema := f.resourceTableSchema(showDetails)
 	providerTable, err := output.NewTableContent(fmt.Sprintf("%s Resources", strings.ToUpper(providerName)), groupData,
 		output.WithSchema(schema...))
 	if err != nil {
@@ -1255,13 +1268,13 @@ func (f *Formatter) addProviderGroupTable(providerName string, resources []Resou
 }
 
 // addStandardResourceTable creates a standard resource changes table without grouping
-func (f *Formatter) addStandardResourceTable(summary *PlanSummary, builder *output.Builder) {
+func (f *Formatter) addStandardResourceTable(summary *PlanSummary, showDetails bool, builder *output.Builder) {
 	// Apply priority sorting before preparing table data (Requirements 2.1, 2.2, 2.3)
 	sortedResources := f.sortResourcesByPriority(summary.ResourceChanges)
 	tableData := f.prepareResourceTableData(sortedResources)
 	// Requirement 1.1: Only create table if data exists after filtering no-ops
 	if len(tableData) > 0 {
-		schema := f.getResourceTableSchema()
+		schema := f.resourceTableSchema(showDetails)
 		resourceTable, err := output.NewTableContent("Resource Changes", tableData,
 			output.WithSchema(schema...))
 		if err == nil {
@@ -1288,6 +1301,10 @@ func (f *Formatter) handleResourceDisplay(summary *PlanSummary, showDetails bool
 		switch {
 		case showDetails && len(summary.ResourceChanges) > 0:
 			return showAllResources
+		// --show-no-ops works independently of --details: render the resource rows
+		// (without property details) instead of falling back to the sensitive-only view.
+		case f.config.Plan.ShowNoOps && len(summary.ResourceChanges) > 0:
+			return showAllResources
 		case showDetails && len(summary.ResourceChanges) == 0:
 			return showNoChangesMessage
 		case f.config.Plan.AlwaysShowSensitive:
@@ -1300,7 +1317,7 @@ func (f *Formatter) handleResourceDisplay(summary *PlanSummary, showDetails bool
 	// Handle the selected display mode
 	switch mode {
 	case showAllResources:
-		f.addResourceChangesTable(summary, builder)
+		f.addResourceChangesTable(summary, showDetails, builder)
 	case showNoChangesMessage:
 		builder.Text("All resources are unchanged.")
 	case showSensitiveOnly:
@@ -1371,11 +1388,11 @@ func formatOutputValue(value any, sensitive bool, isUnknown bool) string {
 	if isUnknown {
 		return knownAfterApply // requirement 2.3 - unknown takes precedence over sensitive
 	}
+	if value == nil {
+		return "-" // absent side (e.g. before of an addition) even for sensitive outputs
+	}
 	if sensitive {
 		return "(sensitive value)" // requirement 2.4
-	}
-	if value == nil {
-		return "-"
 	}
 	// Format as JSON for consistent display
 	switch v := value.(type) {
