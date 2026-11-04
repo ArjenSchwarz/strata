@@ -1293,13 +1293,31 @@ EOF
         fi
     fi
 
-    # action.yml must not use prefix-matching restore-keys for the binary cache.
-    if grep -q "^ *restore-keys:" action.yml; then
-        echo -e "${RED}[FAIL]${NC} action.yml binary cache has no prefix restore-keys"
-        TESTS_FAILED=$((TESTS_FAILED + 1))
-    else
-        echo -e "${GREEN}[PASS]${NC} action.yml binary cache has no prefix restore-keys"
+    # actions/cache restores prefix matches of the key (and of restore-keys)
+    # after an exact miss. The key template must therefore not make one
+    # version's key a prefix of another's, and must not add restore-keys.
+    local key_template
+    key_template=$(grep -E '^ *key: strata-binary-' action.yml | sed -E 's/^ *key: //')
+    local placeholder='${{ inputs.strata-version }}'
+    key_for() { echo "${key_template//"$placeholder"/$1}"; }
+    local prefix_clash=""
+    local a b
+    for a in v1.2.3 v1.2.30 v1.2.3-beta.1 latest; do
+        for b in v1.2.3 v1.2.30 v1.2.3-beta.1 latest; do
+            [[ "$a" == "$b" ]] && continue
+            local ka kb
+            ka=$(key_for "$a"); kb=$(key_for "$b")
+            [[ "$kb" == "$ka"* ]] && prefix_clash+=" $a->$b"
+        done
+    done
+    if [[ "$key_template" == *"$placeholder"* && -z "$prefix_clash" ]] \
+        && ! grep -q "^ *restore-keys:" action.yml; then
+        echo -e "${GREEN}[PASS]${NC} binary cache key for one version is not a prefix of another's"
         TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} binary cache key for one version is not a prefix of another's"
+        echo "  Key: $key_template  Clashes:$prefix_clash"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
 }
 

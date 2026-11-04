@@ -77,11 +77,13 @@ runs:
       id: strata-cache
       with:
         path: ~/.cache/strata
-        key: strata-binary-${{ runner.os }}-${{ runner.arch }}-${{ inputs.strata-version }}
-        # No restore-keys: they prefix-match, so a v1.2.3 run could restore a
-        # v1.2.30 cache. Only the exact version key is restored, and action.sh
-        # still checks the cached binary's --version against the requested
-        # version (or the current release for "latest").
+        # actions/cache falls back to prefix matches of the key (and of any
+        # restore-keys) after an exact miss. The fixed "-bin" suffix after the
+        # version keeps one version's key from being a prefix of another's
+        # (e.g. v1.2.3 vs v1.2.30). action.sh still checks the restored
+        # binary's --version against the requested version (or the current
+        # release for "latest") and re-downloads on a mismatch.
+        key: strata-binary-${{ runner.os }}-${{ runner.arch }}-${{ inputs.strata-version }}-bin
     
     - name: Run Strata Analysis
       id: strata-analysis
