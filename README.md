@@ -429,7 +429,7 @@ The action now supports specifying which version of Strata to use, making it eas
     strata-version: v1.5.0-beta.1
 ```
 
-If a pinned version (anything other than `latest`) cannot be downloaded, the action fails rather than running a different release.
+If a pinned version (anything other than `latest`) cannot be downloaded, the action fails rather than running a different release. A cached binary is only reused when its version exactly matches the requested one.
 
 ### Required Permissions
 

@@ -840,6 +840,7 @@ sleep() { :; }
 
 export OS ARCH STRATA_BIN CACHE_DIR INPUT_STRATA_VERSION GITHUB_API_URL
 
+eval "$(sed -n '/^version_output_matches()/,/^}/p' "$ACTION_PATH")"
 eval "$(sed -n '/^download_strata()/,/^}/p' "$ACTION_PATH")"
 
 download_strata
@@ -1220,6 +1221,88 @@ EOF
     fi
 }
 
+# Regression test for T-1547: a cached binary is reused only when its
+# `--version` names exactly the requested version. Substring matching accepted
+# a cached v1.2.30 for a v1.2.3 pin. Runs the real download_strata from a
+# sourced action.sh with curl stubbed to fail, so a rejected cache ends in
+# exit 3 instead of a silent reuse.
+test_cached_version_exact_match() {
+    log_test "cached binary must match pinned version exactly (T-1547)"
+
+    local run_dir="$TEST_DIR/cached_version_exact"
+    mkdir -p "$run_dir"
+    local harness="$run_dir/harness.sh"
+    cat > "$harness" <<'EOF'
+#!/bin/bash
+# Args: requested version, cached --version output, latest tag ("" = unresolvable)
+REQUESTED="$1"; CACHED_OUTPUT="$2"; LATEST_TAG="$3"
+source ./action.sh
+{
+  echo '#!/bin/bash'
+  printf 'echo %q\n' "$CACHED_OUTPUT"
+} > "$STRATA_BIN"
+chmod +x "$STRATA_BIN"
+detect_platform() { OS="linux"; ARCH="amd64"; }
+sleep() { :; }
+curl() { return 1; }
+if [[ "$REQUESTED" == "latest" ]]; then
+  get_version_tag() { [[ -n "$LATEST_TAG" ]] && echo "$LATEST_TAG"; }
+fi
+INPUT_STRATA_VERSION="$REQUESTED"
+download_strata
+EOF
+
+    # Prints "<exit>:<reused|rejected>" for one scenario.
+    run_case() {
+        local home out status=0
+        home=$(mktemp -d "$run_dir/home.XXXXXX")
+        out=$(HOME="$home" bash "$harness" "$@" 2>&1) || status=$?
+        if echo "$out" | grep -qi "using cached Strata binary"; then
+            echo "$status:reused"
+        else
+            echo "$status:rejected"
+        fi
+    }
+
+    assert_equals "3:rejected" "$(run_case v1.2.3 "strata version v1.2.30" "")" "pinned v1.2.3 rejects cached v1.2.30"
+    assert_equals "3:rejected" "$(run_case v1.2.3 "strata version v1.2.3-beta.1" "")" "pinned v1.2.3 rejects cached v1.2.3-beta.1"
+    assert_equals "3:rejected" "$(run_case v1.2.3-beta.1 "strata version v1.2.3" "")" "pinned v1.2.3-beta.1 rejects cached v1.2.3"
+    assert_equals "3:rejected" "$(run_case v1.2.3 "something v1.2.3" "")" "pinned version rejects unrecognised --version output"
+    assert_equals "0:reused" "$(run_case v1.2.3 "strata version v1.2.3" "")" "pinned v1.2.3 reuses cached v1.2.3"
+    assert_equals "0:reused" "$(run_case 1.2.3 "strata version v1.2.3" "")" "pinned 1.2.3 (no v) reuses cached v1.2.3"
+    assert_equals "0:reused" "$(run_case v1.2.3-beta.1 "strata version v1.2.3-beta.1" "")" "pinned prerelease reuses exact cached prerelease"
+
+    # latest: reuse only on an exact match with the resolved tag; when the tag
+    # cannot be resolved the cached binary is reused as a best effort.
+    assert_equals "0:reused" "$(run_case latest "strata version v1.5.0" "v1.5.0")" "latest reuses cached binary matching latest tag"
+    assert_equals "3:rejected" "$(run_case latest "strata version v1.5.10" "v1.5.1")" "latest rejects cached v1.5.10 when latest is v1.5.1"
+    assert_equals "0:reused" "$(run_case latest "strata version v1.4.0" "")" "latest reuses cache when tag is unresolvable"
+
+    # Same check against the real CLI's --version output (release builds set
+    # cmd.Version to the tag, e.g. v1.2.3).
+    if command -v go >/dev/null 2>&1; then
+        local real_bin="$run_dir/strata-v1.2.3"
+        if go build -ldflags "-X github.com/ArjenSchwarz/strata/cmd.Version=v1.2.3" -o "$real_bin" . >/dev/null 2>&1; then
+            local real_output
+            real_output=$("$real_bin" --version)
+            assert_equals "0:reused" "$(run_case v1.2.3 "$real_output" "")" "real binary v1.2.3 reused for pin v1.2.3"
+            assert_equals "3:rejected" "$(run_case v1.2.30 "$real_output" "")" "real binary v1.2.3 rejected for pin v1.2.30"
+        else
+            echo -e "${RED}[FAIL]${NC} failed to build strata with version ldflags"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+    fi
+
+    # action.yml must not use prefix-matching restore-keys for the binary cache.
+    if grep -q "^ *restore-keys:" action.yml; then
+        echo -e "${RED}[FAIL]${NC} action.yml binary cache has no prefix restore-keys"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} action.yml binary cache has no prefix restore-keys"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    fi
+}
+
 # Regression test for T-1226: test scripts must start with a valid shebang.
 # A corrupted shebang (e.g. "#\!/bin/bash" with an escaped bang) makes the
 # kernel reject direct execution with "exec format error" on Linux, even
@@ -1275,6 +1358,7 @@ test_extract_outputs_output_changes
 test_run_analysis_output_only_plan
 test_validate_inputs_config_file
 test_pinned_version_no_latest_fallback
+test_cached_version_exact_match
 test_script_shebangs
 
 # Print test summary

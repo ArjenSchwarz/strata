@@ -93,6 +93,21 @@ get_version_tag() {
   fi
 }
 
+# Succeed only when `strata --version` output names exactly the given version.
+# Release binaries print "strata version <tag>" (e.g. "strata version v1.2.3")
+# on the first line; a leading "v" is ignored on both sides. Exact comparison
+# keeps v1.2.30 or v1.2.3-beta.1 from being accepted as v1.2.3 (T-1547).
+version_output_matches() {
+  local output="$1" wanted="$2"
+  local first_line="${output%%$'\n'*}"
+  local -a words
+  read -r -a words <<< "$first_line"
+  [[ ${#words[@]} -ge 3 && "${words[0]}" == "strata" && "${words[1]}" == "version" ]] || return 1
+  local actual="${words[2]#v}"
+  wanted="${wanted#v}"
+  [[ -n "$wanted" && "$actual" == "$wanted" ]]
+}
+
 # Binary download with checksum verification
 download_strata() {
   local version="${INPUT_STRATA_VERSION:-latest}"
@@ -105,13 +120,13 @@ download_strata() {
     local cached_version
     cached_version="$("$STRATA_BIN" --version 2>/dev/null || echo "")"
     if [[ "$version" == "latest" ]]; then
-      # The cache key in action.yml uses loose restore-keys, so a "latest" run
-      # can be hydrated from an older pinned-version cache. Resolve the current
-      # latest release tag and only reuse the cached binary when it matches,
-      # otherwise re-download to avoid running a stale binary.
+      # The "latest" cache entry is reused across releases (and the cache may be
+      # shared with other invocations), so resolve the current latest release
+      # tag and only reuse the cached binary when it matches exactly; otherwise
+      # re-download to avoid running a stale binary.
       local latest_tag
       if latest_tag=$(get_version_tag "latest"); then
-        if [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${latest_tag#v}"; then
+        if version_output_matches "$cached_version" "$latest_tag"; then
           echo "✅ Using cached Strata binary (matches latest release $latest_tag)"
           echo "🔍 Strata version: $cached_version"
           return 0
@@ -126,7 +141,7 @@ download_strata() {
         echo "🔍 Strata version: ${cached_version:-unknown}"
         return 0
       fi
-    elif [[ -n "$cached_version" ]] && echo "$cached_version" | grep -qF "${version#v}"; then
+    elif version_output_matches "$cached_version" "$version"; then
       echo "✅ Using cached Strata binary (matches requested $version)"
       echo "🔍 Strata version: $cached_version"
       return 0
