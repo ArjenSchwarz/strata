@@ -59,6 +59,8 @@ func TestReadAndForgetActions_AreNotNoOps(t *testing.T) {
 		got[rc.Address] = rc.ChangeType
 		assert.False(t, rc.IsNoOp, "%s should not be marked as no-op", rc.Address)
 		assert.False(t, rc.IsDestructive, "%s should not be destructive", rc.Address)
+		assert.Zero(t, rc.PropertyChanges.Count, "%s should not report attribute changes", rc.Address)
+		assert.Empty(t, rc.PropertyChanges.Changes, "%s should not report attribute changes", rc.Address)
 	}
 	assert.Equal(t, ChangeTypeRead, got["data.aws_ami.ubuntu"])
 	assert.Equal(t, ChangeTypeForget, got["aws_s3_bucket.legacy"])
@@ -93,4 +95,47 @@ func TestReadAndForgetActions_AreRenderedInOutput(t *testing.T) {
 	assert.Contains(t, out, `"Action": "Read"`)
 	assert.True(t, strings.Contains(out, `"Forgotten": 1`), "statistics should report the forgotten resource")
 	assert.True(t, strings.Contains(out, `"Read": 1`), "statistics should report the data source read")
+}
+
+// TestReadAndForgetActions_DetailsDoNotShowAttributeDiffs renders the plan the way
+// `strata plan summary --expand-all` does and verifies the details describe the
+// action instead of presenting before/after values as attribute additions/removals.
+func TestReadAndForgetActions_DetailsDoNotShowAttributeDiffs(t *testing.T) {
+	tests := map[string]struct {
+		format             string
+		expandableSections bool
+	}{
+		"markdown expand-all":          {format: "markdown", expandableSections: true},
+		"html expand-all":              {format: "html", expandableSections: true},
+		"json expand-all":              {format: "json", expandableSections: true},
+		"markdown expandable disabled": {format: "markdown", expandableSections: false},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			summary, cfg := summarizeReadForgetPlan(t)
+			cfg.ExpandAll = true
+			cfg.Plan.ExpandableSections.Enabled = tc.expandableSections
+
+			outputFile := filepath.Join(t.TempDir(), "summary."+tc.format)
+			outputConfig := &config.OutputConfiguration{
+				Format:           tc.format,
+				OutputFile:       outputFile,
+				OutputFileFormat: tc.format,
+			}
+			require.NoError(t, NewFormatter(cfg).OutputSummary(summary, outputConfig, true))
+
+			raw, err := os.ReadFile(outputFile)
+			require.NoError(t, err)
+			out := string(raw)
+
+			assert.Contains(t, out, forgetDetail)
+			assert.Contains(t, out, readDetail)
+			assert.NotContains(t, out, "properties changed")
+			assert.NotContains(t, out, "- id")
+			assert.NotContains(t, out, "+ id")
+			// The forgotten object's ID is still shown in the ID column.
+			assert.Contains(t, out, "legacy-bucket")
+		})
+	}
 }

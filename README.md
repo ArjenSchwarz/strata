@@ -167,6 +167,8 @@ Besides `Add`, `Modify`, `Remove` and `Replace`, the Action column can show two 
 - **Forget** (`Forgotten`): the resource is removed from Terraform state but the real infrastructure is left in place (for example via a `removed` block with `destroy = false`). It is not counted as a destroy.
 - **Read** (`Read`): a data source that Terraform has to read during apply because its inputs are not known until then.
 
+Neither action changes infrastructure attributes, so their Property Changes cell explains the action ("Removed from state only; infrastructure is not destroyed" or "Data source read during apply; no infrastructure change") instead of listing attribute diffs. A forgotten resource's ID stays visible in the ID column.
+
 This example showcases:
 - **Danger Detection**: The RDS instance replacement and EC2 user data modification are flagged as high-risk
 - **Progressive Disclosure**: Property changes are collapsed by default but fully accessible via expandable details

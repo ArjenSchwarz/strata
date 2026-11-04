@@ -19,6 +19,8 @@ const (
 	formatMarkdown      = "markdown"
 	noPropertiesChanged = "No properties changed"
 	truncatedIndicator  = " [truncated]"
+	forgetDetail        = "Removed from state only; infrastructure is not destroyed"
+	readDetail          = "Data source read during apply; no infrastructure change"
 	// Unicode En space (U+2002) constants for consistent indentation across output formats
 	indent       = "\u2002\u2002"             // 2 En spaces - basic indentation level
 	nestedIndent = "\u2002\u2002\u2002\u2002" // 4 En spaces - nested indentation level
@@ -469,7 +471,7 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 			return val
 		}
 		if propAnalysis.Count == 0 {
-			return noPropertiesChanged
+			return noPropertyChangesText(val)
 		}
 
 		// Create summary
@@ -500,6 +502,20 @@ func (f *Formatter) propertyChangesFormatterTerraform() func(any) any {
 			output.WithExpanded(shouldExpand),
 			output.WithMaxLength(f.config.Plan.ExpandableSections.MaxDetailLength))
 	}
+}
+
+// noPropertyChangesText describes a resource without property changes. Read and
+// forget actions get an explanation of what happens instead of "No properties changed".
+func noPropertyChangesText(val any) string {
+	if dataMap, ok := val.(map[string]any); ok {
+		switch dataMap["change_type"] {
+		case ChangeTypeForget:
+			return forgetDetail
+		case ChangeTypeRead:
+			return readDetail
+		}
+	}
+	return noPropertiesChanged
 }
 
 // extractPropertyAnalysis extracts PropertyChangeAnalysis from either a map-based or direct value

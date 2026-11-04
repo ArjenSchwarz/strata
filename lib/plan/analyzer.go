@@ -1669,6 +1669,14 @@ func (a *Analyzer) analyzePropertyChanges(change *tfjson.ResourceChange) Propert
 		return analysis
 	}
 
+	// Read and forget do not change infrastructure attributes: a read fetches
+	// data source values and a forget only drops the object from state. Diffing
+	// before/after would wrongly present these as attribute additions/removals.
+	switch FromTerraformAction(change.Change.Actions) {
+	case ChangeTypeRead, ChangeTypeForget:
+		return analysis
+	}
+
 	// Extract replacement paths as strings for simpler matching
 	var replacePathStrings []string
 	if change.Change.ReplacePaths != nil {
