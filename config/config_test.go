@@ -614,3 +614,73 @@ func TestNewOutputConfiguration_UseColorsOnlyForTable(t *testing.T) {
 		})
 	}
 }
+
+func TestMigrateDeprecatedConfig_LegacyGrouping(t *testing.T) {
+	tests := map[string]struct {
+		yaml          string
+		wantEnabled   bool
+		wantThreshold int
+		wantWarnings  []string
+	}{
+		"no grouping config uses defaults": {
+			yaml:          "plan:\n  show-details: true\n",
+			wantEnabled:   true,
+			wantThreshold: 10,
+		},
+		"legacy group-by-provider false disables grouping": {
+			yaml:          "plan:\n  group-by-provider: false\n",
+			wantEnabled:   false,
+			wantThreshold: 10,
+			wantWarnings:  []string{"plan.group-by-provider is deprecated"},
+		},
+		"legacy threshold is migrated": {
+			yaml:          "plan:\n  group-by-provider: true\n  grouping-threshold: 99\n",
+			wantEnabled:   true,
+			wantThreshold: 99,
+			wantWarnings:  []string{"plan.group-by-provider is deprecated", "plan.grouping-threshold is deprecated"},
+		},
+		"new grouping block takes precedence over legacy fields": {
+			yaml:          "plan:\n  group-by-provider: false\n  grouping-threshold: 99\n  grouping:\n    enabled: true\n    threshold: 5\n",
+			wantEnabled:   true,
+			wantThreshold: 5,
+			wantWarnings:  []string{"ignored because plan.grouping is set"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			viper.Reset()
+			t.Cleanup(viper.Reset)
+			viper.SetConfigType("yaml")
+			if err := viper.ReadConfig(strings.NewReader(tc.yaml)); err != nil {
+				t.Fatalf("ReadConfig() error = %v", err)
+			}
+
+			cfg := GetDefaultConfig()
+			cfg.Plan.GroupByProvider = viper.GetBool("plan.group-by-provider")
+			cfg.Plan.GroupingThreshold = viper.GetInt("plan.grouping-threshold")
+			if viper.IsSet("plan.grouping") {
+				if err := viper.UnmarshalKey("plan.grouping", &cfg.Plan.Grouping); err != nil {
+					t.Fatalf("UnmarshalKey() error = %v", err)
+				}
+			}
+
+			warnings := cfg.MigrateDeprecatedConfig()
+
+			if cfg.Plan.Grouping.Enabled != tc.wantEnabled {
+				t.Errorf("Grouping.Enabled = %v, want %v", cfg.Plan.Grouping.Enabled, tc.wantEnabled)
+			}
+			if cfg.Plan.Grouping.Threshold != tc.wantThreshold {
+				t.Errorf("Grouping.Threshold = %d, want %d", cfg.Plan.Grouping.Threshold, tc.wantThreshold)
+			}
+			if len(warnings) != len(tc.wantWarnings) {
+				t.Fatalf("warnings = %v, want %d warnings", warnings, len(tc.wantWarnings))
+			}
+			for i, want := range tc.wantWarnings {
+				if !strings.Contains(warnings[i], want) {
+					t.Errorf("warnings[%d] = %q, want it to contain %q", i, warnings[i], want)
+				}
+			}
+		})
+	}
+}

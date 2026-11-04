@@ -159,6 +159,14 @@ func runPlanSummary(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Load legacy grouping fields so MigrateDeprecatedConfig can migrate them
+	if viper.IsSet("plan.group-by-provider") {
+		cfg.Plan.GroupByProvider = viper.GetBool("plan.group-by-provider")
+	}
+	if viper.IsSet("plan.grouping-threshold") {
+		cfg.Plan.GroupingThreshold = viper.GetInt("plan.grouping-threshold")
+	}
+
 	// Load grouping configuration from config file if it exists
 	if viper.IsSet("plan.grouping") {
 		if err := viper.UnmarshalKey("plan.grouping", &cfg.Plan.Grouping); err != nil {
