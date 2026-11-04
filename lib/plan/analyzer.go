@@ -219,7 +219,17 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 		if isUnknown || !reflect.DeepEqual(before, after) {
 			propertyPath := a.parsePath(path)
 			triggersReplacement := false
-			action := determineAction(processedBefore, processedAfter)
+
+			// Aggregate map changes carry the whole map in a single
+			// PropertyChange, so per-field sensitivity markers below this path
+			// (e.g. before_sensitive: {"tags": {"secret": true}}) must make the
+			// aggregate sensitive and mask both sides (T-1394).
+			aggregateSensitive := isSensitive ||
+				sensitiveSubtreeHasMarker(beforeSensitive) ||
+				sensitiveSubtreeHasMarker(afterSensitive)
+			aggregateBefore := a.maskSensitiveValue(before, aggregateSensitive)
+			aggregateAfter := a.maskSensitiveValue(after, aggregateSensitive)
+			action := determineAction(aggregateBefore, aggregateAfter)
 
 			// Skip empty string values for additions and deletions
 			if shouldSkipEmptyValue(action, before, after) {
@@ -232,7 +242,7 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 			}
 
 			// Handle unknown values override logic (requirement 1.6)
-			displayAfter := processedAfter
+			displayAfter := aggregateAfter
 			unknownType := ""
 			if isUnknown {
 				displayAfter = a.getUnknownValueDisplay()
@@ -240,21 +250,21 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 
 				// When a nested object is unknown, collect all nested property paths
 				// and add them as individual unknown properties for tracking.
-				// Use original after (not processedAfter) to preserve structural
-				// data that collectNestedUnknownProperties needs to walk children,
-				// even when the parent is sensitive and processedAfter is masked.
-				// Use processedBefore so Before values are masked for sensitive parents.
-				a.collectNestedUnknownProperties(path, processedBefore, after, analysis)
+				// Pass the original values so children can be walked with their
+				// add/update semantics, together with the sensitivity subtrees so
+				// each child's Before value is masked when it (or anything below
+				// it) is sensitive (T-1401).
+				a.collectNestedUnknownProperties(path, before, after, beforeSensitive, afterSensitive, analysis)
 			}
 
 			analysis.Changes = append(analysis.Changes, PropertyChange{
 				Name:                a.extractPropertyName(path),
 				Path:                propertyPath,
-				Before:              processedBefore,
+				Before:              aggregateBefore,
 				After:               displayAfter,
 				Action:              action,
 				TriggersReplacement: triggersReplacement,
-				Sensitive:           isSensitive, // Already computed above
+				Sensitive:           aggregateSensitive,
 				IsUnknown:           isUnknown,
 				UnknownType:         unknownType,
 			})
@@ -563,7 +573,10 @@ func (a *Analyzer) compareObjects(path string, before, after, beforeSensitive, a
 // collectNestedUnknownProperties recursively collects all nested property paths
 // when a parent object is marked as unknown, adding them as individual unknown properties.
 // It preserves whether nested fields already existed to keep add/update semantics accurate.
-func (a *Analyzer) collectNestedUnknownProperties(basePath string, before, after any, analysis *PropertyChangeAnalysis) {
+// beforeSensitive and afterSensitive are the Terraform sensitivity subtrees for
+// basePath; a child whose subtree contains any sensitive marker is flagged
+// sensitive and has its Before value masked so secrets are never emitted (T-1401).
+func (a *Analyzer) collectNestedUnknownProperties(basePath string, before, after, beforeSensitive, afterSensitive any, analysis *PropertyChangeAnalysis) {
 	switch afterVal := after.(type) {
 	case map[string]any:
 		beforeMap, _ := before.(map[string]any)
@@ -584,19 +597,12 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, before, after
 				}
 			}
 
-			// Add this nested property as unknown
-			analysis.Changes = append(analysis.Changes, PropertyChange{
-				Name:        key,
-				Path:        a.parsePath(childPath),
-				Before:      childBeforeValue,
-				After:       a.getUnknownValueDisplay(),
-				Action:      action,
-				IsUnknown:   true,
-				UnknownType: unknownAfter,
-			})
+			childBeforeSens := sensitiveMapChild(beforeSensitive, key)
+			childAfterSens := sensitiveMapChild(afterSensitive, key)
+			a.appendNestedUnknownChange(key, childPath, childBeforeValue, action, childBeforeSens, childAfterSens, analysis)
 
 			// Recursively collect deeper nested properties
-			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, analysis)
+			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, childBeforeSens, childAfterSens, analysis)
 		}
 	case []any:
 		beforeSlice, _ := before.([]any)
@@ -610,21 +616,44 @@ func (a *Analyzer) collectNestedUnknownProperties(basePath string, before, after
 				action = actionUpdate
 			}
 
-			// Add this array element as unknown
-			analysis.Changes = append(analysis.Changes, PropertyChange{
-				Name:        fmt.Sprintf("%d", i),
-				Path:        a.parsePath(childPath),
-				Before:      childBeforeValue,
-				After:       a.getUnknownValueDisplay(),
-				Action:      action,
-				IsUnknown:   true,
-				UnknownType: unknownAfter,
-			})
+			childBeforeSens := a.extractSensitiveIndex(beforeSensitive, i)
+			childAfterSens := a.extractSensitiveIndex(afterSensitive, i)
+			a.appendNestedUnknownChange(fmt.Sprintf("%d", i), childPath, childBeforeValue, action, childBeforeSens, childAfterSens, analysis)
 
 			// Recursively collect nested properties in array elements
-			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, analysis)
+			a.collectNestedUnknownProperties(childPath, childBeforeValue, childAfterValue, childBeforeSens, childAfterSens, analysis)
 		}
 	}
+}
+
+// appendNestedUnknownChange records a single child of an unknown parent,
+// masking its Before value when its sensitivity subtree has any marker.
+func (a *Analyzer) appendNestedUnknownChange(name, childPath string, before any, action string, beforeSensitive, afterSensitive any, analysis *PropertyChangeAnalysis) {
+	sensitive := sensitiveSubtreeHasMarker(beforeSensitive) || sensitiveSubtreeHasMarker(afterSensitive)
+	analysis.Changes = append(analysis.Changes, PropertyChange{
+		Name:        name,
+		Path:        a.parsePath(childPath),
+		Before:      a.maskSensitiveValue(before, sensitive),
+		After:       a.getUnknownValueDisplay(),
+		Action:      action,
+		Sensitive:   sensitive,
+		IsUnknown:   true,
+		UnknownType: unknownAfter,
+	})
+}
+
+// sensitiveMapChild returns the sensitivity subtree for a map key, propagating
+// a parent-level true marker to every child.
+func sensitiveMapChild(sensitiveValues any, key string) any {
+	switch v := sensitiveValues.(type) {
+	case bool:
+		if v {
+			return true
+		}
+	case map[string]any:
+		return v[key]
+	}
+	return nil
 }
 
 // sortPropertiesAlphabetically sorts properties within a resource alphabetically by name and path

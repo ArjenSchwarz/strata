@@ -295,7 +295,7 @@ func TestOutputRefinements_EdgeCases_ComplexSensitiveStructures(t *testing.T) {
 
 	// Test that sensitive properties are properly masked but structure is preserved
 	sensitivePropertyFound := false
-	nonSensitivePropertyFound := false
+	aggregatesFound := 0
 
 	for _, change := range updateResource.PropertyChanges.Changes {
 		switch change.Name {
@@ -304,19 +304,19 @@ func TestOutputRefinements_EdgeCases_ComplexSensitiveStructures(t *testing.T) {
 			assert.Equal(t, "(sensitive value)", change.Before, "Before value should be masked")
 			assert.Equal(t, "(sensitive value)", change.After, "After value should be masked")
 			sensitivePropertyFound = true
-		case "tags":
-			// tags is a complex object but not itself marked sensitive in the test
-			assert.False(t, change.Sensitive, "tags object should not be marked as sensitive (individual fields may be)")
-			nonSensitivePropertyFound = true
-		case "metadata":
-			// metadata is a complex object and not marked sensitive
-			assert.False(t, change.Sensitive, "metadata should not be marked as sensitive")
-			nonSensitivePropertyFound = true
+		case "tags", "metadata":
+			// tags and metadata are reported as single aggregate changes. Each
+			// contains a sensitive child marker (tags.Secret, metadata.ssh_keys),
+			// so the whole aggregate must be sensitive and masked (T-1394).
+			assert.True(t, change.Sensitive, "%s aggregate with a sensitive child should be marked sensitive", change.Name)
+			assert.Equal(t, "(sensitive value)", change.Before, "%s Before value should be masked", change.Name)
+			assert.Equal(t, "(sensitive value)", change.After, "%s After value should be masked", change.Name)
+			aggregatesFound++
 		}
 	}
 
 	assert.True(t, sensitivePropertyFound, "Should find at least one sensitive property")
-	assert.True(t, nonSensitivePropertyFound, "Should find at least one non-sensitive property")
+	assert.Equal(t, 2, aggregatesFound, "Should find both tags and metadata aggregate changes")
 
 	// Test that properties are sorted despite masking
 	if len(updateResource.PropertyChanges.Changes) > 1 {
